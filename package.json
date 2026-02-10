@@ -1,0 +1,10 @@
+{
+  "name": "agent-ctrl",
+  "version": "0.0.0",
+  "description": "A centralized CLI tool for managing AI agent configurations with standard directory-based patterns.",
+  "scripts": {
+    "format": "bash scripts/format.sh",
+    "format:check": "bash scripts/format.sh --check"
+  },
+  "license": "GPL-3.0"
+}
