@@ -15,7 +15,11 @@ export class PathSecurity {
     const normalizedProject = normalize(this.projectRoot);
     const normalizedTarget = normalize(resolvedPath);
 
-    return normalizedTarget.startsWith(normalizedProject) || normalizedTarget === normalizedProject;
+    // Ensure the project path ends with a separator to prevent prefix-only matching
+    // e.g., /app should not match /app-secret (path traversal vulnerability)
+    const projectWithSeparator = normalizedProject.endsWith("/") ? normalizedProject : `${normalizedProject}/`;
+
+    return normalizedTarget === normalizedProject || normalizedTarget.startsWith(projectWithSeparator);
   }
 
   /**
