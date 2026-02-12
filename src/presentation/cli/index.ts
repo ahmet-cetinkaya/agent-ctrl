@@ -7,6 +7,7 @@ import { createSkillCommand } from "./features/skill/commands/skill";
 import { createAgentCommand } from "./features/agent/commands/agent";
 import { createApplyCommand } from "./features/apply/commands/apply";
 import { ErrorHandler } from "./shared/middleware/errorHandler";
+import { createAgentListCommand } from "./features/agent/commands/agent_ls";
 
 const VERSION = "0.1.0";
 
