@@ -1,0 +1,22 @@
+{
+  "_comment": "agent-ctrl configuration file - Define your AI agent project structure",
+  "version": "1.0.0",
+  "project": {
+    "name": "my-agent-project",
+    "description": "Configure AI agent behaviors, skills, and personas"
+  },
+  "artifacts": {
+    "rules": {
+      "description": "Behavioral rules for AI agents (Markdown files)"
+    },
+    "skills": {
+      "description": "Reusable capabilities following SKILL.md standard"
+    },
+    "agents": {
+      "description": "Agent persona definitions"
+    },
+    "commands": {
+      "description": "Command prompt templates"
+    }
+  }
+}
