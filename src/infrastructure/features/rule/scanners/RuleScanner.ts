@@ -2,12 +2,13 @@ import { readdir } from "node:fs/promises";
 import { resolve, extname, basename } from "node:path";
 import { FileValidator } from "../../../shared/validation/FileValidator";
 import { createRule, type Rule } from "../../../../core/domain/shared/entities/Rule";
-import type { ScanResult } from "./DirectoryScanner";
 
 const MARKDOWN_EXTENSIONS = [".md", ".markdown"] as const;
 
-export interface RuleScanResult extends ScanResult {
+export interface RuleScanResult {
+  files: { name: string; path: string; isDirectory: boolean; extension: string }[];
   artifacts: Rule[];
+  warnings: string[];
 }
 
 export class RuleScanner {

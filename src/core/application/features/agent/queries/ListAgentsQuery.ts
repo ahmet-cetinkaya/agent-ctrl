@@ -1,5 +1,5 @@
 import type { Agent } from "../../../../../core/domain/shared/entities/Agent";
-import { AgentScanner } from "../../../../../infrastructure/features/agent/scanners/AgentScanner";
+import type { IAgentScanner } from "../../../../../core/domain/shared/interfaces/IAgentScanner";
 import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
 import { UserError } from "../../../../../core/domain/shared/errors/UserError";
 
@@ -13,10 +13,10 @@ export interface ListAgentsQueryResult {
 }
 
 export class ListAgentsQuery {
-  private scanner: AgentScanner;
+  private scanner: IAgentScanner;
 
-  constructor() {
-    this.scanner = new AgentScanner();
+  constructor(scanner: IAgentScanner) {
+    this.scanner = scanner;
   }
 
   async execute(options: ListAgentsQueryOptions): Promise<Result<ListAgentsQueryResult, Error>> {

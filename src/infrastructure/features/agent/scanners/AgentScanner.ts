@@ -2,15 +2,11 @@ import { readdir } from "node:fs/promises";
 import { resolve, extname, basename } from "node:path";
 import { FileValidator } from "../../../shared/validation/FileValidator";
 import { createAgent, type Agent } from "../../../../core/domain/shared/entities/Agent";
-import type { ScanResult } from "./DirectoryScanner";
+import type { IAgentScanner, AgentScanResult } from "../../../../core/domain/shared/interfaces/IAgentScanner";
 
 const MARKDOWN_EXTENSIONS = [".md", ".markdown"] as const;
 
-export interface AgentScanResult extends ScanResult {
-  artifacts: Agent[];
-}
-
-export class AgentScanner {
+export class AgentScanner implements IAgentScanner {
   private fileValidator: FileValidator;
 
   constructor() {
