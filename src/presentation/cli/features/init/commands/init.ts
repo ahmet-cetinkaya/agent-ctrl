@@ -1,15 +1,16 @@
 import { Command } from "commander";
 import { resolve } from "node:path";
-import { InitCommand } from "../../../../core/application/features/commands/InitCommand";
-import { UserError } from "../../../../core/domain/shared/shared/errors/UserError";
-import { SystemError } from "../../../../core/domain/shared/shared/errors/SystemError";
+import { InitCommand } from "../../../../../core/application/features/init/commands/InitCommand";
+import { UserError } from "../../../../../core/domain/shared/errors/UserError";
+import { SystemError } from "../../../../../core/domain/shared/errors/SystemError";
+import { NodeFileSystem } from "../../../../../infrastructure/shared/file-system/NodeFileSystem";
 
 export function createInitCommand(): Command {
   const command = new Command("init")
     .description("Initialize a new agent-ctrl project with standard directory structure")
     .argument("[path]", "Target directory path (default: current directory)", ".")
     .action(async (targetPath: string) => {
-      const initCommand = new InitCommand();
+      const initCommand = new InitCommand(new NodeFileSystem());
 
       try {
         const result = await initCommand.execute({

@@ -1,6 +1,6 @@
 import { Command } from "commander";
-import { ListSkillsQuery } from "../../../../core/application/features/queries/ListSkillsQuery";
-import { UserError } from "../../../../core/domain/shared/shared/errors/UserError";
+import { ListSkillsQuery } from "../../../../../core/application/features/skill/queries/ListSkillsQuery";
+import { UserError } from "../../../../../core/domain/shared/errors/UserError";
 import { resolve } from "node:path";
 import { access, constants } from "node:fs/promises";
 

@@ -1,6 +1,6 @@
-import { BaseError } from "../../../../core/domain/shared/shared/errors/BaseError";
-import { UserError } from "../../../../core/domain/shared/shared/errors/UserError";
-import { SystemError } from "../../../../core/domain/shared/shared/errors/SystemError";
+import { BaseError } from "../../../../core/domain/shared/errors/BaseError";
+import { UserError } from "../../../../core/domain/shared/errors/UserError";
+import { SystemError } from "../../../../core/domain/shared/errors/SystemError";
 
 export interface ErrorHandlerOptions {
   verbose?: boolean;

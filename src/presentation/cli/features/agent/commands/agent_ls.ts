@@ -1,6 +1,7 @@
 import { Command } from "commander";
-import { ListAgentsQuery } from "../../../../core/application/features/queries/ListAgentsQuery";
-import { UserError } from "../../../../core/domain/shared/shared/errors/UserError";
+import { ListAgentsQuery } from "../../../../../core/application/features/agent/queries/ListAgentsQuery";
+import { UserError } from "../../../../../core/domain/shared/errors/UserError";
+import { AgentScanner } from "../../../../../infrastructure/features/agent/scanners/AgentScanner";
 import { resolve } from "node:path";
 import { access, constants } from "node:fs/promises";
 
@@ -18,7 +19,7 @@ export function createAgentListCommand(): Command {
         process.exit(1);
       }
 
-      const listAgentsQuery = new ListAgentsQuery();
+      const listAgentsQuery = new ListAgentsQuery(new AgentScanner());
       const result = await listAgentsQuery.execute({ agentsPath });
 
       if (!result.success) {
