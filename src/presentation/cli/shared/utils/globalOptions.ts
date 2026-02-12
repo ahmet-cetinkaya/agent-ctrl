@@ -15,9 +15,10 @@ export interface LogOptions extends GlobalOptions {
  * Provides proper access to command configuration instead of manual argv parsing
  */
 export function getGlobalOptions(program: any): LogOptions {
+  const opts = program.opts() as { verbose?: boolean; quiet?: boolean };
   return {
-    verbose: program.opts().verbose ?? false,
-    quiet: program.opts().quiet ?? false,
+    verbose: opts.verbose ?? false,
+    quiet: opts.quiet ?? false,
   };
 }
 
