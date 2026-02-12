@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { join, extname } from "node:path";
-import type { Result } from "../../../../core/domain/shared/value-objects/Result";
-import { ok, err } from "../../../../core/domain/shared/value-objects/Result";
+import type { Result } from "@/core/domain/shared/value-objects/Result";
+import { ok, err } from "@/core/domain/shared/value-objects/Result";
 
 export interface ScannedFile {
   name: string;

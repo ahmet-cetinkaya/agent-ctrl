@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { RuleScanner } from '../../../../../src/infrastructure/features/rule/scanners/RuleScanner';
+import { RuleScanner } from '@/infrastructure/features/rule/scanners/RuleScanner';
+import { createRule } from '@/core/domain/shared/entities/Rule';
+import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 import { mkdir, rm, writeFile, chmod } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ArtifactType } from '../../../../../src/core/domain/shared/value-objects/ArtifactType';
 
 describe('RuleScanner', () => {
   let scanner: RuleScanner;

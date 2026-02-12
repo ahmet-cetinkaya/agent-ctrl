@@ -1,9 +1,9 @@
 import { Command } from "commander";
 import { resolve } from "node:path";
-import { InitCommand } from "../../../../../core/application/features/init/commands/InitCommand";
-import { UserError } from "../../../../../core/domain/shared/errors/UserError";
-import { SystemError } from "../../../../../core/domain/shared/errors/SystemError";
-import { NodeFileSystem } from "../../../../../infrastructure/shared/file-system/NodeFileSystem";
+import { InitCommand } from "@/core/application/features/init/commands/InitCommand";
+import { UserError } from "@/core/domain/shared/errors/UserError";
+import { SystemError } from "@/core/domain/shared/errors/SystemError";
+import { NodeFileSystem } from "@/infrastructure/shared/file-system/NodeFileSystem";
 
 export function createInitCommand(): Command {
   const command = new Command("init")

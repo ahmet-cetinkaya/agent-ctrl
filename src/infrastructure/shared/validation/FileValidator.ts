@@ -1,9 +1,9 @@
 import { access, constants, stat } from "node:fs/promises";
 import { extname, join } from "node:path";
-import type { IFileValidator } from "../../../core/domain/shared/interfaces/IFileValidator";
-import type { Result } from "../../../core/domain/shared/value-objects/Result";
-import { MARKDOWN_EXTENSIONS } from "../../../core/domain/shared/value-objects/FileExtensions";
-import { ok, err } from "../../../core/domain/shared/value-objects/Result";
+import type { IFileValidator } from "@/core/domain/shared/interfaces/IFileValidator";
+import type { Result } from "@/core/domain/shared/value-objects/Result";
+import { MARKDOWN_EXTENSIONS } from "@/core/domain/shared/value-objects/FileExtensions";
+import { ok, err } from "@/core/domain/shared/value-objects/Result";
 
 export class FileValidator implements IFileValidator {
   hasExtension(filePath: string, extensions: string[]): boolean {

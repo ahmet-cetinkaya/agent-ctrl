@@ -1,16 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { ListSkillsQuery } from '../../../../../src/core/application/features/skill/queries/ListSkillsQuery';
+import { ListSkillsQuery } from '@/core/application/features/skill/queries/ListSkillsQuery';
+import { SkillScanner } from '@/infrastructure/features/skill/scanners/SkillScanner';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ArtifactType } from '../../../../../src/core/domain/shared/value-objects/ArtifactType';
+import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 
 describe('ListSkillsQuery', () => {
   let query: ListSkillsQuery;
   let testDir: string;
+  let scanner: SkillScanner;
 
   beforeEach(async () => {
-    query = new ListSkillsQuery();
+    scanner = new SkillScanner();
+    query = new ListSkillsQuery(scanner);
     testDir = resolve(tmpdir(), `skills-query-test-${Date.now()}`);
     await mkdir(testDir, { recursive: true });
   });
@@ -114,9 +117,11 @@ describe('ListSkillsQuery', () => {
       const result = await query.execute({ skillsPath: '/nonexistent/directory/path' });
 
       expect(result.success).toBe(true);
-      expect(result.data.artifacts).toEqual([]);
-      expect(result.data.warnings.length).toBeGreaterThan(0);
-      expect(result.data.warnings[0]).toContain('Failed to scan');
+      if (result.success) {
+        expect(result.data.artifacts).toEqual([]);
+        expect(result.data.warnings.length).toBeGreaterThan(0);
+        expect(result.data.warnings[0]).toContain('Failed to scan');
+      }
     });
   });
 });

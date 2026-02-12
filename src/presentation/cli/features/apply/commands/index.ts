@@ -1,2 +1,2 @@
-export { ApplyCommand } from "./ApplyCommand";
-export type { ApplyCommandOptions, ApplyCommandResult } from "./ApplyCommand";
+export { createApplyCommand } from "./apply";
+export type { ApplyCommandOptions, ApplyCommandResult } from "@/core/application/features/apply/commands/ApplyCommand";

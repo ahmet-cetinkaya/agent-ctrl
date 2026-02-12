@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { PathSecurity } from '../../../../../src/infrastructure/shared/utils/PathSecurity';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { PathSecurity } from '@/infrastructure/shared/utils/PathSecurity';
 
 describe('PathSecurity', () => {
   const projectRoot = '/home/user/project';

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { ArtifactType } from '../../../../../src/core/domain/shared/value-objects/ArtifactType';
+import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 
 describe('ArtifactType', () => {
   it('should have RULE type', () => {

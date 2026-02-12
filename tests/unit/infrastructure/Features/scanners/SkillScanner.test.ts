@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { SkillScanner } from '../../../../../src/infrastructure/features/skill/scanners/SkillScanner';
+import { SkillScanner } from '@/infrastructure/features/skill/scanners/SkillScanner';
+import { createSkill } from '@/core/domain/shared/entities/Skill';
+import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ArtifactType } from '../../../../../src/core/domain/shared/value-objects/ArtifactType';
 
 describe('SkillScanner', () => {
   let scanner: SkillScanner;

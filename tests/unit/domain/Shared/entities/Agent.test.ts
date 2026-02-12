@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
-import { createAgent } from '../../../../../src/core/domain/shared/entities/Agent';
-import { ArtifactType } from '../../../../../src/core/domain/shared/value-objects/ArtifactType';
+import { createAgent } from '@/core/domain/shared/entities/Agent';
+import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 
 describe('Agent', () => {
   it('should create an agent with correct properties', () => {

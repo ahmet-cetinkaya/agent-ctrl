@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { AgentScanner } from '../../../../../src/infrastructure/features/agent/scanners/AgentScanner';
+import { AgentScanner } from '@/infrastructure/features/agent/scanners/AgentScanner';
+import { createAgent } from '@/core/domain/shared/entities/Agent';
 import { mkdir, rm, writeFile, chmod } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ArtifactType } from '../../../../../src/core/domain/shared/value-objects/ArtifactType';
+import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 
 describe('AgentScanner', () => {
   let scanner: AgentScanner;

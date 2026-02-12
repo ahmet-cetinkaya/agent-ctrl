@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { createProject } from '../../../../../src/core/domain/shared/entities/Project';
+import { createProject } from '@/core/domain/shared/entities/Project';
 
 describe('Project', () => {
   it('should create a project with correct paths', () => {

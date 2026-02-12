@@ -1,7 +1,7 @@
-import type { Rule } from "../../../../../core/domain/shared/entities/Rule";
-import { RuleScanner } from "../../../../../infrastructure/features/rule/scanners/RuleScanner";
-import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
-import { UserError } from "../../../../../core/domain/shared/errors/UserError";
+import type { Rule } from "@/core/domain/shared/entities/Rule";
+import { RuleScanner } from "@/infrastructure/features/rule/scanners/RuleScanner";
+import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
+import { UserError } from "@/core/domain/shared/errors/UserError";
 
 export interface ListRulesQueryOptions {
   rulesPath: string;

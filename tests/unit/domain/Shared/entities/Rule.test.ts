@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
-import { createRule } from '../../../../../src/core/domain/shared/entities/Rule';
-import { ArtifactType } from '../../../../../src/core/domain/shared/value-objects/ArtifactType';
+import { createRule } from '@/core/domain/shared/entities/Rule';
+import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 
 describe('Rule', () => {
   it('should create a rule with correct properties', () => {

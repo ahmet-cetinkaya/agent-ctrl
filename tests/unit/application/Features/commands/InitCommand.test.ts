@@ -1,15 +1,18 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { InitCommand } from '../../../../../src/core/application/features/init/commands/InitCommand';
+import { InitCommand } from '@/core/application/features/init/commands/InitCommand';
+import { NodeFileSystem } from '@/infrastructure/shared/file-system/NodeFileSystem';
 import { mkdir, rm, access } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
 describe('InitCommand', () => {
   let testDir: string;
+  let fileSystem: NodeFileSystem;
 
   beforeEach(async () => {
     testDir = resolve(tmpdir(), `agent-ctrl-test-${Date.now()}`);
     await mkdir(testDir, { recursive: true });
+    fileSystem = new NodeFileSystem();
   });
 
   afterEach(async () => {
@@ -19,7 +22,7 @@ describe('InitCommand', () => {
   });
 
   it('should initialize a project successfully', async () => {
-    const initCommand = new InitCommand();
+    const initCommand = new InitCommand(fileSystem);
     const result = await initCommand.execute({ targetPath: testDir });
 
     expect(result.success).toBe(true);
@@ -33,7 +36,7 @@ describe('InitCommand', () => {
   });
 
   it('should fail on non-empty directory', async () => {
-    const initCommand = new InitCommand();
+    const initCommand = new InitCommand(fileSystem);
     
     await initCommand.execute({ targetPath: testDir });
     

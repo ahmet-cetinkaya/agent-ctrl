@@ -1,6 +1,6 @@
 import { mkdir, writeFile, access, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { IFileSystem, FileSystemEntry } from "../../../../core/domain/shared/interfaces/IFileSystem";
+import type { IFileSystem, FileSystemEntry } from "@/core/domain/shared/interfaces/IFileSystem";
 
 export class NodeFileSystem implements IFileSystem {
   async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {

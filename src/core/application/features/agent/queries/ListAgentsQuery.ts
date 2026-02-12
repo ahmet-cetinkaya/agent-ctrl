@@ -1,7 +1,7 @@
-import type { Agent } from "../../../../../core/domain/shared/entities/Agent";
-import type { IAgentScanner } from "../../../../../core/domain/shared/interfaces/IAgentScanner";
-import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
-import { UserError } from "../../../../../core/domain/shared/errors/UserError";
+import type { Agent } from "@/core/domain/shared/entities/Agent";
+import type { IAgentScanner } from "@/core/domain/shared/interfaces/IAgentScanner";
+import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
+import { UserError } from "@/core/domain/shared/errors/UserError";
 
 export interface ListAgentsQueryOptions {
   agentsPath: string;

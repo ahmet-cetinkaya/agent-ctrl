@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
-import { createSkill } from '../../../../../src/core/domain/shared/entities/Skill';
-import { ArtifactType } from '../../../../../src/core/domain/shared/value-objects/ArtifactType';
+import { createSkill } from '@/core/domain/shared/entities/Skill';
+import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 
 describe('Skill', () => {
   it('should create a skill with correct properties', () => {

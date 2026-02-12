@@ -1,7 +1,7 @@
-import type { IFileSystem } from "../../../../../core/domain/shared/interfaces/IFileSystem";
-import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
-import { UserError } from "../../../../../core/domain/shared/errors/UserError";
-import { SystemError } from "../../../../../core/domain/shared/errors/SystemError";
+import type { IFileSystem } from "@/core/domain/shared/interfaces/IFileSystem";
+import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
+import { UserError } from "@/core/domain/shared/errors/UserError";
+import { SystemError } from "@/core/domain/shared/errors/SystemError";
 
 export interface InitCommandOptions {
   targetPath: string;

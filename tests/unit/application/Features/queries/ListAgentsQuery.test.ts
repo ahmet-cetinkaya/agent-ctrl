@@ -1,16 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { ListAgentsQuery } from '../../../../../src/core/application/features/agent/queries/ListAgentsQuery';
+import { ListAgentsQuery } from '@/core/application/features/agent/queries/ListAgentsQuery';
+import { AgentScanner } from '@/infrastructure/features/agent/scanners/AgentScanner';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ArtifactType } from '../../../../../src/core/domain/shared/value-objects/ArtifactType';
+import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 
 describe('ListAgentsQuery', () => {
   let query: ListAgentsQuery;
   let testDir: string;
+  let scanner: AgentScanner;
 
   beforeEach(async () => {
-    query = new ListAgentsQuery();
+    scanner = new AgentScanner();
+    query = new ListAgentsQuery(scanner);
     testDir = resolve(tmpdir(), `agents-query-test-${Date.now()}`);
     await mkdir(testDir, { recursive: true });
   });
@@ -105,9 +108,11 @@ describe('ListAgentsQuery', () => {
       const result = await query.execute({ agentsPath: '/nonexistent/directory/path' });
 
       expect(result.success).toBe(true);
-      expect(result.data.artifacts).toEqual([]);
-      expect(result.data.warnings.length).toBeGreaterThan(0);
-      expect(result.data.warnings[0]).toContain('Failed to scan');
+      if (result.success) {
+        expect(result.data.artifacts).toEqual([]);
+        expect(result.data.warnings.length).toBeGreaterThan(0);
+        expect(result.data.warnings[0]).toContain('Failed to scan');
+      }
     });
   });
 });

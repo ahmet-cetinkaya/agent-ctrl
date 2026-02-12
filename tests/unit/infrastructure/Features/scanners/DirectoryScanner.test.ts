@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { DirectoryScanner } from '../../../../../src/infrastructure/features/projects/scanners/DirectoryScanner';
+import { DirectoryScanner } from '@/infrastructure/features/projects/scanners/DirectoryScanner';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';

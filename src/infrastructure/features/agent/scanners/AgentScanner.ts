@@ -1,8 +1,8 @@
 import { readdir } from "node:fs/promises";
 import { resolve, extname, basename } from "node:path";
-import { FileValidator } from "../../../shared/validation/FileValidator";
-import { createAgent, type Agent } from "../../../../core/domain/shared/entities/Agent";
-import type { IAgentScanner, AgentScanResult } from "../../../../core/domain/shared/interfaces/IAgentScanner";
+import { FileValidator } from "@/infrastructure/shared/validation/FileValidator";
+import { createAgent, type Agent } from "@/core/domain/shared/entities/Agent";
+import type { IAgentScanner, AgentScanResult } from "@/core/domain/shared/interfaces/IAgentScanner";
 
 const MARKDOWN_EXTENSIONS = [".md", ".markdown"] as const;
 

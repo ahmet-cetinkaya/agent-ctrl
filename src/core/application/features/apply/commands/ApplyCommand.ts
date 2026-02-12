@@ -1,12 +1,12 @@
-import type { Artifact } from "../../../../../core/domain/shared/types/Artifact";
-import type { IPlatformAdapter } from "../../../../../core/domain/shared/interfaces/IPlatformAdapter";
-import { RuleScanner } from "../../../../../infrastructure/features/rule/scanners/RuleScanner";
-import { SkillScanner } from "../../../../../infrastructure/features/skill/scanners/SkillScanner";
-import { AgentScanner } from "../../../../../infrastructure/features/agent/scanners/AgentScanner";
-import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
-import { UserError } from "../../../../../core/domain/shared/errors/UserError";
-import { SystemError } from "../../../../../core/domain/shared/errors/SystemError";
-import { ClaudeAdapter } from "../../../../../infrastructure/features/claude/adapters/ClaudeAdapter";
+import type { Artifact } from "@/core/domain/shared/types/Artifact";
+import type { IPlatformAdapter } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import { RuleScanner } from "@/infrastructure/features/rule/scanners/RuleScanner";
+import { SkillScanner } from "@/infrastructure/features/skill/scanners/SkillScanner";
+import { AgentScanner } from "@/infrastructure/features/agent/scanners/AgentScanner";
+import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
+import { UserError } from "@/core/domain/shared/errors/UserError";
+import { SystemError } from "@/core/domain/shared/errors/SystemError";
+import { ClaudeAdapter } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
 
 export interface ApplyCommandOptions {
   projectPath: string;

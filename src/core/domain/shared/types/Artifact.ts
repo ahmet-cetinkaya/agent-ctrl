@@ -1,4 +1,4 @@
-import type { ArtifactType } from "../value-objects/ArtifactType";
+import type { ArtifactType } from "@/core/domain/shared/value-objects/ArtifactType";
 
 export interface ArtifactBase {
   id: string;

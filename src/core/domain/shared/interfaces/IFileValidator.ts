@@ -1,4 +1,4 @@
-import type { Result } from "../value-objects/Result";
+import type { Result } from "@/core/domain/shared/value-objects/Result";
 
 export interface IFileValidator {
   /**

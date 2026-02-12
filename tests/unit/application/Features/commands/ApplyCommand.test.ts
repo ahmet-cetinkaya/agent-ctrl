@@ -1,11 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
-import { ApplyCommand } from '../../../../../src/core/application/features/apply/commands/ApplyCommand';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { ApplyCommand } from '@/core/application/features/apply/commands/ApplyCommand';
+import { AgentScanner } from '@/infrastructure/features/agent/scanners/AgentScanner';
+import { SkillScanner } from '@/infrastructure/features/skill/scanners/SkillScanner';
+import { RuleScanner } from '@/infrastructure/features/rule/scanners/RuleScanner';
+import { ClaudeAdapter } from '@/infrastructure/features/claude/adapters/ClaudeAdapter';
+import { UserError } from '@/core/domain/shared/errors/UserError';
+import { SystemError } from '@/core/domain/shared/errors/SystemError';
+import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 import { mkdir, rm, writeFile, readFile, access } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
-import { UserError } from '../../../../../src/core/domain/shared/errors/UserError';
-import { SystemError } from '../../../../../src/core/domain/shared/errors/SystemError';
-import { ArtifactType } from '../../../../../src/core/domain/shared/value-objects/ArtifactType';
 
 describe('ApplyCommand', () => {
   let command: ApplyCommand;

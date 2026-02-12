@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { FileValidator } from '../../../../../src/infrastructure/shared/validation/FileValidator';
+import { FileValidator } from '@/infrastructure/shared/validation/FileValidator';
 import { writeFile, mkdir, rm, chmod } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';

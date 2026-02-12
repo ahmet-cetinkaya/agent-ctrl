@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
-import { ClaudeAdapter } from '../../../../../src/infrastructure/features/claude/adapters/ClaudeAdapter';
-import { createRule } from '../../../../../src/core/domain/shared/entities/Rule';
-import { createSkill } from '../../../../../src/core/domain/shared/entities/Skill';
-import { createAgent } from '../../../../../src/core/domain/shared/entities/Agent';
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { ClaudeAdapter } from '@/infrastructure/features/claude/adapters/ClaudeAdapter';
+import { createRule } from '@/core/domain/shared/entities/Rule';
+import { createSkill } from '@/core/domain/shared/entities/Skill';
+import { createAgent } from '@/core/domain/shared/entities/Agent';
 
 describe('ClaudeAdapter', () => {
   let adapter: ClaudeAdapter;

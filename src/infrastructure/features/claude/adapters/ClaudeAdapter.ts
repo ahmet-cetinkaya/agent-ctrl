@@ -1,12 +1,12 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { readFile, writeFile, access, mkdir } from "node:fs/promises";
-import type { IPlatformAdapter, PlatformConfig } from "../../../../core/domain/shared/interfaces/IPlatformAdapter";
-import type { Artifact } from "../../../../core/domain/shared/types/Artifact";
-import { ArtifactType } from "../../../../core/domain/shared/value-objects/ArtifactType";
-import type { Rule } from "../../../../core/domain/shared/entities/Rule";
-import type { Skill } from "../../../../core/domain/shared/entities/Skill";
-import type { Agent } from "../../../../core/domain/shared/entities/Agent";
+import type { IPlatformAdapter, PlatformConfig } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import type { Artifact } from "@/core/domain/shared/types/Artifact";
+import { ArtifactType } from "@/core/domain/shared/value-objects/ArtifactType";
+import type { Rule } from "@/core/domain/shared/entities/Rule";
+import type { Skill } from "@/core/domain/shared/entities/Skill";
+import type { Agent } from "@/core/domain/shared/entities/Agent";
 
 export class ClaudeAdapter implements IPlatformAdapter {
   readonly platformName = "claude";

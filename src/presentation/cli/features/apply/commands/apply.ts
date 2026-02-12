@@ -1,7 +1,7 @@
 import { Command } from "commander";
-import { ApplyCommand } from "../../../../../core/application/features/apply/commands/ApplyCommand";
-import { UserError } from "../../../../../core/domain/shared/errors/UserError";
-import { SystemError } from "../../../../../core/domain/shared/errors/SystemError";
+import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
+import { UserError } from "@/core/domain/shared/errors/UserError";
+import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { resolve } from "node:path";
 
 export function createApplyCommand(): Command {

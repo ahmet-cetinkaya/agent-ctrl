@@ -1,5 +1,9 @@
 import { OptionValues } from "commander";
-import type { GlobalOptions } from "./GlobalOptions";
+
+export interface GlobalOptions {
+  verbose?: boolean;
+  quiet?: boolean;
+}
 
 export interface LogOptions extends GlobalOptions {
   verbose?: boolean;
@@ -12,8 +16,8 @@ export interface LogOptions extends GlobalOptions {
  */
 export function getGlobalOptions(program: any): LogOptions {
   return {
-    verbose: program.opts<boolean>("verbose") ?? false,
-    quiet: program.opts<boolean>("quiet") ?? false,
+    verbose: program.opts().verbose ?? false,
+    quiet: program.opts().quiet ?? false,
   };
 }
 

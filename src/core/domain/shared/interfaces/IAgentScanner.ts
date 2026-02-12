@@ -1,4 +1,4 @@
-import type { Agent } from "../entities/Agent";
+import type { Agent } from "@/core/domain/shared/entities/Agent";
 
 export interface ScannedFile {
   name: string;

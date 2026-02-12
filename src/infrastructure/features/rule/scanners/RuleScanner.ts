@@ -1,7 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { resolve, extname, basename } from "node:path";
-import { FileValidator } from "../../../shared/validation/FileValidator";
-import { createRule, type Rule } from "../../../../core/domain/shared/entities/Rule";
+import { FileValidator } from "@/infrastructure/shared/validation/FileValidator";
+import { createRule, type Rule } from "@/core/domain/shared/entities/Rule";
 
 const MARKDOWN_EXTENSIONS = [".md", ".markdown"] as const;
 

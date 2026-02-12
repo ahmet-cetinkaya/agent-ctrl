@@ -1,4 +1,4 @@
-import type { Artifact } from "../types/Artifact";
+import type { Artifact } from "@/core/domain/shared/types/Artifact";
 
 export interface IPlatformAdapter {
   readonly platformName: string;

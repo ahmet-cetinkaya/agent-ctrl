@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { ok, err } from '../../../../../src/core/domain/shared/value-objects/Result';
+import { ok, err } from '@/core/domain/shared/value-objects/Result';
 
 describe('Result', () => {
   describe('ok', () => {

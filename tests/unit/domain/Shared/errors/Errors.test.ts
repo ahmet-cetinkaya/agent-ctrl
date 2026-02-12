@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
-import { UserError } from '../../../../../src/core/domain/shared/errors/UserError';
-import { SystemError } from '../../../../../src/core/domain/shared/errors/SystemError';
+import { UserError } from '@/core/domain/shared/errors/UserError';
+import { SystemError } from '@/core/domain/shared/errors/SystemError';
 
 describe('Errors', () => {
   describe('UserError', () => {
