@@ -95,3 +95,12 @@ bun run dev
 - `docs/PRD.md` - Complete Product Requirements Document
 - `docs/INDEX.md` - Project index and quick reference
 - `README.md` - Project overview and usage examples
+
+## Active Technologies
+
+- TypeScript via Bun (latest LTS) + Commander.js (CLI framework), filesystem modules (node:fs) (001-cli-foundation)
+- Local filesystem (markdown files, JSON configuration) (001-cli-foundation)
+
+## Recent Changes
+
+- 001-cli-foundation: Added TypeScript via Bun (latest LTS) + Commander.js (CLI framework), filesystem modules (node:fs)
