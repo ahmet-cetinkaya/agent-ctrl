@@ -77,7 +77,19 @@ acore_format_typescript() {
       prettier_opts=(--check)
     fi
 
-    if prettier "${prettier_opts[@]}" "$TARGET_DIR/src/**/*.{ts,js,tsx,jsx,json}" 2> /dev/null; then
+    local ts_files
+    mapfile -t ts_files < <(find "$TARGET_DIR/src" "$TARGET_DIR/scripts" -type f \( -name "*.ts" -o -name "*.js" -o -name "*.tsx" -o -name "*.jsx" \) \
+      -not -path "*/node_modules/*" \
+      -not -path "*/.git/*" \
+      -not -path "*/.serena/*" \
+      -not -path "*/packages/*" 2> /dev/null)
+
+    if [[ ${#ts_files[@]} -eq 0 ]]; then
+      acore_log_info "No TypeScript/JavaScript files found"
+      return 0
+    fi
+
+    if prettier "${prettier_opts[@]}" "${ts_files[@]}" 2> /dev/null; then
       acore_log_success "TypeScript/JavaScript files formatted"
     else
       local exit_code=$?
@@ -125,7 +137,19 @@ acore_format_markdown() {
       prettier_opts=(--check)
     fi
 
-    if prettier "${prettier_opts[@]}" "$TARGET_DIR/**/*.md" 2> /dev/null; then
+    local md_files
+    mapfile -t md_files < <(find "$TARGET_DIR" -type f -name "*.md" \
+      -not -path "*/node_modules/*" \
+      -not -path "*/.git/*" \
+      -not -path "*/.serena/*" \
+      -not -path "*/packages/*" 2> /dev/null)
+
+    if [[ ${#md_files[@]} -eq 0 ]]; then
+      acore_log_info "No Markdown files found"
+      return 0
+    fi
+
+    if prettier "${prettier_opts[@]}" "${md_files[@]}" 2> /dev/null; then
       acore_log_success "Markdown files formatted"
     else
       local exit_code=$?
@@ -176,7 +200,19 @@ acore_format_yaml() {
       prettier_opts=(--check)
     fi
 
-    if prettier "${prettier_opts[@]}" "$TARGET_DIR/**/*.yaml" "$TARGET_DIR/**/*.yml" 2> /dev/null; then
+    local yaml_files
+    mapfile -t yaml_files < <(find "$TARGET_DIR" -type f \( -name "*.yaml" -o -name "*.yml" \) \
+      -not -path "*/node_modules/*" \
+      -not -path "*/.git/*" \
+      -not -path "*/.serena/*" \
+      -not -path "*/packages/*" 2> /dev/null)
+
+    if [[ ${#yaml_files[@]} -eq 0 ]]; then
+      acore_log_info "No YAML files found"
+      return 0
+    fi
+
+    if prettier "${prettier_opts[@]}" "${yaml_files[@]}" 2> /dev/null; then
       acore_log_success "YAML files formatted"
     else
       local exit_code=$?
@@ -211,8 +247,38 @@ acore_format_yaml() {
 acore_format_json() {
   acore_log_section "JSON"
 
-  if command -v jq > /dev/null 2>&1; then
-    acore_log_info "Using jq for JSON formatting"
+  if acore_command_exists prettier; then
+    acore_log_info "Using Prettier for JSON"
+
+    local prettier_opts=(--write)
+    if [[ "$CHECK_ONLY" == "true" ]]; then
+      prettier_opts=(--check)
+    fi
+
+    local json_files
+    mapfile -t json_files < <(find "$TARGET_DIR" -type f -name "*.json" \
+      -not -path "*/node_modules/*" \
+      -not -path "*/.git/*" \
+      -not -path "*/.serena/*" \
+      -not -path "*/packages/*" 2> /dev/null)
+
+    if [[ ${#json_files[@]} -eq 0 ]]; then
+      acore_log_info "No JSON files found"
+      return 0
+    fi
+
+    if prettier "${prettier_opts[@]}" "${json_files[@]}" 2> /dev/null; then
+      acore_log_success "JSON files formatted"
+    else
+      local exit_code=$?
+      if [[ "$CHECK_ONLY" == "true" ]] && [[ $exit_code -ne 0 ]]; then
+        acore_log_warning "Some JSON files need formatting"
+      fi
+      return $exit_code
+    fi
+
+  elif command -v jq > /dev/null 2>&1; then
+    acore_log_info "Using jq for JSON formatting (fallback)"
 
     local json_files
     mapfile -t json_files < <(find "$TARGET_DIR" -type f -name "*.json" \
@@ -237,17 +303,10 @@ acore_format_json() {
     done
 
     return $exit_code
-
-  elif acore_command_exists prettier; then
-    acore_log_info "Using Prettier for JSON"
-
-    local prettier_opts=(--write)
-    if [[ "$CHECK_ONLY" == "true" ]]; then
-      prettier_opts=(--check)
-    fi
-
-    prettier "${prettier_opts[@]}" "$TARGET_DIR/**/*.json" 2> /dev/null
-    return $?
+  else
+    acore_log_warning "No JSON formatter found"
+    acore_log_info "Install: prettier or jq"
+    return 1
   fi
 }
 
