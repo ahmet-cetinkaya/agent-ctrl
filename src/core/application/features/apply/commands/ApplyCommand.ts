@@ -20,6 +20,7 @@ export interface ApplyCommandResult {
   skillsApplied: number;
   agentsApplied: number;
   configPath: string;
+  warnings: string[];
 }
 
 export class ApplyCommand {
@@ -43,9 +44,10 @@ export class ApplyCommand {
     }
 
     const artifacts = await this.scanArtifacts(projectPath);
+    const warnings: string[] = [];
 
     if (artifacts.length === 0) {
-      console.log("⚠ No artifacts found in project. Configuration file will be created anyway.");
+      warnings.push("No artifacts found in project. Configuration file will be created anyway.");
     }
 
     const newConfig = await adapter.generateConfig(artifacts);
@@ -60,6 +62,7 @@ export class ApplyCommand {
         skillsApplied: newConfig.skills.length,
         agentsApplied: newConfig.agents.length,
         configPath: adapter.configPath,
+        warnings,
       });
     }
 
@@ -80,6 +83,7 @@ export class ApplyCommand {
       skillsApplied: newConfig.skills.length,
       agentsApplied: newConfig.agents.length,
       configPath: adapter.configPath,
+      warnings,
     });
   }
 
