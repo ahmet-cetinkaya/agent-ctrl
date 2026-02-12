@@ -14,9 +14,7 @@ export function createRuleListCommand(): Command {
       try {
         await access(rulesPath, constants.R_OK);
       } catch {
-        console.error(
-          "✗ rules/ directory not found. Run 'agent-ctrl init' first.",
-        );
+        console.error("✗ rules/ directory not found. Run 'agent-ctrl init' first.");
         process.exit(1);
       }
 

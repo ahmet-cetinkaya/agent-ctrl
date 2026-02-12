@@ -6,11 +6,7 @@ export interface Skill extends ArtifactBase {
   directoryName: string;
 }
 
-export function createSkill(
-  id: string,
-  directoryName: string,
-  path: string,
-): Skill {
+export function createSkill(id: string, directoryName: string, path: string): Skill {
   return {
     id,
     directoryName,

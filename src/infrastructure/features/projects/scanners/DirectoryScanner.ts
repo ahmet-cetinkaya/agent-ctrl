@@ -21,7 +21,7 @@ export class DirectoryScanner {
     options: {
       recursive?: boolean;
       extensions?: string[];
-    } = {},
+    } = {}
   ): Promise<Result<ScanResult, Error>> {
     const { recursive = false, extensions } = options;
     const files: ScannedFile[] = [];

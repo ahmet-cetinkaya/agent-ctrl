@@ -1,10 +1,7 @@
 import { readdir, access } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { constants } from "node:fs";
-import {
-  createSkill,
-  type Skill,
-} from "../../../../core/domain/shared/entities/Skill";
+import { createSkill, type Skill } from "../../../../core/domain/shared/entities/Skill";
 import type { ScanResult } from "./DirectoryScanner";
 
 export interface SkillScanResult extends ScanResult {

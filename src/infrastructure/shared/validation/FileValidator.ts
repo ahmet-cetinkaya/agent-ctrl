@@ -29,9 +29,7 @@ export class FileValidator implements IFileValidator {
     }
   }
 
-  async validateMarkdownFile(
-    filePath: string,
-  ): Promise<Result<boolean, Error>> {
+  async validateMarkdownFile(filePath: string): Promise<Result<boolean, Error>> {
     const hasValidExt = this.hasExtension(filePath, [...MARKDOWN_EXTENSIONS]);
     if (!hasValidExt) {
       return err(new Error(`Invalid extension: ${filePath}`));
@@ -50,9 +48,7 @@ export class FileValidator implements IFileValidator {
     return ok(true);
   }
 
-  async validateSkillDirectory(
-    dirPath: string,
-  ): Promise<Result<boolean, Error>> {
+  async validateSkillDirectory(dirPath: string): Promise<Result<boolean, Error>> {
     const existsResult = await this.exists(dirPath);
     if (!existsResult.success) {
       return existsResult;
@@ -70,9 +66,7 @@ export class FileValidator implements IFileValidator {
     const skillMdPath = join(dirPath, "SKILL.md");
     const skillMdResult = await this.isReadable(skillMdPath);
     if (!skillMdResult.success) {
-      return err(
-        new Error(`SKILL.md not found or not readable in: ${dirPath}`),
-      );
+      return err(new Error(`SKILL.md not found or not readable in: ${dirPath}`));
     }
 
     return ok(true);

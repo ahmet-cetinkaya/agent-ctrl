@@ -14,9 +14,7 @@ export function createAgentListCommand(): Command {
       try {
         await access(agentsPath, constants.R_OK);
       } catch {
-        console.error(
-          "✗ agents/ directory not found. Run 'agent-ctrl init' first.",
-        );
+        console.error("✗ agents/ directory not found. Run 'agent-ctrl init' first.");
         process.exit(1);
       }
 

@@ -1,10 +1,7 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { readFile, writeFile, access, mkdir } from "node:fs/promises";
-import type {
-  IPlatformAdapter,
-  PlatformConfig,
-} from "../../../../core/domain/shared/interfaces/IPlatformAdapter";
+import type { IPlatformAdapter, PlatformConfig } from "../../../../core/domain/shared/interfaces/IPlatformAdapter";
 import type { Artifact } from "../../../../core/domain/shared/types/Artifact";
 import { ArtifactType } from "../../../../core/domain/shared/value-objects/ArtifactType";
 import type { Rule } from "../../../../core/domain/shared/entities/Rule";
@@ -80,18 +77,12 @@ export class ClaudeAdapter implements IPlatformAdapter {
     await writeFile(this.configPath, content, "utf-8");
   }
 
-  mergeConfigs(
-    existing: PlatformConfig | null,
-    newConfig: PlatformConfig,
-  ): PlatformConfig {
+  mergeConfigs(existing: PlatformConfig | null, newConfig: PlatformConfig): PlatformConfig {
     if (!existing) {
       return newConfig;
     }
 
-    const mergeByName = <T extends { name: string }>(
-      existing: T[],
-      incoming: T[],
-    ): T[] => {
+    const mergeByName = <T extends { name: string }>(existing: T[], incoming: T[]): T[] => {
       const map = new Map<string, T>();
       existing.forEach((item) => map.set(item.name, item));
       incoming.forEach((item) => map.set(item.name, item));

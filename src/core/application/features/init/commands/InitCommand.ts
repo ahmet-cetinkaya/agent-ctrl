@@ -1,10 +1,6 @@
 import { mkdir, writeFile, access, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import {
-  Result,
-  ok,
-  err,
-} from "../../../../../core/domain/shared/value-objects/Result";
+import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
 import { UserError } from "../../../../../core/domain/shared/errors/UserError";
 import { SystemError } from "../../../../../core/domain/shared/errors/SystemError";
 
@@ -18,17 +14,10 @@ export interface InitCommandResult {
 }
 
 export class InitCommand {
-  private static readonly DIRECTORIES = [
-    "rules",
-    "skills",
-    "agents",
-    "commands",
-  ];
+  private static readonly DIRECTORIES = ["rules", "skills", "agents", "commands"];
   private static readonly CONFIG_FILE = "agent-ctrl.config.json";
 
-  async execute(
-    options: InitCommandOptions,
-  ): Promise<Result<InitCommandResult, Error>> {
+  async execute(options: InitCommandOptions): Promise<Result<InitCommandResult, Error>> {
     const targetPath = resolve(options.targetPath);
 
     const validationResult = await this.validateDirectory(targetPath);
@@ -43,9 +32,7 @@ export class InitCommand {
         await mkdir(dirPath, { recursive: true });
         createdDirs.push(dir);
       } catch (error) {
-        return err(
-          new SystemError(`Permission denied: cannot create directory ${dir}`),
-        );
+        return err(new SystemError(`Permission denied: cannot create directory ${dir}`));
       }
     }
 
@@ -54,9 +41,7 @@ export class InitCommand {
       const configContent = await this.getConfigTemplate();
       await writeFile(configPath, configContent, "utf-8");
     } catch (error) {
-      return err(
-        new SystemError(`Permission denied: cannot create config file`),
-      );
+      return err(new SystemError(`Permission denied: cannot create config file`));
     }
 
     return ok({
@@ -65,23 +50,15 @@ export class InitCommand {
     });
   }
 
-  private async validateDirectory(
-    targetPath: string,
-  ): Promise<Result<boolean, Error>> {
+  private async validateDirectory(targetPath: string): Promise<Result<boolean, Error>> {
     try {
       await access(targetPath);
 
       const entries = await readdir(targetPath);
-      const nonIgnoredFiles = entries.filter(
-        (e) => e !== ".git" && e !== "node_modules",
-      );
+      const nonIgnoredFiles = entries.filter((e) => e !== ".git" && e !== "node_modules");
 
       if (nonIgnoredFiles.length > 0) {
-        return err(
-          new UserError(
-            "Directory is not empty. Please initialize in an empty directory.",
-          ),
-        );
+        return err(new UserError("Directory is not empty. Please initialize in an empty directory."));
       }
 
       return ok(true);
@@ -92,8 +69,7 @@ export class InitCommand {
 
   private async getConfigTemplate(): Promise<string> {
     const config = {
-      _comment:
-        "agent-ctrl configuration file - Define your AI agent project structure",
+      _comment: "agent-ctrl configuration file - Define your AI agent project structure",
       version: "1.0.0",
       project: {
         name: "my-agent-project",

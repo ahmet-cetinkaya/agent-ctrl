@@ -14,9 +14,7 @@ export function createSkillListCommand(): Command {
       try {
         await access(skillsPath, constants.R_OK);
       } catch {
-        console.error(
-          "✗ skills/ directory not found. Run 'agent-ctrl init' first.",
-        );
+        console.error("✗ skills/ directory not found. Run 'agent-ctrl init' first.");
         process.exit(1);
       }
 

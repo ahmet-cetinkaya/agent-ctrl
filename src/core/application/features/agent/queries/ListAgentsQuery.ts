@@ -1,10 +1,6 @@
 import type { Agent } from "../../../../../core/domain/shared/entities/Agent";
 import { AgentScanner } from "../../../../../infrastructure/features/agent/scanners/AgentScanner";
-import {
-  Result,
-  ok,
-  err,
-} from "../../../../../core/domain/shared/value-objects/Result";
+import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
 import { UserError } from "../../../../../core/domain/shared/errors/UserError";
 
 export interface ListAgentsQueryOptions {
@@ -23,9 +19,7 @@ export class ListAgentsQuery {
     this.scanner = new AgentScanner();
   }
 
-  async execute(
-    options: ListAgentsQueryOptions,
-  ): Promise<Result<ListAgentsQueryResult, Error>> {
+  async execute(options: ListAgentsQueryOptions): Promise<Result<ListAgentsQueryResult, Error>> {
     try {
       const result = await this.scanner.scan(options.agentsPath);
       return ok({

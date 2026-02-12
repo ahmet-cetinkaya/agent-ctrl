@@ -1,10 +1,6 @@
 import type { Rule } from "../../../../../core/domain/shared/entities/Rule";
 import { RuleScanner } from "../../../../../infrastructure/features/rule/scanners/RuleScanner";
-import {
-  Result,
-  ok,
-  err,
-} from "../../../../../core/domain/shared/value-objects/Result";
+import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
 import { UserError } from "../../../../../core/domain/shared/errors/UserError";
 
 export interface ListRulesQueryOptions {
@@ -23,9 +19,7 @@ export class ListRulesQuery {
     this.scanner = new RuleScanner();
   }
 
-  async execute(
-    options: ListRulesQueryOptions,
-  ): Promise<Result<ListRulesQueryResult, Error>> {
+  async execute(options: ListRulesQueryOptions): Promise<Result<ListRulesQueryResult, Error>> {
     try {
       const result = await this.scanner.scan(options.rulesPath);
       return ok({

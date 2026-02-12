@@ -164,11 +164,7 @@ agent-ctrl init yourusername/my-agent-template
   "servers": {
     "filesystem": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@anthropic/mcp-server-filesystem",
-        "/path/to/allowed/files"
-      ]
+      "args": ["-y", "@anthropic/mcp-server-filesystem", "/path/to/allowed/files"]
     },
     "github": {
       "command": "npx",
@@ -195,7 +191,7 @@ const McpConfigSchema = z.object({
       command: z.string(),
       args: z.array(z.string()),
       env: z.record(z.string()).optional(),
-    }),
+    })
   ),
 });
 ```

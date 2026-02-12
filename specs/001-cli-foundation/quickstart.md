@@ -88,11 +88,9 @@ bun test --watch
 // src/presentation/cli/commands/my-command.ts
 import { Command } from "commander";
 
-export const myCommand = new Command("my-command")
-  .description("Description of my command")
-  .action(async () => {
-    // Command logic here
-  });
+export const myCommand = new Command("my-command").description("Description of my command").action(async () => {
+  // Command logic here
+});
 ```
 
 2. Register in `src/presentation/cli/index.ts`:
@@ -132,7 +130,7 @@ export { GeminiAdapter } from "./GeminiAdapter";
 export class MyEntity {
   constructor(
     public readonly id: string,
-    public readonly value: string,
+    public readonly value: string
   ) {}
 }
 ```

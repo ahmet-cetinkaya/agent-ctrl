@@ -93,7 +93,7 @@ agent-ctrl/
 class AdapterError extends Error {
   constructor(
     public platform: string,
-    message: string,
+    message: string
   ) {
     super(message);
     this.name = "AdapterError";

@@ -22,10 +22,7 @@ export interface IPlatformAdapter {
   /**
    * Merge new config with existing (preserves non-conflicting entries)
    */
-  mergeConfigs(
-    existing: PlatformConfig | null,
-    newConfig: PlatformConfig,
-  ): PlatformConfig;
+  mergeConfigs(existing: PlatformConfig | null, newConfig: PlatformConfig): PlatformConfig;
 }
 
 export interface PlatformConfig {

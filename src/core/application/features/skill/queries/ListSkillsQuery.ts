@@ -1,10 +1,6 @@
 import type { Skill } from "../../../../../core/domain/shared/entities/Skill";
 import { SkillScanner } from "../../../../../infrastructure/features/skill/scanners/SkillScanner";
-import {
-  Result,
-  ok,
-  err,
-} from "../../../../../core/domain/shared/value-objects/Result";
+import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
 import { UserError } from "../../../../../core/domain/shared/errors/UserError";
 
 export interface ListSkillsQueryOptions {
@@ -23,9 +19,7 @@ export class ListSkillsQuery {
     this.scanner = new SkillScanner();
   }
 
-  async execute(
-    options: ListSkillsQueryOptions,
-  ): Promise<Result<ListSkillsQueryResult, Error>> {
+  async execute(options: ListSkillsQueryOptions): Promise<Result<ListSkillsQueryResult, Error>> {
     try {
       const result = await this.scanner.scan(options.skillsPath);
       return ok({

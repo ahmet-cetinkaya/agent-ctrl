@@ -3,11 +3,7 @@ import type { IPlatformAdapter } from "../../../../../core/domain/shared/interfa
 import { RuleScanner } from "../../../../../infrastructure/features/rule/scanners/RuleScanner";
 import { SkillScanner } from "../../../../../infrastructure/features/skill/scanners/SkillScanner";
 import { AgentScanner } from "../../../../../infrastructure/features/agent/scanners/AgentScanner";
-import {
-  Result,
-  ok,
-  err,
-} from "../../../../../core/domain/shared/value-objects/Result";
+import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
 import { UserError } from "../../../../../core/domain/shared/errors/UserError";
 import { SystemError } from "../../../../../core/domain/shared/errors/SystemError";
 import { ClaudeAdapter } from "../../../../../infrastructure/features/claude/adapters/ClaudeAdapter";
@@ -34,35 +30,29 @@ export class ApplyCommand {
     this.adapters.set("claude", new ClaudeAdapter());
   }
 
-  async execute(
-    options: ApplyCommandOptions,
-  ): Promise<Result<ApplyCommandResult, Error>> {
+  async execute(options: ApplyCommandOptions): Promise<Result<ApplyCommandResult, Error>> {
     const { projectPath, platform, dryRun, force } = options;
 
     const adapter = this.adapters.get(platform);
     if (!adapter) {
       return err(
         new UserError(
-          `Platform '${platform}' not supported. Supported platforms: ${Array.from(this.adapters.keys()).join(", ")}`,
-        ),
+          `Platform '${platform}' not supported. Supported platforms: ${Array.from(this.adapters.keys()).join(", ")}`
+        )
       );
     }
 
     const artifacts = await this.scanArtifacts(projectPath);
 
     if (artifacts.length === 0) {
-      console.log(
-        "⚠ No artifacts found in project. Configuration file will be created anyway.",
-      );
+      console.log("⚠ No artifacts found in project. Configuration file will be created anyway.");
     }
 
     const newConfig = await adapter.generateConfig(artifacts);
 
     const existingConfig = await adapter.readExistingConfig();
 
-    const finalConfig = force
-      ? newConfig
-      : adapter.mergeConfigs(existingConfig, newConfig);
+    const finalConfig = force ? newConfig : adapter.mergeConfigs(existingConfig, newConfig);
 
     if (dryRun) {
       return ok({
@@ -77,18 +67,10 @@ export class ApplyCommand {
       await adapter.writeConfig(finalConfig);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "EACCES") {
-        return err(
-          new SystemError(
-            `Permission denied: cannot write to ${adapter.configPath}`,
-          ),
-        );
+        return err(new SystemError(`Permission denied: cannot write to ${adapter.configPath}`));
       }
       if ((error as NodeJS.ErrnoException).code === "EBUSY") {
-        return err(
-          new SystemError(
-            `Configuration file is locked or in use. Close Claude Code and try again.`,
-          ),
-        );
+        return err(new SystemError(`Configuration file is locked or in use. Close Claude Code and try again.`));
       }
       return err(new SystemError(`Failed to write configuration: ${error}`));
     }

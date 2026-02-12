@@ -15,10 +15,7 @@ export class PathSecurity {
     const normalizedProject = normalize(this.projectRoot);
     const normalizedTarget = normalize(resolvedPath);
 
-    return (
-      normalizedTarget.startsWith(normalizedProject) ||
-      normalizedTarget === normalizedProject
-    );
+    return normalizedTarget.startsWith(normalizedProject) || normalizedTarget === normalizedProject;
   }
 
   /**

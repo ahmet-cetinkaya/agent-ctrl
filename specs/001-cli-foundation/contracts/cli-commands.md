@@ -207,9 +207,7 @@ No skills found in skills/ directory
 
 ```json
 {
-  "artifacts": [
-    { "id": "my-skill", "type": "skill", "path": "/absolute/path/to/my-skill" }
-  ],
+  "artifacts": [{ "id": "my-skill", "type": "skill", "path": "/absolute/path/to/my-skill" }],
   "warnings": []
 }
 ```

@@ -1,10 +1,7 @@
 import { readdir } from "node:fs/promises";
 import { resolve, extname, basename } from "node:path";
 import { FileValidator } from "../../../shared/validation/FileValidator";
-import {
-  createAgent,
-  type Agent,
-} from "../../../../core/domain/shared/entities/Agent";
+import { createAgent, type Agent } from "../../../../core/domain/shared/entities/Agent";
 import type { ScanResult } from "./DirectoryScanner";
 
 const MARKDOWN_EXTENSIONS = [".md", ".markdown"] as const;
@@ -30,8 +27,7 @@ export class AgentScanner {
       for (const entry of entries) {
         const filePath = resolve(agentsPath, entry);
         const originalExt = extname(entry);
-        const ext =
-          originalExt.toLowerCase() as (typeof MARKDOWN_EXTENSIONS)[number];
+        const ext = originalExt.toLowerCase() as (typeof MARKDOWN_EXTENSIONS)[number];
 
         if (!MARKDOWN_EXTENSIONS.includes(ext)) {
           warnings.push(`Skipped ${entry} (invalid extension)`);
@@ -40,9 +36,7 @@ export class AgentScanner {
 
         const readableResult = await this.fileValidator.isReadable(filePath);
         if (!readableResult.success) {
-          warnings.push(
-            `Could not read ${entry} (${readableResult.error.message})`,
-          );
+          warnings.push(`Could not read ${entry} (${readableResult.error.message})`);
           continue;
         }
 

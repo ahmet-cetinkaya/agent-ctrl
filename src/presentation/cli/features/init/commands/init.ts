@@ -6,14 +6,8 @@ import { SystemError } from "../../../../core/domain/shared/shared/errors/System
 
 export function createInitCommand(): Command {
   const command = new Command("init")
-    .description(
-      "Initialize a new agent-ctrl project with standard directory structure",
-    )
-    .argument(
-      "[path]",
-      "Target directory path (default: current directory)",
-      ".",
-    )
+    .description("Initialize a new agent-ctrl project with standard directory structure")
+    .argument("[path]", "Target directory path (default: current directory)", ".")
     .action(async (targetPath: string) => {
       const initCommand = new InitCommand();
 
@@ -30,9 +24,7 @@ export function createInitCommand(): Command {
           for (const file of result.data.createdFiles) {
             console.log(`✓ Created ${file}`);
           }
-          console.log(
-            "\nProject initialized successfully! Add artifacts to your directories, then run:",
-          );
+          console.log("\nProject initialized successfully! Add artifacts to your directories, then run:");
           console.log("  agent-ctrl rule ls");
           console.log("  agent-ctrl skill ls");
           console.log("  agent-ctrl agent ls");
