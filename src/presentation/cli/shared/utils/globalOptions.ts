@@ -1,41 +1,65 @@
-export interface GlobalOptions {
+import { OptionValues } from "commander";
+import type { GlobalOptions } from "./GlobalOptions";
+
+export interface LogOptions extends GlobalOptions {
   verbose?: boolean;
   quiet?: boolean;
 }
 
-export function getGlobalOptions(): GlobalOptions {
-  // Parse from process.argv since Commander attaches them to program
-  const args = process.argv.slice(2);
+/**
+ * Get global CLI options from Commander program
+ * Provides proper access to command configuration instead of manual argv parsing
+ */
+export function getGlobalOptions(program: any): LogOptions {
   return {
-    verbose: args.includes("-v") || args.includes("--verbose"),
-    quiet: args.includes("-q") || args.includes("--quiet"),
+    verbose: program.opts<boolean>("verbose") ?? false,
+    quiet: program.opts<boolean>("quiet") ?? false,
   };
 }
 
-export function logVerbose(message: string): void {
-  const options = getGlobalOptions();
-  if (options.verbose && !options.quiet) {
+/**
+ * Log verbose message if not quiet
+ */
+export function logVerbose(message: string, options: LogOptions): void {
+  if (!options.quiet && options.verbose) {
     console.log(`[verbose] ${message}`);
   }
 }
 
-export function logWarning(message: string): void {
-  const options = getGlobalOptions();
+/**
+ * Log warning message if not quiet
+ */
+export function logWarning(message: string, options: LogOptions): void {
   if (!options.quiet) {
     console.warn(`⚠ ${message}`);
   }
 }
 
-export function logSuccess(message: string): void {
-  const options = getGlobalOptions();
+/**
+ * Log success message if not quiet
+ */
+export function logSuccess(message: string, options: LogOptions): void {
   if (!options.quiet) {
     console.log(`✓ ${message}`);
   }
 }
 
-export function logError(message: string): void {
-  const options = getGlobalOptions();
+/**
+ * Log error message if not quiet
+ */
+export function logError(message: string, options: LogOptions): void {
   if (!options.quiet) {
     console.error(`✗ ${message}`);
   }
+}
+
+/**
+ * Legacy support for manual argv parsing (deprecated)
+ */
+export function getLegacyGlobalOptions(): GlobalOptions {
+  const args = process.argv.slice(2);
+  return {
+    verbose: args.includes("-v") || args.includes("--verbose"),
+    quiet: args.includes("-q") || args.includes("--quiet"),
+  };
 }

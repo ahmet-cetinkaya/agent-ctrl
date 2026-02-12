@@ -4,6 +4,7 @@ import { UserError } from "../../../../../core/domain/shared/errors/UserError";
 import { AgentScanner } from "../../../../../infrastructure/features/agent/scanners/AgentScanner";
 import { resolve } from "node:path";
 import { access, constants } from "node:fs/promises";
+import { getGlobalOptions } from "../../shared/utils/globalOptions";
 
 export function createAgentListCommand(): Command {
   return new Command("ls")
