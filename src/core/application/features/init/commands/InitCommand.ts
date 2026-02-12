@@ -1,5 +1,4 @@
-import { mkdir, writeFile, access, readdir } from "node:fs/promises";
-import { resolve } from "node:path";
+import type { IFileSystem } from "../../../../../core/domain/shared/interfaces/IFileSystem";
 import { Result, ok, err } from "../../../../../core/domain/shared/value-objects/Result";
 import { UserError } from "../../../../../core/domain/shared/errors/UserError";
 import { SystemError } from "../../../../../core/domain/shared/errors/SystemError";
@@ -16,9 +15,14 @@ export interface InitCommandResult {
 export class InitCommand {
   private static readonly DIRECTORIES = ["rules", "skills", "agents", "commands"];
   private static readonly CONFIG_FILE = "agent-ctrl.config.json";
+  private fileSystem: IFileSystem;
+
+  constructor(fileSystem: IFileSystem) {
+    this.fileSystem = fileSystem;
+  }
 
   async execute(options: InitCommandOptions): Promise<Result<InitCommandResult, Error>> {
-    const targetPath = resolve(options.targetPath);
+    const targetPath = this.fileSystem.resolve(options.targetPath);
 
     const validationResult = await this.validateDirectory(targetPath);
     if (!validationResult.success) {
@@ -27,19 +31,19 @@ export class InitCommand {
 
     const createdDirs: string[] = [];
     for (const dir of InitCommand.DIRECTORIES) {
-      const dirPath = resolve(targetPath, dir);
+      const dirPath = this.fileSystem.resolve(targetPath, dir);
       try {
-        await mkdir(dirPath, { recursive: true });
+        await this.fileSystem.mkdir(dirPath, { recursive: true });
         createdDirs.push(dir);
       } catch (error) {
         return err(new SystemError(`Permission denied: cannot create directory ${dir}`));
       }
     }
 
-    const configPath = resolve(targetPath, InitCommand.CONFIG_FILE);
+    const configPath = this.fileSystem.resolve(targetPath, InitCommand.CONFIG_FILE);
     try {
       const configContent = await this.getConfigTemplate();
-      await writeFile(configPath, configContent, "utf-8");
+      await this.fileSystem.writeFile(configPath, configContent, "utf-8");
     } catch (error) {
       return err(new SystemError(`Permission denied: cannot create config file`));
     }
@@ -52,10 +56,10 @@ export class InitCommand {
 
   private async validateDirectory(targetPath: string): Promise<Result<boolean, Error>> {
     try {
-      await access(targetPath);
+      await this.fileSystem.access(targetPath);
 
-      const entries = await readdir(targetPath);
-      const nonIgnoredFiles = entries.filter((e) => e !== ".git" && e !== "node_modules");
+      const entries = await this.fileSystem.readdir(targetPath);
+      const nonIgnoredFiles = entries.filter((entry) => entry.name !== ".git" && entry.name !== "node_modules");
 
       if (nonIgnoredFiles.length > 0) {
         return err(new UserError("Directory is not empty. Please initialize in an empty directory."));
