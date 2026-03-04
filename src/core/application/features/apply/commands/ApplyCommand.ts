@@ -24,23 +24,12 @@ export interface ApplyCommandResult {
 }
 
 export class ApplyCommand {
-  private adapters: Map<string, IPlatformAdapter>;
-
-  constructor() {
-    this.adapters = new Map();
-    this.adapters.set("claude", new ClaudeAdapter());
-  }
-
   async execute(options: ApplyCommandOptions): Promise<Result<ApplyCommandResult, Error>> {
     const { projectPath, platform, dryRun, force } = options;
 
-    const adapter = this.adapters.get(platform);
+    const adapter = this.createAdapter(platform, projectPath);
     if (!adapter) {
-      return err(
-        new UserError(
-          `Platform '${platform}' not supported. Supported platforms: ${Array.from(this.adapters.keys()).join(", ")}`
-        )
-      );
+      return err(new UserError(`Platform '${platform}' not supported. Supported platforms: claude`));
     }
 
     const artifacts = await this.scanArtifacts(projectPath);
@@ -85,6 +74,13 @@ export class ApplyCommand {
       configPath: adapter.configPath,
       warnings,
     });
+  }
+
+  private createAdapter(platform: string, projectPath: string): IPlatformAdapter | null {
+    if (platform === "claude") {
+      return new ClaudeAdapter(projectPath);
+    }
+    return null;
   }
 
   private async scanArtifacts(projectPath: string): Promise<Artifact[]> {
