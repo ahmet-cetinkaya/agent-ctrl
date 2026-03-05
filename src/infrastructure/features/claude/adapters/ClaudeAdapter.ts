@@ -1,7 +1,11 @@
 import { homedir } from "node:os";
 import { dirname, resolve, relative, extname } from "node:path";
-import { readFile, writeFile, access, mkdir, cp, readdir } from "node:fs/promises";
-import type { IPlatformAdapter, PlatformConfig } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import { readFile, writeFile, access, mkdir, cp, readdir, rm } from "node:fs/promises";
+import type {
+  IPlatformAdapter,
+  PlatformConfig,
+  WriteConfigOptions,
+} from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { Artifact } from "@/core/domain/shared/types/Artifact";
 import { ArtifactType } from "@/core/domain/shared/value-objects/ArtifactType";
 import type { Rule } from "@/core/domain/shared/entities/Rule";
@@ -73,11 +77,15 @@ export class ClaudeAdapter implements IPlatformAdapter {
     }
   }
 
-  async writeConfig(config: PlatformConfig): Promise<void> {
+  async writeConfig(config: PlatformConfig, options?: WriteConfigOptions): Promise<void> {
     try {
       await access(this.claudeRoot);
     } catch {
       await mkdir(this.claudeRoot, { recursive: true });
+    }
+
+    if (options?.cleanExistingArtifacts) {
+      await this.cleanManagedArtifacts();
     }
 
     const existingContent = await readFile(this.configPath, "utf-8").catch(() => "");
@@ -221,6 +229,14 @@ export class ClaudeAdapter implements IPlatformAdapter {
       await mkdir(dirname(dest), { recursive: true });
       await cp(filePath, dest, { force: true });
     }
+  }
+
+  private async cleanManagedArtifacts(): Promise<void> {
+    await Promise.all([
+      rm(resolve(this.claudeRoot, "skills"), { recursive: true, force: true }),
+      rm(resolve(this.claudeRoot, "agents"), { recursive: true, force: true }),
+      rm(resolve(this.claudeRoot, "commands"), { recursive: true, force: true }),
+    ]);
   }
 
   private async collectMarkdownFiles(root: string): Promise<string[]> {

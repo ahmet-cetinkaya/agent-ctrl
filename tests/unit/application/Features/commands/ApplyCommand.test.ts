@@ -137,7 +137,7 @@ describe("ApplyCommand", () => {
       expect(state.rules.map((r: { name: string }) => r.name)).toContain("new-rule");
     });
 
-    it("should replace entries with same name when not using force", async () => {
+    it("should replace entries with same name when not using override", async () => {
       await mkdir(resolve(testDir, ".claude"), { recursive: true });
       const existingConfig = {
         rules: [{ name: "my-rule", path: "/old/path" }],
@@ -161,7 +161,7 @@ describe("ApplyCommand", () => {
       expect(state.rules[0].path).toContain("my-rule.md");
     });
 
-    it("should use force option to overwrite existing config", async () => {
+    it("should use override option to overwrite existing config", async () => {
       await mkdir(resolve(testDir, ".claude"), { recursive: true });
       const existingConfig = {
         rules: [{ name: "existing-rule", path: "/old/path" }],
@@ -175,7 +175,7 @@ describe("ApplyCommand", () => {
       const result = await command.execute({
         projectPath: testDir,
         platform: "claude",
-        force: true,
+        override: true,
       });
 
       expect(result.success).toBe(true);
@@ -184,6 +184,66 @@ describe("ApplyCommand", () => {
       expect(state.rules).toHaveLength(1);
       expect(state.rules[0].name).toBe("new-rule");
       expect(state.rules.map((r: { name: string }) => r.name)).not.toContain("existing-rule");
+    });
+
+    it("should clean managed skills, agents, and commands when using override", async () => {
+      await mkdir(resolve(testDir, ".claude", "skills", "old-skill"), { recursive: true });
+      await writeFile(resolve(testDir, ".claude", "skills", "old-skill", "SKILL.md"), "# Old Skill");
+
+      await mkdir(resolve(testDir, ".claude", "agents"), { recursive: true });
+      await writeFile(resolve(testDir, ".claude", "agents", "old-agent.md"), "# Old Agent");
+
+      await mkdir(resolve(testDir, ".claude", "commands"), { recursive: true });
+      await writeFile(resolve(testDir, ".claude", "commands", "old-command.md"), "# Old Command");
+
+      const newSkillDir = resolve(testDir, "skills", "new-skill");
+      await mkdir(newSkillDir, { recursive: true });
+      await writeFile(resolve(newSkillDir, "SKILL.md"), "# New Skill");
+      await writeFile(resolve(testDir, "agents", "new-agent.md"), "# New Agent");
+      await mkdir(resolve(testDir, "commands"), { recursive: true });
+      await writeFile(resolve(testDir, "commands", "new-command.md"), "# New Command");
+
+      const result = await command.execute({
+        projectPath: testDir,
+        platform: "claude",
+        override: true,
+      });
+
+      expect(result.success).toBe(true);
+
+      const oldSkillExists = await access(resolve(testDir, ".claude", "skills", "old-skill")).then(
+        () => true,
+        () => false
+      );
+      const oldAgentExists = await access(resolve(testDir, ".claude", "agents", "old-agent.md")).then(
+        () => true,
+        () => false
+      );
+      const oldCommandExists = await access(resolve(testDir, ".claude", "commands", "old-command.md")).then(
+        () => true,
+        () => false
+      );
+
+      expect(oldSkillExists).toBe(false);
+      expect(oldAgentExists).toBe(false);
+      expect(oldCommandExists).toBe(false);
+
+      const newSkillExists = await access(resolve(testDir, ".claude", "skills", "new-skill")).then(
+        () => true,
+        () => false
+      );
+      const newAgentExists = await access(resolve(testDir, ".claude", "agents", "new-agent.md")).then(
+        () => true,
+        () => false
+      );
+      const newCommandExists = await access(resolve(testDir, ".claude", "commands", "new-command.md")).then(
+        () => true,
+        () => false
+      );
+
+      expect(newSkillExists).toBe(true);
+      expect(newAgentExists).toBe(true);
+      expect(newCommandExists).toBe(true);
     });
   });
 });

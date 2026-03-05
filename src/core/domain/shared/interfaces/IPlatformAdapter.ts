@@ -17,7 +17,7 @@ export interface IPlatformAdapter {
   /**
    * Write configuration to platform's config file
    */
-  writeConfig(config: PlatformConfig): Promise<void>;
+  writeConfig(config: PlatformConfig, options?: WriteConfigOptions): Promise<void>;
 
   /**
    * Merge new config with existing (preserves non-conflicting entries)
@@ -29,4 +29,8 @@ export interface PlatformConfig {
   rules: Array<{ name: string; path: string }>;
   skills: Array<{ name: string; path: string }>;
   agents: Array<{ name: string; path: string }>;
+}
+
+export interface WriteConfigOptions {
+  cleanExistingArtifacts?: boolean;
 }

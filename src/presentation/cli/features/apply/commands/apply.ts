@@ -9,8 +9,8 @@ export function createApplyCommand(): Command {
     .description("Apply project artifacts to a target platform configuration")
     .argument("<platform>", 'Target platform (e.g., "claude")')
     .option("-d, --dry-run", "Show changes without applying", false)
-    .option("-f, --force", "Overwrite existing configuration", false)
-    .action(async (platform: string, options: { dryRun?: boolean; force?: boolean }) => {
+    .option("-o, --override", "Clean existing managed artifacts before applying", false)
+    .action(async (platform: string, options: { dryRun?: boolean; override?: boolean }) => {
       const applyCommand = new ApplyCommand();
 
       try {
@@ -18,7 +18,7 @@ export function createApplyCommand(): Command {
           projectPath: resolve(process.cwd()),
           platform,
           dryRun: options.dryRun,
-          force: options.force,
+          override: options.override,
         });
 
         if (!result.success) {

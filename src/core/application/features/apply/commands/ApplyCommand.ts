@@ -12,7 +12,7 @@ export interface ApplyCommandOptions {
   projectPath: string;
   platform: string;
   dryRun?: boolean;
-  force?: boolean;
+  override?: boolean;
 }
 
 export interface ApplyCommandResult {
@@ -25,7 +25,7 @@ export interface ApplyCommandResult {
 
 export class ApplyCommand {
   async execute(options: ApplyCommandOptions): Promise<Result<ApplyCommandResult, Error>> {
-    const { projectPath, platform, dryRun, force } = options;
+    const { projectPath, platform, dryRun, override } = options;
 
     const adapter = this.createAdapter(platform, projectPath);
     if (!adapter) {
@@ -43,7 +43,7 @@ export class ApplyCommand {
 
     const existingConfig = await adapter.readExistingConfig();
 
-    const finalConfig = force ? newConfig : adapter.mergeConfigs(existingConfig, newConfig);
+    const finalConfig = override ? newConfig : adapter.mergeConfigs(existingConfig, newConfig);
 
     if (dryRun) {
       return ok({
@@ -56,7 +56,7 @@ export class ApplyCommand {
     }
 
     try {
-      await adapter.writeConfig(finalConfig);
+      await adapter.writeConfig(finalConfig, { cleanExistingArtifacts: Boolean(override) });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "EACCES") {
         return err(new SystemError(`Permission denied: cannot write to ${adapter.configPath}`));
