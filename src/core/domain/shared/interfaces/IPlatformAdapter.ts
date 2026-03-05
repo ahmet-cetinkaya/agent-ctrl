@@ -29,6 +29,14 @@ export interface PlatformConfig {
   rules: Array<{ name: string; path: string }>;
   skills: Array<{ name: string; path: string }>;
   agents: Array<{ name: string; path: string }>;
+  mcpServers?: Array<{
+    name: string;
+    command: string;
+    args: string[];
+    cwd?: string;
+    env: Record<string, string>;
+    sourceFile: string;
+  }>;
 }
 
 export interface WriteConfigOptions {

@@ -6,7 +6,9 @@ describe('Result', () => {
     it('should create a successful result', () => {
       const result = ok('success');
       expect(result.success).toBe(true);
-      expect(result.data).toBe('success');
+      if (result.success) {
+        expect(result.data).toBe('success');
+      }
     });
   });
 
@@ -15,7 +17,9 @@ describe('Result', () => {
       const error = new Error('test error');
       const result = err(error);
       expect(result.success).toBe(false);
-      expect(result.error).toBe(error);
+      if (!result.success) {
+        expect(result.error).toBe(error);
+      }
     });
   });
 });

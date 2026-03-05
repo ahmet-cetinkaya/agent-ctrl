@@ -120,7 +120,9 @@ This document captures research findings and technology decisions for the CLI Fo
 
 ```markdown
 <!-- agent-ctrl:start -->
+
 # Rule content copied from project files
+
 <!-- agent-ctrl:end -->
 ```
 

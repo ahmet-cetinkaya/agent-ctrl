@@ -96,10 +96,10 @@ The following technical decisions were resolved:
 
 ### Key Integration Points
 
-| Integration        | Pattern          | Notes                                                           |
-| ------------------ | ---------------- | --------------------------------------------------------------- |
+| Integration        | Pattern          | Notes                                                                                  |
+| ------------------ | ---------------- | -------------------------------------------------------------------------------------- |
 | Claude Code Config | File adapter     | Reads/writes `~/.claude/CLAUDE.md` and `.agent-ctrl.json`, preserves existing mappings |
-| Directory Scanning | Iterator pattern | Single-pass scan, lazy evaluation for large projects            |
-| Error Handling     | Result type      | Explicit error handling, no silent failures                     |
+| Directory Scanning | Iterator pattern | Single-pass scan, lazy evaluation for large projects                                   |
+| Error Handling     | Result type      | Explicit error handling, no silent failures                                            |
 
 See [research.md](./research.md) for detailed findings.

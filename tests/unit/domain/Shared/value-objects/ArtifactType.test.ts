@@ -3,14 +3,14 @@ import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 
 describe('ArtifactType', () => {
   it('should have RULE type', () => {
-    expect(ArtifactType.RULE).toBe('rule');
+    expect(String(ArtifactType.RULE)).toBe('rule');
   });
 
   it('should have SKILL type', () => {
-    expect(ArtifactType.SKILL).toBe('skill');
+    expect(String(ArtifactType.SKILL)).toBe('skill');
   });
 
   it('should have AGENT type', () => {
-    expect(ArtifactType.AGENT).toBe('agent');
+    expect(String(ArtifactType.AGENT)).toBe('agent');
   });
 });

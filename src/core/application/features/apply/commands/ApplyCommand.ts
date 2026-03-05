@@ -7,6 +7,8 @@ import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ClaudeAdapter } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
+import { createMcpConfigLoader } from "@/infrastructure/features/apply";
+import type { McpFileResult } from "@/core/domain/shared/interfaces/IMcpConfigLoader";
 
 export interface ApplyCommandOptions {
   projectPath: string;
@@ -19,6 +21,11 @@ export interface ApplyCommandResult {
   rulesApplied: number;
   skillsApplied: number;
   agentsApplied: number;
+  mcpServersLoaded: number;
+  mcpFilesDiscovered: number;
+  mcpFilesFailed: number;
+  mcpFilesSkipped: number;
+  mcpFileResults: McpFileResult[];
   configPath: string;
   warnings: string[];
 }
@@ -39,17 +46,44 @@ export class ApplyCommand {
       warnings.push("No artifacts found in project. Configuration file will be created anyway.");
     }
 
+    const mcpLoader = createMcpConfigLoader();
+    const mcpResult = await mcpLoader.load(projectPath);
+    if (!mcpResult.success) {
+      return err(new SystemError(`Failed to load MCP configurations: ${mcpResult.error.message}`));
+    }
+
+    const mcpLoad = mcpResult.data;
     const newConfig = await adapter.generateConfig(artifacts);
+    newConfig.mcpServers = mcpLoad.servers.map((server) => ({
+      name: server.serverId,
+      command: server.command,
+      args: server.args,
+      cwd: server.cwd,
+      env: server.env,
+      sourceFile: server.filePath,
+    }));
 
     const existingConfig = await adapter.readExistingConfig();
 
     const finalConfig = override ? newConfig : adapter.mergeConfigs(existingConfig, newConfig);
+
+    warnings.push(
+      ...mcpLoad.report.fileResults
+        .flatMap((fileResult) => fileResult.issues)
+        .filter((issue) => issue.severity === "warning")
+        .map((issue) => issue.message)
+    );
 
     if (dryRun) {
       return ok({
         rulesApplied: newConfig.rules.length,
         skillsApplied: newConfig.skills.length,
         agentsApplied: newConfig.agents.length,
+        mcpServersLoaded: mcpLoad.report.totalLoaded,
+        mcpFilesDiscovered: mcpLoad.report.totalDiscovered,
+        mcpFilesFailed: mcpLoad.report.totalFailed,
+        mcpFilesSkipped: mcpLoad.report.totalSkipped,
+        mcpFileResults: mcpLoad.report.fileResults,
         configPath: adapter.configPath,
         warnings,
       });
@@ -71,6 +105,11 @@ export class ApplyCommand {
       rulesApplied: newConfig.rules.length,
       skillsApplied: newConfig.skills.length,
       agentsApplied: newConfig.agents.length,
+      mcpServersLoaded: mcpLoad.report.totalLoaded,
+      mcpFilesDiscovered: mcpLoad.report.totalDiscovered,
+      mcpFilesFailed: mcpLoad.report.totalFailed,
+      mcpFilesSkipped: mcpLoad.report.totalSkipped,
+      mcpFileResults: mcpLoad.report.fileResults,
       configPath: adapter.configPath,
       warnings,
     });

@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+build/
 
 # Test and coverage outputs
 coverage/
@@ -31,7 +32,7 @@ vite.config.ts.timestamp-*
 !.env.example
 
 # Development
-.agent-ctrl-dev-env
+.agent-ctrl
 .agents
 .claude
 .codex
@@ -39,3 +40,11 @@ vite.config.ts.timestamp-*
 .specify
 AGENTS.md
 CLAUDE.md
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.tmp
+*.swp

@@ -16,6 +16,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
   readonly platformName = "claude";
   readonly configPath: string;
   private readonly statePath: string;
+  private readonly claudeMcpConfigPath: string;
   private readonly projectPath: string;
   private readonly claudeRoot: string;
 
@@ -28,6 +29,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
     this.claudeRoot = resolve(claudeHome, ".claude");
     this.configPath = resolve(this.claudeRoot, "CLAUDE.md");
     this.statePath = resolve(this.claudeRoot, ".agent-ctrl.json");
+    this.claudeMcpConfigPath = resolve(claudeHome, ".claude.json");
   }
 
   async generateConfig(artifacts: Artifact[]): Promise<PlatformConfig> {
@@ -35,6 +37,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
       rules: [],
       skills: [],
       agents: [],
+      mcpServers: [],
     };
 
     for (const artifact of artifacts) {
@@ -71,6 +74,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
         rules: Array.isArray(parsed.rules) ? parsed.rules : [],
         skills: Array.isArray(parsed.skills) ? parsed.skills : [],
         agents: Array.isArray(parsed.agents) ? parsed.agents : [],
+        mcpServers: Array.isArray(parsed.mcpServers) ? parsed.mcpServers : [],
       };
     } catch {
       return null;
@@ -92,6 +96,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
     const mergedContent = this.upsertManagedSection(existingContent, config, await this.loadRuleContents(config));
     await writeFile(this.configPath, mergedContent, "utf-8");
     await writeFile(this.statePath, JSON.stringify(config, null, 2), "utf-8");
+    await this.writeClaudeMcpConfig(config);
 
     await this.syncSkills(config);
     await this.syncAgents(config);
@@ -114,6 +119,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
       rules: mergeByName(existing.rules, newConfig.rules),
       skills: mergeByName(existing.skills, newConfig.skills),
       agents: mergeByName(existing.agents, newConfig.agents),
+      mcpServers: mergeByName(existing.mcpServers ?? [], newConfig.mcpServers ?? []),
     };
   }
 
@@ -237,6 +243,43 @@ export class ClaudeAdapter implements IPlatformAdapter {
       rm(resolve(this.claudeRoot, "agents"), { recursive: true, force: true }),
       rm(resolve(this.claudeRoot, "commands"), { recursive: true, force: true }),
     ]);
+  }
+
+  private async writeClaudeMcpConfig(config: PlatformConfig): Promise<void> {
+    const mcpServers = config.mcpServers ?? [];
+    const incomingMcpServers = Object.fromEntries(
+      mcpServers.map((server) => [
+        server.name,
+        {
+          command: server.command,
+          args: server.args,
+          ...(server.cwd ? { cwd: server.cwd } : {}),
+          ...(Object.keys(server.env).length > 0 ? { env: server.env } : {}),
+        },
+      ])
+    );
+
+    const existingDocument = await readFile(this.claudeMcpConfigPath, "utf-8")
+      .then((content) => JSON.parse(content) as unknown)
+      .catch(() => ({}));
+    const normalizedExisting = this.isObject(existingDocument) ? existingDocument : {};
+    const existingMcpServers = this.isObject(normalizedExisting.mcpServers) ? normalizedExisting.mcpServers : {};
+
+    const mergedDocument = {
+      ...normalizedExisting,
+      mcpServers: Object.fromEntries(
+        [...Object.entries(existingMcpServers), ...Object.entries(incomingMcpServers)].map(([name, value]) => [
+          name,
+          value,
+        ])
+      ),
+    };
+
+    await writeFile(this.claudeMcpConfigPath, `${JSON.stringify(mergedDocument, null, 2)}\n`, "utf-8");
+  }
+
+  private isObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
   }
 
   private async collectMarkdownFiles(root: string): Promise<string[]> {
