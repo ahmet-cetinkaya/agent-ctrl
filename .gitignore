@@ -32,7 +32,10 @@ vite.config.ts.timestamp-*
 
 # Development
 .agent-ctrl-dev-env
+.agents
 .claude
 .codex
 .serena
 .specify
+AGENTS.md
+CLAUDE.md
