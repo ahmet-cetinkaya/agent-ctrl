@@ -7,7 +7,7 @@ import { resolve } from "node:path";
 export function createApplyCommand(): Command {
   return new Command("apply")
     .description("Apply project artifacts to a target platform configuration")
-    .argument("<platform>", 'Target platform (e.g., "claude")')
+    .argument("<platform>", 'Target platform. Supported platforms: "claude"')
     .option("-d, --dry-run", "Show changes without applying", false)
     .option("-o, --override", "Clean existing managed artifacts before applying", false)
     .action(async (platform: string, options: { dryRun?: boolean; override?: boolean }) => {
