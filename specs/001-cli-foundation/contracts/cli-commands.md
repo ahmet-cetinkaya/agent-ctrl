@@ -308,16 +308,16 @@ agent-ctrl apply <platform> [options]
 
 ### Options
 
-| Option      | Short | Type | Description                      |
-| ----------- | ----- | ---- | -------------------------------- |
-| `--dry-run` | `-d`  | flag | Show changes without applying    |
-| `--force`   | `-f`  | flag | Overwrite existing configuration |
+| Option       | Short | Type | Description                                       |
+| ------------ | ----- | ---- | ------------------------------------------------- |
+| `--dry-run`  | `-d`  | flag | Show changes without applying                     |
+| `--override` | `-o`  | flag | Clean existing managed artifacts before applying  |
 
 ### Arguments
 
-| Argument   | Type   | Description                      |
-| ---------- | ------ | -------------------------------- |
-| `platform` | string | Target platform (e.g., "claude") |
+| Argument   | Type   | Description                                      |
+| ---------- | ------ | ------------------------------------------------ |
+| `platform` | string | Target platform. Supported platforms: `"claude"` |
 
 ### Input Contract
 
@@ -336,15 +336,13 @@ agent-ctrl apply <platform> [options]
 ✓ Applied 2 skills to Claude Code
 ✓ Applied 1 agent to Claude Code
 
-Configuration written to: /home/user/.claude/config.json
+Configuration written to: /home/user/.claude/CLAUDE.md
 ```
 
-**Warning - No artifacts found (Exit Code: 0)**
+**Success - No artifacts found (Exit Code: 0)**
 
 ```
-⚠ No artifacts found in project. Configuration file created anyway.
-
-Configuration written to: /home/user/.claude/config.json
+Configuration written to: /home/user/.claude/CLAUDE.md
 ```
 
 **Success - Dry run (Exit Code: 0)**
@@ -354,7 +352,7 @@ Configuration written to: /home/user/.claude/config.json
 [Dry run] Would apply 2 skills to Claude Code
 [Dry run] Would apply 1 agent to Claude Code
 
-Would write to: /home/user/.claude/config.json
+Would write to: /home/user/.claude/CLAUDE.md
 ```
 
 **Error - Platform not supported (Exit Code: 1)**
@@ -366,7 +364,7 @@ Would write to: /home/user/.claude/config.json
 **Error - Permission denied (Exit Code: 2)**
 
 ```
-✗ Permission denied: cannot write to /home/user/.claude/config.json
+✗ Permission denied: cannot write to /home/user/.claude/CLAUDE.md
 ```
 
 **Error - Config locked (Exit Code: 2)**
@@ -377,8 +375,10 @@ Would write to: /home/user/.claude/config.json
 
 ### Side Effects
 
-- Creates target config directory if not exists (for `claude` platform)
-- Merges with existing configuration (preserves non-conflicting entries)
+- Creates target Claude directory if not exists (`~/.claude`)
+- Writes `~/.claude/CLAUDE.md` and `~/.claude/.agent-ctrl.json`
+- Syncs artifacts into `~/.claude/skills`, `~/.claude/agents`, and `~/.claude/commands`
+- `--override` removes existing managed `skills`, `agents`, and `commands` before syncing
 
 ---
 

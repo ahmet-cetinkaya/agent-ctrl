@@ -259,11 +259,11 @@ bun run format
 
 ## Environment Variables
 
-| Variable             | Description                          | Default       |
-| -------------------- | ------------------------------------ | ------------- |
-| `AGENT_CTRL_HOME`    | Override Claude Code config location | `~/.claude`   |
-| `AGENT_CTRL_VERBOSE` | Enable debug logging                 | `false`       |
-| `NODE_ENV`           | Environment mode                     | `development` |
+| Variable                 | Description                                 | Default       |
+| ------------------------ | ------------------------------------------- | ------------- |
+| `AGENT_CTRL_CLAUDE_HOME` | Override base home used for `~/.claude`     | User home dir |
+| `AGENT_CTRL_VERBOSE`     | Enable debug logging                        | `false`       |
+| `NODE_ENV`               | Environment mode                            | `development` |
 
 ## Troubleshooting
 
@@ -282,7 +282,7 @@ Check file permissions:
 
 ```bash
 ls -la ~/.claude/
-chmod u+w ~/.claude/config.json
+chmod u+w ~/.claude/CLAUDE.md
 ```
 
 ### Tests failing locally

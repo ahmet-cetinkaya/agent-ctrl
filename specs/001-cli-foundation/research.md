@@ -72,14 +72,14 @@ This document captures research findings and technology decisions for the CLI Fo
 - **globby**: For pattern matching, but can be added later if needed
 - **fs-extra**: Not needed - built-in fs/promises is sufficient
 
-### 4. Configuration Format: JSON
+### 4. Configuration Format: Managed Markdown + JSON State
 
-**Decision**: Use JSON for configuration files
+**Decision**: Use managed Markdown for `CLAUDE.md` content and JSON for persisted artifact state
 
 **Rationale**:
 
-- Native format for Claude Code config.json
-- Simple merge semantics for preserving existing configuration
+- Aligns with Claude's `CLAUDE.md` memory-file workflow
+- JSON state enables deterministic merge semantics for preserving existing mappings
 - Ubiquitous support across tools
 
 **Alternatives Considered**:
@@ -114,34 +114,27 @@ This document captures research findings and technology decisions for the CLI Fo
 
 ### Claude Code Configuration
 
-**Target Location**: `~/.claude/config.json`
+**Target Location**: `~/.claude/CLAUDE.md` (managed rule section) and `~/.claude/.agent-ctrl.json` (state mapping)
 
-**Format** (based on Claude Code documentation):
+**Format**:
+
+```markdown
+<!-- agent-ctrl:start -->
+# Rule content copied from project files
+<!-- agent-ctrl:end -->
+```
 
 ```json
 {
-  "rules": [
-    {
-      "name": "rule-name",
-      "path": "/absolute/path/to/rule.md"
-    }
-  ],
-  "skills": [
-    {
-      "name": "skill-name",
-      "path": "/absolute/path/to/skill"
-    }
-  ],
-  "agents": [
-    {
-      "name": "agent-name",
-      "path": "/absolute/path/to/agent.md"
-    }
-  ]
+  "rules": [{ "name": "rule-name", "path": "/absolute/path/to/rule.md" }],
+  "skills": [{ "name": "skill-name", "path": "/absolute/path/to/skill" }],
+  "agents": [{ "name": "agent-name", "path": "/absolute/path/to/agent.md" }]
 }
 ```
 
-**Merge Strategy**: Use deep merge to preserve existing non-conflicting entries
+**Additional Sync Targets**: `~/.claude/skills`, `~/.claude/agents`, `~/.claude/commands`
+
+**Merge Strategy**: Merge by artifact name (existing + incoming) unless `--override` is used, in which case managed artifacts are cleaned before syncing
 
 ### Directory Scanning
 

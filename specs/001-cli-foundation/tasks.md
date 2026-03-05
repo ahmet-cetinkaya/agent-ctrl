@@ -118,16 +118,16 @@
 
 ## Phase 5: User Story 3 - Apply Configuration to Claude Code (Priority: P1)
 
-**Goal**: Enable developers to apply their agent configurations to Claude Code by creating/updating the Claude Code config file
+**Goal**: Enable developers to apply their agent configurations to Claude Code by creating/updating Claude-managed files and synced artifact directories
 
-**Independent Test**: Create sample artifacts, run `agent-ctrl apply claude`, then verify `~/.claude/config.json` is created/updated with correct mappings
+**Independent Test**: Create sample artifacts, run `agent-ctrl apply claude`, then verify `~/.claude/CLAUDE.md` and `~/.claude/.agent-ctrl.json` are created/updated with correct mappings
 
 ### Implementation for User Story 3
 
 - [x] T052 [P] [US3] Create ClaudeAdapter interface in src/infrastructure/adapters/IClaudeAdapter.ts
 - [x] T053 [US3] Create PlatformAdapter interface in src/core/domain/interfaces/IPlatformAdapter.ts
 - [x] T054 [US3] Implement ClaudeAdapter class in src/infrastructure/adapters/ClaudeAdapter.ts
-- [x] T055 [US3] Implement Claude Code config path resolution (~/.claude/config.json)
+- [x] T055 [US3] Implement Claude Code path resolution (`~/.claude/CLAUDE.md` and `~/.claude/.agent-ctrl.json`)
 - [x] T056 [US3] Implement auto-creation of Claude directory if not exists
 - [x] T057 [US3] Implement Rule to Claude config format mapping
 - [x] T058 [US3] Implement Skill to Claude config format mapping
@@ -136,7 +136,7 @@
 - [x] T061 [US3] Implement ApplyCommand in src/presentation/cli/commands/apply.ts with platform argument
 - [x] T062 [US3] Implement ApplyUseCase in src/core/application/use-cases/ApplyUseCase.ts
 - [x] T063 [US3] Add --dry-run flag support to apply command
-- [x] T064 [US3] Add --force flag support to apply command
+- [x] T064 [US3] Add --override flag support to apply command
 - [x] T065 [US3] Implement artifact scanning before apply (re-use scanners from US2)
 - [x] T066 [US3] Add no-artifacts warning handling
 - [x] T067 [US3] Add permission-denied error handling for config write

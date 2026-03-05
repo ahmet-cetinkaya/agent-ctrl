@@ -91,14 +91,14 @@ The following technical decisions were resolved:
 | Runtime       | Bun                      | Fast startup, native TypeScript, modern tooling                     |
 | CLI Framework | Commander.js             | Industry standard, well-documented, composable                      |
 | File System   | node:fs/node:path        | Built-in Node modules, cross-platform, no extra dependencies        |
-| Config Format | JSON                     | Native to Claude Code, simple merge semantics                       |
+| Config Format | Markdown + JSON state    | Managed `CLAUDE.md` section plus `.agent-ctrl.json` merge state     |
 | Architecture  | Clean Architecture / DDD | Separation of concerns, testability, platform adapter extensibility |
 
 ### Key Integration Points
 
 | Integration        | Pattern          | Notes                                                           |
 | ------------------ | ---------------- | --------------------------------------------------------------- |
-| Claude Code Config | File adapter     | Reads/writes `~/.claude/config.json`, preserves existing config |
+| Claude Code Config | File adapter     | Reads/writes `~/.claude/CLAUDE.md` and `.agent-ctrl.json`, preserves existing mappings |
 | Directory Scanning | Iterator pattern | Single-pass scan, lazy evaluation for large projects            |
 | Error Handling     | Result type      | Explicit error handling, no silent failures                     |
 

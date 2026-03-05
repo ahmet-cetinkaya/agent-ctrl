@@ -63,16 +63,16 @@ As a developer, I want to apply my agent configurations to Claude Code so that m
 
 **Why this priority**: This delivers the core value of the product - transforming local configurations into a format that an AI platform can understand and use. Without this, the project is just file organization without actual utility.
 
-**Independent Test**: Can be fully tested by creating sample artifacts, running the apply command, and verifying that the Claude Code configuration file is created or updated with the expected mappings.
+**Independent Test**: Can be fully tested by creating sample artifacts, running the apply command, and verifying that `~/.claude/CLAUDE.md` and `~/.claude/.agent-ctrl.json` are created or updated with the expected mappings.
 
 **Acceptance Scenarios**:
 
-1. **Given** a project with at least one rule, **When** I run `agent-ctrl apply claude`, **Then** the Claude Code config file is created with the rule mapped
-2. **Given** a project with multiple skills, **When** I run `agent-ctrl apply claude`, **Then** all skills are mapped in the Claude Code config file
-3. **Given** an existing Claude Code config, **When** I run `agent-ctrl apply claude`, **Then** existing configuration is preserved and new mappings are added
-4. **Given** a project with no artifacts, **When** I run `agent-ctrl apply claude`, **Then** I receive a warning message indicating no artifacts were found but the config file is still created
+1. **Given** a project with at least one rule, **When** I run `agent-ctrl apply claude`, **Then** `~/.claude/CLAUDE.md` is created/updated with a managed section containing the rule content
+2. **Given** a project with multiple skills, **When** I run `agent-ctrl apply claude`, **Then** all skills are synced into `~/.claude/skills/`
+3. **Given** an existing Claude Code setup, **When** I run `agent-ctrl apply claude`, **Then** existing mappings are preserved by default and new mappings are added
+4. **Given** a project with no artifacts, **When** I run `agent-ctrl apply claude`, **Then** the command succeeds and writes/updates Claude files with an empty managed rule section
 5. **Given** a successfully applied configuration, **When** I run `agent-ctrl apply claude` again, **Then** I see a success message confirming the configuration was updated
-6. **Given** a project with artifacts but Claude Code is not installed, **When** I run `agent-ctrl apply claude`, **Then** the directory structure and config file are created automatically
+6. **Given** a project with artifacts but Claude Code is not installed, **When** I run `agent-ctrl apply claude`, **Then** the directory structure and Claude files are created automatically
 
 ---
 
@@ -98,15 +98,16 @@ As a developer, I want to apply my agent configurations to Claude Code so that m
 - **FR-006**: The system MUST map discovered rules to the target platform's rule format
 - **FR-007**: The system MUST map discovered skills to the target platform's skills format
 - **FR-008**: The system MUST map discovered agents to the target platform's agents format
-- **FR-009**: The system MUST generate or update the Claude Code configuration file in the correct location
+- **FR-009**: The system MUST generate or update Claude files in `~/.claude` (`CLAUDE.md` and `.agent-ctrl.json`)
 - **FR-010**: The system MUST preserve existing configuration when applying updates to Claude Code
 - **FR-011**: The system MUST provide clear error messages when operations fail
 - **FR-012**: The system MUST validate that the target directory is empty before initialization
 - **FR-013**: The system MUST display a list of discovered artifacts when listing rules, skills, or agents, identified by filename without extension
 - **FR-014**: The system MUST handle cases where no artifacts are found with appropriate messaging
 - **FR-015**: The system MUST provide help text describing available commands and their usage
-- **FR-016**: When the Claude Code configuration directory does not exist, the system MUST automatically create the directory structure and write the config file
+- **FR-016**: When the Claude Code configuration directory does not exist, the system MUST automatically create the directory structure and write Claude-managed files
 - **FR-017**: When scanning artifacts, if some files fail validation the system MUST continue processing valid files and display warnings for skipped files at the end
+- **FR-018**: When `agent-ctrl apply claude --override` is used, the system MUST clean existing managed artifacts (`~/.claude/skills`, `~/.claude/agents`, `~/.claude/commands`) before syncing current project artifacts
 
 ### Key Entities
 
@@ -114,7 +115,7 @@ As a developer, I want to apply my agent configurations to Claude Code so that m
 - **Skill**: A capability definition consisting of a directory containing a readable SKILL.md file that defines what an AI agent can do. Identified by directory name.
 - **Agent**: A persona definition in a markdown file (.md or .markdown extension, readable) in the agents/ directory that defines an AI agent's personality and approach. Identified by filename without extension.
 - **Project Directory**: The root directory containing the standard structure (rules/, skills/, agents/, commands/)
-- **Configuration Mapping**: The translation of local artifacts into the format required by a target platform (e.g., Claude Code config.json)
+- **Configuration Mapping**: The translation of local artifacts into the format required by a target platform (e.g., Claude Code managed content in `CLAUDE.md`, plus synced skills/agents/commands and state metadata)
 - **Sample Configuration**: A template file (agent-ctrl.config.json) created during init that demonstrates the structure for defining project metadata, artifact patterns, and platform targets. Contains example entries with explanatory comments.
 
 ## Success Criteria _(mandatory)_
@@ -127,5 +128,5 @@ As a developer, I want to apply my agent configurations to Claude Code so that m
 - **SC-004**: The CLI responds to all commands with clear success or error messages
 - **SC-005**: 100% of standard directory structure (rules/, skills/, agents/) is created successfully on init
 - **SC-006**: All valid markdown files in rules/, skills/, and agents/ are discovered and displayed correctly
-- **SC-007**: The Claude Code configuration file is created or updated with correct file paths for all mapped artifacts
+- **SC-007**: `~/.claude/CLAUDE.md` and `~/.claude/.agent-ctrl.json` are created or updated with correct mappings, and skills/agents/commands are synced to the corresponding Claude directories
 - **SC-008**: Users can complete the full workflow (init, add artifacts, apply) in their first session without referring to documentation

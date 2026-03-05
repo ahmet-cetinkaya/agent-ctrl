@@ -110,15 +110,17 @@ interface ArtifactBase {
 
 Represents a target platform's configuration format.
 
-| Field          | Type       | Description                                 |
-| -------------- | ---------- | ------------------------------------------- |
-| `platformName` | string     | Target platform identifier (e.g., "claude") |
-| `configPath`   | string     | Path to platform's config file              |
-| `artifacts`    | Artifact[] | Artifacts to include in configuration       |
+| Field          | Type                                | Description                                 |
+| -------------- | ----------------------------------- | ------------------------------------------- |
+| `platformName` | string                              | Target platform identifier (e.g., "claude") |
+| `configPath`   | string                              | Path to primary platform file               |
+| `rules`        | Array<{name: string, path: string}> | Rule mappings included in state             |
+| `skills`       | Array<{name: string, path: string}> | Skill mappings included in state            |
+| `agents`       | Array<{name: string, path: string}> | Agent mappings included in state            |
 
 **Known Platforms**:
 
-- `claude`: Claude Code (`~/.claude/config.json`)
+- `claude`: Claude Code (`~/.claude/CLAUDE.md` + `~/.claude/.agent-ctrl.json`)
 
 ---
 
