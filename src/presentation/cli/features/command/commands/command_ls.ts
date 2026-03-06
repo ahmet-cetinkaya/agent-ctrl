@@ -1,30 +1,30 @@
 import { Command } from "commander";
-import { ListSkillsQuery } from "@/core/application/features/skill/queries/ListSkillsQuery";
-import { UserError } from "@/core/domain/shared/errors/UserError";
+import { access, constants } from "node:fs/promises";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { access, constants } from "node:fs/promises";
+import { ListCommandsQuery } from "@/core/application/features/command/queries/ListCommandsQuery";
+import { UserError } from "@/core/domain/shared/errors/UserError";
 
-export function createSkillListCommand(): Command {
+export function createCommandListCommand(): Command {
   return new Command("ls")
-    .description("List all skills in the project")
+    .description("List all commands in the project")
     .argument("[path]", "Configuration root path (default: ~/.agent-ctrl)")
     .option("-j, --json", "Output as JSON")
     .action(async (targetPath: string | undefined, options: { json?: boolean }) => {
       const configRootPath = targetPath
         ? resolve(targetPath)
         : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
-      const skillsPath = resolve(configRootPath, "skills");
+      const commandsPath = resolve(configRootPath, "commands");
 
       try {
-        await access(skillsPath, constants.R_OK);
+        await access(commandsPath, constants.R_OK);
       } catch {
-        console.error(`✗ skills/ directory not found at ${skillsPath}. Run 'agent-ctrl init' first.`);
+        console.error(`✗ commands/ directory not found at ${commandsPath}. Run 'agent-ctrl init' first.`);
         process.exit(1);
       }
 
-      const listSkillsQuery = new ListSkillsQuery();
-      const result = await listSkillsQuery.execute({ skillsPath });
+      const listCommandsQuery = new ListCommandsQuery();
+      const result = await listCommandsQuery.execute({ commandsPath });
 
       if (!result.success) {
         if (result.error instanceof UserError) {
@@ -43,15 +43,15 @@ export function createSkillListCommand(): Command {
       }
 
       if (artifacts.length === 0) {
-        console.log("No skills found in skills/ directory");
+        console.log("No commands found in commands/ directory");
       } else {
-        console.log(`Skills (${artifacts.length}):`);
+        console.log(`Commands (${artifacts.length}):`);
         for (const artifact of artifacts) {
           console.log(`  ${artifact.id}`);
         }
       }
 
-      if (warnings.length > 0 && !options.json) {
+      if (warnings.length > 0) {
         console.log("\nWarnings:");
         for (const warning of warnings) {
           console.log(`  - ${warning}`);

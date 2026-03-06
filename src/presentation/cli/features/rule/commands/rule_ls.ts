@@ -1,20 +1,25 @@
 import { Command } from "commander";
 import { ListRulesQuery } from "@/core/application/features/rule/queries/ListRulesQuery";
 import { UserError } from "@/core/domain/shared/errors/UserError";
+import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { access, constants } from "node:fs/promises";
 
 export function createRuleListCommand(): Command {
   return new Command("ls")
     .description("List all rules in the project")
+    .argument("[path]", "Configuration root path (default: ~/.agent-ctrl)")
     .option("-j, --json", "Output as JSON")
-    .action(async (options: { json?: boolean }) => {
-      const rulesPath = resolve(process.cwd(), "rules");
+    .action(async (targetPath: string | undefined, options: { json?: boolean }) => {
+      const configRootPath = targetPath
+        ? resolve(targetPath)
+        : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
+      const rulesPath = resolve(configRootPath, "rules");
 
       try {
         await access(rulesPath, constants.R_OK);
       } catch {
-        console.error("✗ rules/ directory not found. Run 'agent-ctrl init' first.");
+        console.error(`✗ rules/ directory not found at ${rulesPath}. Run 'agent-ctrl init' first.`);
         process.exit(1);
       }
 

@@ -5,6 +5,8 @@ import { createInitCommand } from "@/presentation/cli/features/init/commands/ini
 import { createRuleCommand } from "@/presentation/cli/features/rule/commands/rule";
 import { createSkillCommand } from "@/presentation/cli/features/skill/commands/skill";
 import { createAgentCommand } from "@/presentation/cli/features/agent/commands/agent";
+import { createCommandCommand } from "@/presentation/cli/features/command/commands/command";
+import { createMcpCommand } from "@/presentation/cli/features/mcp/commands/mcp";
 import { createApplyCommand } from "@/presentation/cli/features/apply/commands/apply";
 import { ErrorHandler } from "@/presentation/cli/shared/middleware/errorHandler";
 
@@ -24,6 +26,8 @@ program.addCommand(createInitCommand());
 program.addCommand(createRuleCommand());
 program.addCommand(createSkillCommand());
 program.addCommand(createAgentCommand());
+program.addCommand(createCommandCommand());
+program.addCommand(createMcpCommand());
 program.addCommand(createApplyCommand());
 
 // Global error handling

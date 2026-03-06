@@ -2,20 +2,25 @@ import { Command } from "commander";
 import { ListAgentsQuery } from "@/core/application/features/agent/queries/ListAgentsQuery";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { AgentScanner } from "@/infrastructure/features/agent/scanners/AgentScanner";
+import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { access, constants } from "node:fs/promises";
 
 export function createAgentListCommand(): Command {
   return new Command("ls")
     .description("List all agents in the project")
+    .argument("[path]", "Configuration root path (default: ~/.agent-ctrl)")
     .option("-j, --json", "Output as JSON")
-    .action(async (options: { json?: boolean }) => {
-      const agentsPath = resolve(process.cwd(), "agents");
+    .action(async (targetPath: string | undefined, options: { json?: boolean }) => {
+      const configRootPath = targetPath
+        ? resolve(targetPath)
+        : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
+      const agentsPath = resolve(configRootPath, "agents");
 
       try {
         await access(agentsPath, constants.R_OK);
       } catch {
-        console.error("✗ agents/ directory not found. Run 'agent-ctrl init' first.");
+        console.error(`✗ agents/ directory not found at ${agentsPath}. Run 'agent-ctrl init' first.`);
         process.exit(1);
       }
 
