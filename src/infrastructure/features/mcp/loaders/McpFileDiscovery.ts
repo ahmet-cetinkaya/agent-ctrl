@@ -13,7 +13,7 @@ export class McpFileDiscovery {
     } catch (error) {
       const err = error as NodeJS.ErrnoException;
       // Directory doesn't exist - this is expected and fine
-      if (err.code === 'ENOENT' || err.code === 'ENOTDIR') {
+      if (err.code === "ENOENT" || err.code === "ENOTDIR") {
         return [];
       }
       // Log unexpected errors for debugging

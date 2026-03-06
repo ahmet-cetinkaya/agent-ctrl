@@ -1,0 +1,33 @@
+import { CommandScopePrecedenceResolver } from "@/infrastructure/features/apply/adapters/CommandScopePrecedenceResolver";
+import { BaseTextAppyAdapter } from "@/infrastructure/features/apply/adapters/BaseTextAppyAdapter";
+import type { AppyConfigTarget } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+
+export class KiloAdapter extends BaseTextAppyAdapter {
+  readonly platformName = "kilo" as const;
+
+  private readonly scopeResolver = new CommandScopePrecedenceResolver();
+
+  async resolveTarget(projectPath: string): Promise<AppyConfigTarget> {
+    return this.scopeResolver.resolve({
+      platform: this.platformName,
+      projectPath,
+      projectRelativePath: ".kilocode/workflows/appy.md",
+      userRelativePath: ".kilocode/workflows/appy.md",
+    });
+  }
+
+  protected buildDesiredContent(target: AppyConfigTarget): string {
+    return [
+      "# Workflow: appy",
+      "",
+      "Managed workflow for appy integration.",
+      "",
+      "```bash",
+      "agent-ctrl apply kilo",
+      "```",
+      "",
+      `Scope: ${target.scope}`,
+      "Surface: workflow",
+    ].join("\n");
+  }
+}

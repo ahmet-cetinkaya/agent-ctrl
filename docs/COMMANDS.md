@@ -31,27 +31,51 @@ agent-ctrl init bitbucket:owner/repo
 
 ### `apply [target]`
 
-Deploy local artifacts to a target agent environment.
+Apply managed `appy` integration to one selected platform.
 
 ```bash
-# Apply to Claude Code
-agent-ctrl apply claude
+# Apply to OpenCode
+agent-ctrl apply opencode
 
-# Apply to Gemini
+# Apply to Gemini CLI
 agent-ctrl apply gemini
+
+# Apply to Qwen Code
+agent-ctrl apply qwen
+
+# Apply to Kilo
+agent-ctrl apply kilo
+
+# Apply to Antigravity
+agent-ctrl apply antigravity
+
+# Apply to Codex CLI
+agent-ctrl apply codex
 
 # Apply to Cursor
 agent-ctrl apply cursor
 
-# Apply to generic MCP
-agent-ctrl apply mcp
+# Apply to Windsurf
+agent-ctrl apply windsurf
 ```
 
 **Behavior:**
 
-- Scans local artifacts (`rules/`, `skills/`, `commands/`, `agents/`)
-- Transforms using platform-specific adapter
-- Writes to target platform's configuration location
+- Processes exactly one platform per command run
+- Creates or replaces managed `appy` integration at the selected platform configuration surface
+- Preserves unrelated user-defined configuration entries
+- Reports deterministic selected-platform status (`success`, `unchanged`, `failure`)
+- Returns a successful command exit for `success` and `unchanged`
+
+**Options:**
+
+```bash
+# Dry run without writing files
+agent-ctrl apply gemini --dry-run
+
+# Force replacement of conflicting managed appy entry
+agent-ctrl apply cursor --override
+```
 
 ---
 

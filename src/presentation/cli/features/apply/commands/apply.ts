@@ -1,15 +1,18 @@
 import { Command } from "commander";
+import { resolve } from "node:path";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
-import { resolve } from "node:path";
+import { getSupportedApplyPlatformsDisplay } from "@/core/domain/shared/types/SupportedApplyPlatform";
 
 export function createApplyCommand(): Command {
+  const supportedPlatformsDisplay = getSupportedApplyPlatformsDisplay();
+
   return new Command("apply")
-    .description("Apply project artifacts to a target platform configuration")
-    .argument("<platform>", 'Target platform. Supported platforms: "claude"')
-    .option("-d, --dry-run", "Show changes without applying", false)
-    .option("-o, --override", "Clean existing managed artifacts before applying", false)
+    .description("Apply managed appy integration to one selected platform")
+    .argument("<platform>", `Target platform. Supported platforms: ${supportedPlatformsDisplay}`)
+    .option("-d, --dry-run", "Show selected-platform changes without writing files", false)
+    .option("-o, --override", "Replace conflicting appy configuration with managed state", false)
     .action(async (platform: string, options: { dryRun?: boolean; override?: boolean }) => {
       const applyCommand = new ApplyCommand();
 
@@ -22,49 +25,33 @@ export function createApplyCommand(): Command {
         });
 
         if (!result.success) {
-          if (result.error instanceof UserError) {
+          if (result.error instanceof UserError || result.error instanceof SystemError) {
             console.error(`✗ ${result.error.message}`);
             process.exit(result.error.exitCode);
-          } else if (result.error instanceof SystemError) {
-            console.error(`✗ ${result.error.message}`);
-            process.exit(result.error.exitCode);
-          } else {
-            console.error(`✗ Unexpected error: ${result.error}`);
-            process.exit(2);
           }
+          console.error(`✗ Unexpected error: ${result.error}`);
+          process.exit(2);
         }
 
-        const {
-          rulesApplied,
-          skillsApplied,
-          agentsApplied,
-          mcpServersLoaded,
-          mcpFilesDiscovered,
-          mcpFilesFailed,
-          mcpFilesSkipped,
-          configPath,
-          claudeMcpConfigPath,
-          warnings,
-        } = result.data;
+        const { platform: selectedPlatform, status, configPath, scope, surface, warnings, durationMs } = result.data;
 
         if (options.dryRun) {
-          console.log(`[Dry run] Would apply ${rulesApplied} rules to Claude Code`);
-          console.log(`[Dry run] Would apply ${skillsApplied} skills to Claude Code`);
-          console.log(`[Dry run] Would apply ${agentsApplied} agents to Claude Code`);
-          console.log(
-            `[Dry run] MCP servers loaded: ${mcpServersLoaded} (files discovered: ${mcpFilesDiscovered}, failed entries: ${mcpFilesFailed}, skipped files: ${mcpFilesSkipped})`
-          );
-          console.log(`\nWould write to: ${configPath}`);
-          console.log(`[Dry run] Would write Claude MCP configuration to: ${claudeMcpConfigPath}`);
+          console.log(`[Dry run] Selected platform: ${selectedPlatform}`);
+          console.log(`[Dry run] Result: ${status}`);
+          console.log(`[Dry run] Scope: ${scope}`);
+          console.log(`[Dry run] Surface: ${surface}`);
+          console.log(`[Dry run] Target path: ${configPath}`);
+          console.log(`[Dry run] Estimated duration: ${durationMs}ms`);
         } else {
-          if (rulesApplied > 0) console.log(`✓ Applied ${rulesApplied} rules to Claude Code`);
-          if (skillsApplied > 0) console.log(`✓ Applied ${skillsApplied} skills to Claude Code`);
-          if (agentsApplied > 0) console.log(`✓ Applied ${agentsApplied} agents to Claude Code`);
-          console.log(
-            `✓ MCP servers loaded: ${mcpServersLoaded} (files discovered: ${mcpFilesDiscovered}, failed entries: ${mcpFilesFailed}, skipped files: ${mcpFilesSkipped})`
-          );
-          console.log(`\nConfiguration written to: ${configPath}`);
-          console.log(`MCP configuration written to: ${claudeMcpConfigPath}`);
+          if (status === "unchanged") {
+            console.log(`✓ ${selectedPlatform}: unchanged`);
+          } else {
+            console.log(`✓ ${selectedPlatform}: success`);
+          }
+          console.log(`Scope: ${scope}`);
+          console.log(`Surface: ${surface}`);
+          console.log(`Configuration path: ${configPath}`);
+          console.log(`Duration: ${durationMs}ms`);
         }
 
         if (warnings.length > 0) {
