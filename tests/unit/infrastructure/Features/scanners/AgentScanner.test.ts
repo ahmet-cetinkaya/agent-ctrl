@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { AgentScanner } from '@/infrastructure/features/agent/scanners/AgentScanner';
-import { createAgent } from '@/core/domain/shared/entities/Agent';
 import { mkdir, rm, writeFile, chmod } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';

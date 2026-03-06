@@ -1,4 +1,4 @@
-import { resolve, isAbsolute, relative } from "node:path";
+import { resolve } from "node:path";
 import { PathSecurity } from "./PathSecurity";
 
 export class PathResolver {

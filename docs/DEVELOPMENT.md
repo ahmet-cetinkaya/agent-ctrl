@@ -51,10 +51,10 @@ bun test --coverage
 bun run lint
 
 # Fix issues automatically
-bun run lint --fix
+bun run lint:fix
 
 # Type check
-bun run typecheck
+bun run type-check
 ```
 
 ---

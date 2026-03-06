@@ -1,5 +1,3 @@
-import { OptionValues } from "commander";
-
 export interface GlobalOptions {
   verbose?: boolean;
   quiet?: boolean;

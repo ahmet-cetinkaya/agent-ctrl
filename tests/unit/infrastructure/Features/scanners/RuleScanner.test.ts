@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { RuleScanner } from '@/infrastructure/features/rule/scanners/RuleScanner';
-import { createRule } from '@/core/domain/shared/entities/Rule';
 import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 import { mkdir, rm, writeFile, chmod } from 'node:fs/promises';
 import { resolve } from 'node:path';
