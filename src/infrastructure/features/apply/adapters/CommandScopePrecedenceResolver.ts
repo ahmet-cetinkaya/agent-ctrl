@@ -8,22 +8,25 @@ export interface CommandScopeResolutionOptions {
   projectPath: string;
   projectRelativePath: string;
   userRelativePath: string;
+  preferredScope?: ApplyPlatformScope;
+  userConfigRootPath?: string;
 }
 
 export class CommandScopePrecedenceResolver {
   private readonly homePath: string;
 
   constructor(homePath?: string) {
-    this.homePath = homePath ?? process.env.AGENT_CTRL_HOME ?? homedir();
+    this.homePath = homePath ?? process.env.AGENT_CTRL_HOME ?? resolve(homedir(), ".agent-ctrl");
   }
 
   resolve(options: CommandScopeResolutionOptions): AppyConfigTarget {
     const { platform, projectPath, projectRelativePath, userRelativePath } = options;
 
-    const userPath = resolve(this.homePath, userRelativePath);
+    const userRootPath = options.userConfigRootPath ?? this.homePath;
+    const userPath = resolve(userRootPath, userRelativePath);
     const projectConfigPath = resolve(projectPath, projectRelativePath);
 
-    if (this.shouldUseUserScope(platform)) {
+    if (this.shouldUseUserScope(platform, options.preferredScope)) {
       return {
         configPath: userPath,
         scope: "user",
@@ -38,7 +41,14 @@ export class CommandScopePrecedenceResolver {
     };
   }
 
-  private shouldUseUserScope(platform: SupportedApplyPlatform): boolean {
+  private shouldUseUserScope(platform: SupportedApplyPlatform, preferredScope?: ApplyPlatformScope): boolean {
+    if (preferredScope === "user") {
+      return true;
+    }
+    if (preferredScope === "project") {
+      return false;
+    }
+
     const explicitScope = (process.env.AGENT_CTRL_APPLY_SCOPE ?? "").toLowerCase();
     if (explicitScope === "user") {
       return true;
@@ -55,14 +65,26 @@ export class CommandScopePrecedenceResolver {
     }
 
     if (platform === "cursor") {
-      return (process.env.AGENT_CTRL_CURSOR_SCOPE ?? "").toLowerCase() === "user";
+      const cursorScope = (process.env.AGENT_CTRL_CURSOR_SCOPE ?? "").toLowerCase();
+      if (cursorScope === "user") {
+        return true;
+      }
+      if (cursorScope === "project") {
+        return false;
+      }
     }
 
     if (platform === "windsurf") {
-      return (process.env.AGENT_CTRL_WINDSURF_SCOPE ?? "").toLowerCase() === "global";
+      const windsurfScope = (process.env.AGENT_CTRL_WINDSURF_SCOPE ?? "").toLowerCase();
+      if (windsurfScope === "global") {
+        return true;
+      }
+      if (windsurfScope === "workspace") {
+        return false;
+      }
     }
 
-    return false;
+    return true;
   }
 
   private getSurface(platform: SupportedApplyPlatform): string {

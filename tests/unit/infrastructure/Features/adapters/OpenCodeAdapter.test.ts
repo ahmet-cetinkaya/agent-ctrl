@@ -22,7 +22,7 @@ describe("OpenCodeAdapter", () => {
   it("creates managed appy command content", async () => {
     const result = await adapter.applyAppyIntegration({ projectPath });
     expect(result.status).toBe("success");
-    expect(result.configPath).toContain(".opencode/commands/appy.md");
+    expect(result.configPath).toContain("opencode/commands/appy.md");
 
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain("agent-ctrl apply opencode");

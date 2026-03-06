@@ -18,12 +18,9 @@
 
 **Resolution**:
 
-1. Ensure environment overrides are set as intended:
-   - `AGENT_CTRL_APPLY_SCOPE=project|user`
-   - `AGENT_CTRL_CODEX_TRUSTED_PROJECT=true|false`
-   - `AGENT_CTRL_CURSOR_SCOPE=user` (to force user scope)
-   - `AGENT_CTRL_WINDSURF_SCOPE=global` (to force global scope)
-2. Re-run with `--dry-run` to confirm target path without writing.
+1. By default, `agent-ctrl apply <platform>` targets global user configuration.
+2. To target project configuration in current folder, add `--project`.
+3. Re-run with `--dry-run` to confirm target path without writing.
 
 ### Permission denied while writing configuration
 
@@ -32,8 +29,9 @@
 **Resolution**:
 
 1. Verify directory permissions for the selected platform config path.
-2. Use a writable project directory or set `AGENT_CTRL_HOME` to a writable path for user-scope targets.
-3. Re-run command after updating permissions.
+2. For global user scope, ensure the user configuration root (default `~/.agent-ctrl`) is writable.
+3. If needed, use a custom writable root: `--path /custom/agent-ctrl`.
+4. Re-run command after updating permissions.
 
 ### Expected `unchanged` but got `success`
 

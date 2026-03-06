@@ -21,10 +21,10 @@ describe("CodexAdapter", () => {
     await rm(projectPath, { recursive: true, force: true });
   });
 
-  it("writes skill-style appy integration for trusted project scope", async () => {
+  it("writes skill-style appy integration for default user scope", async () => {
     const result = await adapter.applyAppyIntegration({ projectPath });
-    expect(result.scope).toBe("project");
-    expect(result.configPath).toContain(".codex/skills/appy/SKILL.md");
+    expect(result.scope).toBe("user");
+    expect(result.configPath).toContain("codex/skills/appy/SKILL.md");
 
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain("agent-ctrl apply codex");
@@ -34,5 +34,14 @@ describe("CodexAdapter", () => {
     process.env.AGENT_CTRL_CODEX_TRUSTED_PROJECT = "false";
     const result = await adapter.applyAppyIntegration({ projectPath });
     expect(result.scope).toBe("user");
+  });
+
+  it("supports explicit project scope selection", async () => {
+    const result = await adapter.applyAppyIntegration({
+      projectPath,
+      targetScope: "project",
+    });
+    expect(result.scope).toBe("project");
+    expect(result.configPath).toContain(".codex/skills/appy/SKILL.md");
   });
 });

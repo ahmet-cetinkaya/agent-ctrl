@@ -12,12 +12,12 @@ import { AppyMergePolicy } from "@/infrastructure/features/apply/adapters/AppyMe
 export abstract class BaseTextAppyAdapter implements IAppyPlatformAdapter {
   abstract readonly platformName: SupportedApplyPlatform;
 
-  abstract resolveTarget(projectPath: string): Promise<AppyConfigTarget>;
+  abstract resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
 
   protected abstract buildDesiredContent(target: AppyConfigTarget): string;
 
   async applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult> {
-    const target = await this.resolveTarget(request.projectPath);
+    const target = await this.resolveTarget(request.projectPath, request);
     const desiredContent = this.buildDesiredContent(target);
     const existingContent = await readFile(target.configPath, "utf-8").catch(() => null);
     const merged = AppyMergePolicy.mergeText(existingContent, desiredContent, Boolean(request.override));

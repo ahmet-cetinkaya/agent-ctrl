@@ -1,7 +1,7 @@
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
-import type { ApplyPlatformStatus } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import type { ApplyPlatformScope, ApplyPlatformStatus } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import {
   getSupportedApplyPlatformsDisplay,
   parseSupportedApplyPlatform,
@@ -13,6 +13,8 @@ export interface ApplyCommandOptions {
   platform: string;
   dryRun?: boolean;
   override?: boolean;
+  targetScope?: ApplyPlatformScope;
+  userConfigRootPath?: string;
 }
 
 export interface ApplyCommandResult {
@@ -34,7 +36,7 @@ export class ApplyCommand {
   }
 
   async execute(options: ApplyCommandOptions): Promise<Result<ApplyCommandResult, Error>> {
-    const { projectPath, platform, dryRun, override } = options;
+    const { projectPath, platform, dryRun, override, targetScope, userConfigRootPath } = options;
 
     const selectedPlatform = parseSupportedApplyPlatform(platform);
     if (!selectedPlatform) {
@@ -53,6 +55,8 @@ export class ApplyCommand {
         projectPath,
         dryRun,
         override,
+        targetScope,
+        userConfigRootPath,
       });
 
       const durationMs = Date.now() - startedAt;

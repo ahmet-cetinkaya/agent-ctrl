@@ -62,6 +62,8 @@ agent-ctrl apply windsurf
 **Behavior:**
 
 - Processes exactly one platform per command run
+- Uses global user configuration target by default
+- Uses `~/.agent-ctrl` as the default user configuration root
 - Creates or replaces managed `appy` integration at the selected platform configuration surface
 - Preserves unrelated user-defined configuration entries
 - Reports deterministic selected-platform status (`success`, `unchanged`, `failure`)
@@ -75,6 +77,12 @@ agent-ctrl apply gemini --dry-run
 
 # Force replacement of conflicting managed appy entry
 agent-ctrl apply cursor --override
+
+# Apply to project-based configuration in current folder
+agent-ctrl apply qwen --project
+
+# Use a custom user configuration root path instead of ~/.agent-ctrl
+agent-ctrl apply opencode --path /custom/agent-ctrl
 ```
 
 ---

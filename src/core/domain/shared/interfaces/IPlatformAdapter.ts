@@ -58,6 +58,8 @@ export interface AppyIntegrationRequest {
   projectPath: string;
   dryRun?: boolean;
   override?: boolean;
+  targetScope?: ApplyPlatformScope;
+  userConfigRootPath?: string;
 }
 
 export interface AppyIntegrationResult {
@@ -76,7 +78,7 @@ export interface AppyIntegrationResult {
 export interface IAppyPlatformAdapter {
   readonly platformName: SupportedApplyPlatform;
 
-  resolveTarget(projectPath: string): Promise<AppyConfigTarget>;
+  resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
 
   applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult>;
 }

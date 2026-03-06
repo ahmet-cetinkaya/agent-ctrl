@@ -22,7 +22,7 @@ describe("AntigravityAdapter", () => {
   it("writes managed rules/workflow style appy integration", async () => {
     const result = await adapter.applyAppyIntegration({ projectPath });
     expect(result.status).toBe("success");
-    expect(result.configPath).toContain(".antigravity/rules/appy.md");
+    expect(result.configPath).toContain("antigravity/rules/appy.md");
 
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain("agent-ctrl apply antigravity");

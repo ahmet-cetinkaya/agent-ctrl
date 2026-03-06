@@ -21,14 +21,14 @@ describe("Platform customization surface contract", () => {
 
   it("resolves documented customization surfaces for all supported platforms", async () => {
     const expectedPathFragments: Record<string, string> = {
-      opencode: ".opencode/commands/appy.md",
-      gemini: ".gemini/commands/appy.toml",
-      qwen: ".qwen/commands/appy.toml",
-      kilo: ".kilocode/workflows/appy.md",
-      antigravity: ".antigravity/rules/appy.md",
-      codex: ".codex/skills/appy/SKILL.md",
-      cursor: ".cursor/rules/appy.mdc",
-      windsurf: ".windsurf/rules/appy.md",
+      opencode: "opencode/commands/appy.md",
+      gemini: "gemini/commands/appy.toml",
+      qwen: "qwen/commands/appy.toml",
+      kilo: "kilo/workflows/appy.md",
+      antigravity: "antigravity/rules/appy.md",
+      codex: "codex/skills/appy/SKILL.md",
+      cursor: "cursor/rules/appy.mdc",
+      windsurf: "windsurf/rules/appy.md",
     };
 
     for (const platform of registry.listSupportedPlatforms()) {

@@ -45,8 +45,8 @@ describe("ApplyCommand", () => {
 
     expect(result.data.platform).toBe("gemini");
     expect(result.data.status).toBe("success");
-    expect(result.data.scope).toBe("project");
-    expect(result.data.configPath).toContain(".gemini/commands/appy.toml");
+    expect(result.data.scope).toBe("user");
+    expect(result.data.configPath).toContain("gemini/commands/appy.toml");
   });
 
   it("returns unchanged on deterministic rerun", async () => {
@@ -77,5 +77,19 @@ describe("ApplyCommand", () => {
     if (!result.success) return;
 
     expect(result.data.warnings).toContain("Dry run mode: no file system changes were written.");
+  });
+
+  it("applies to project scope when requested", async () => {
+    const result = await command.execute({
+      projectPath,
+      platform: "windsurf",
+      targetScope: "project",
+    });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.data.scope).toBe("project");
+    expect(result.data.configPath).toContain(".windsurf/rules/appy.md");
   });
 });

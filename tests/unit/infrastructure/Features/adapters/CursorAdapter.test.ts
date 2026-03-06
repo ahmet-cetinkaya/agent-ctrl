@@ -21,9 +21,9 @@ describe("CursorAdapter", () => {
     await rm(projectPath, { recursive: true, force: true });
   });
 
-  it("writes project-scope rule content by default", async () => {
+  it("writes user-scope rule content by default", async () => {
     const result = await adapter.applyAppyIntegration({ projectPath });
-    expect(result.scope).toBe("project");
+    expect(result.scope).toBe("user");
 
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain("agent-ctrl apply cursor");
@@ -33,5 +33,14 @@ describe("CursorAdapter", () => {
     process.env.AGENT_CTRL_CURSOR_SCOPE = "user";
     const result = await adapter.applyAppyIntegration({ projectPath });
     expect(result.scope).toBe("user");
+  });
+
+  it("supports explicit project scope selection", async () => {
+    const result = await adapter.applyAppyIntegration({
+      projectPath,
+      targetScope: "project",
+    });
+    expect(result.scope).toBe("project");
+    expect(result.configPath).toContain(".cursor/rules/appy.mdc");
   });
 });

@@ -22,7 +22,7 @@ describe("KiloAdapter", () => {
   it("creates managed workflow content", async () => {
     const result = await adapter.applyAppyIntegration({ projectPath });
     expect(result.status).toBe("success");
-    expect(result.configPath).toContain(".kilocode/workflows/appy.md");
+    expect(result.configPath).toContain("kilo/workflows/appy.md");
 
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain("agent-ctrl apply kilo");

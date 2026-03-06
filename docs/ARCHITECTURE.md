@@ -72,7 +72,7 @@ Each target platform uses a specialized adapter to apply a managed `appy` integr
 ```typescript
 interface IAppyPlatformAdapter {
   // Resolve target path and scope (project/user) for selected platform
-  resolveTarget(projectPath: string): Promise<AppyConfigTarget>;
+  resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
 
   // Apply deterministic appy integration
   applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult>;

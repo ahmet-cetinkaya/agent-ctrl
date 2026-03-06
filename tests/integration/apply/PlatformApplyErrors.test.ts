@@ -41,6 +41,7 @@ describe("Selected-platform apply error reporting", () => {
     const result = await command.execute({
       projectPath: projectAsFile,
       platform: "gemini",
+      targetScope: "project",
     });
 
     expect(result.success).toBe(false);

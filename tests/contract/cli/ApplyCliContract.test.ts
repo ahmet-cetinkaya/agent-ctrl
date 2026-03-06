@@ -28,6 +28,8 @@ describe("Apply CLI contract", () => {
     expect(help).toContain("opencode");
     expect(help).toContain("gemini");
     expect(help).toContain("windsurf");
+    expect(help).toContain("--project");
+    expect(help).toContain("--path");
   });
 
   it("maps success and unchanged outcomes to successful execution", async () => {
@@ -57,5 +59,16 @@ describe("Apply CLI contract", () => {
     if (!result.success) {
       expect(result.error).toBeInstanceOf(UserError);
     }
+  });
+
+  it("supports project scope execution when explicitly requested", async () => {
+    const result = await command.execute({
+      projectPath,
+      platform: "opencode",
+      targetScope: "project",
+    });
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.scope).toBe("project");
   });
 });

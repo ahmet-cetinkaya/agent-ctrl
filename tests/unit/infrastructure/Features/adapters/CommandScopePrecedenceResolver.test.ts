@@ -27,15 +27,15 @@ describe("CommandScopePrecedenceResolver", () => {
     await rm(projectPath, { recursive: true, force: true });
   });
 
-  it("prefers project scope by default", () => {
+  it("prefers user scope by default", () => {
     const target = resolver.resolve({
       platform: "gemini",
       projectPath,
       projectRelativePath: ".gemini/commands/appy.toml",
-      userRelativePath: ".gemini/commands/appy.toml",
+      userRelativePath: "gemini/commands/appy.toml",
     });
 
-    expect(target.scope).toBe("project");
+    expect(target.scope).toBe("user");
     expect(target.configPath).toContain(projectPath);
   });
 
@@ -45,7 +45,7 @@ describe("CommandScopePrecedenceResolver", () => {
       platform: "codex",
       projectPath,
       projectRelativePath: ".codex/skills/appy/SKILL.md",
-      userRelativePath: ".codex/skills/appy/SKILL.md",
+      userRelativePath: "codex/skills/appy/SKILL.md",
     });
 
     expect(target.scope).toBe("user");
@@ -57,9 +57,22 @@ describe("CommandScopePrecedenceResolver", () => {
       platform: "cursor",
       projectPath,
       projectRelativePath: ".cursor/rules/appy.mdc",
-      userRelativePath: ".cursor/rules/appy.mdc",
+      userRelativePath: "cursor/rules/appy.mdc",
     });
 
     expect(target.scope).toBe("user");
+  });
+
+  it("supports explicit project scope selection", () => {
+    const target = resolver.resolve({
+      platform: "cursor",
+      projectPath,
+      projectRelativePath: ".cursor/rules/appy.mdc",
+      userRelativePath: "cursor/rules/appy.mdc",
+      preferredScope: "project",
+    });
+
+    expect(target.scope).toBe("project");
+    expect(target.configPath).toContain(".cursor/rules/appy.mdc");
   });
 });

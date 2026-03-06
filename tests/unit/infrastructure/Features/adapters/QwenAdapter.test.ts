@@ -22,7 +22,7 @@ describe("QwenAdapter", () => {
   it("creates managed appy command for qwen", async () => {
     const result = await adapter.applyAppyIntegration({ projectPath });
     expect(result.status).toBe("success");
-    expect(result.configPath).toContain(".qwen/commands/appy.toml");
+    expect(result.configPath).toContain("qwen/commands/appy.toml");
 
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain("agent-ctrl apply qwen");

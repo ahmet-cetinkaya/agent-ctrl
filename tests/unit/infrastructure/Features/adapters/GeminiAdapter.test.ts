@@ -22,7 +22,7 @@ describe("GeminiAdapter", () => {
   it("creates managed toml command content", async () => {
     const result = await adapter.applyAppyIntegration({ projectPath });
     expect(result.status).toBe("success");
-    expect(result.configPath).toContain(".gemini/commands/appy.toml");
+    expect(result.configPath).toContain("gemini/commands/appy.toml");
 
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain('name = "appy"');

@@ -1,18 +1,20 @@
 import { CommandScopePrecedenceResolver } from "@/infrastructure/features/apply/adapters/CommandScopePrecedenceResolver";
 import { BaseTextAppyAdapter } from "@/infrastructure/features/apply/adapters/BaseTextAppyAdapter";
-import type { AppyConfigTarget } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import type { AppyConfigTarget, AppyIntegrationRequest } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 
 export class QwenAdapter extends BaseTextAppyAdapter {
   readonly platformName = "qwen" as const;
 
   private readonly scopeResolver = new CommandScopePrecedenceResolver();
 
-  async resolveTarget(projectPath: string): Promise<AppyConfigTarget> {
+  async resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
     return this.scopeResolver.resolve({
       platform: this.platformName,
       projectPath,
       projectRelativePath: ".qwen/commands/appy.toml",
-      userRelativePath: ".qwen/commands/appy.toml",
+      userRelativePath: "qwen/commands/appy.toml",
+      preferredScope: request?.targetScope,
+      userConfigRootPath: request?.userConfigRootPath,
     });
   }
 

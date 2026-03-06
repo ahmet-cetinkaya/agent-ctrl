@@ -27,6 +27,7 @@ describe("Selected-platform remediation-time validation", () => {
     const failed = await command.execute({
       projectPath: brokenProjectPath,
       platform: "gemini",
+      targetScope: "project",
     });
     expect(failed.success).toBe(false);
 
@@ -35,6 +36,7 @@ describe("Selected-platform remediation-time validation", () => {
     const recovered = await command.execute({
       projectPath: fixedProjectPath,
       platform: "gemini",
+      targetScope: "project",
     });
     expect(recovered.success).toBe(true);
     if (!recovered.success) return;
