@@ -55,4 +55,54 @@ describe("Mcp interpolation and env", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("unquotes quoted env values correctly", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mcp-env-quote-"));
+    const envPath = join(dir, ".env");
+
+    try {
+      await writeFile(envPath, `
+DOUBLE_QUOTED="value with spaces"
+SINGLE_QUOTED='another value'
+UNQUOTED=noquotes
+EMPTY_QUOTES=""
+`);
+
+      const loader = new McpEnvFileLoader();
+      const loaded = await loader.load(envPath);
+
+      expect(loaded.variables.DOUBLE_QUOTED).toBe("value with spaces");
+      expect(loaded.variables.SINGLE_QUOTED).toBe("another value");
+      expect(loaded.variables.UNQUOTED).toBe("noquotes");
+      expect(loaded.variables.EMPTY_QUOTES).toBe("");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects malformed env variable names", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mcp-env-malformed-"));
+    const envPath = join(dir, ".env");
+
+    try {
+      await writeFile(envPath, `
+VALID_NAME=value
+INVALID-NAME=value
+123INVALID=value
+INVALID WITH SPACES=value
+VALID_WITH_UNDERSCORE=value
+`);
+
+      const loader = new McpEnvFileLoader();
+      const loaded = await loader.load(envPath);
+
+      expect(loaded.malformed).toBe(true);
+      expect(loaded.malformedLines).toHaveLength(3);
+      expect(loaded.variables.VALID_NAME).toBe("value");
+      expect(loaded.variables.VALID_WITH_UNDERSCORE).toBe("value");
+      expect(loaded.variables["INVALID-NAME"]).toBeUndefined();
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

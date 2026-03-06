@@ -41,6 +41,11 @@ vite.config.ts.timestamp-*
 AGENTS.md
 CLAUDE.md
 
+# Ensure .env files in MCP directory are never committed
+.agent-ctrl/mcps/.env
+.mcps/.env
+**/mcps/.env
+
 # Editor and OS files
 .DS_Store
 Thumbs.db

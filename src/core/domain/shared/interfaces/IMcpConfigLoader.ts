@@ -44,5 +44,24 @@ export interface McpLoadResult {
 }
 
 export interface IMcpConfigLoader {
+  /**
+   * Loads and validates all MCP server configurations from the project's MCPs directory.
+   *
+   * @param projectPath - Absolute path to the project root. MCP configs are searched for
+   *                      in `<config-root>/mcps/` where config-root is determined by
+   *                      AGENT_CTRL_CONFIG_DIR env var or `.agent-ctrl` directory.
+   * @returns Result containing loaded servers and detailed report, or error if loading
+   *          itself fails (vs. individual file failures which are reported in the report).
+   *
+   * @example
+   * ```ts
+   * const result = await loader.load("/my/project");
+   * if (result.success) {
+   *   console.log(`Loaded ${result.data.report.totalLoaded} servers`);
+   * } else {
+   *   console.error(`Failed to load: ${result.error.message}`);
+   * }
+   * ```
+   */
   load(projectPath: string): Promise<Result<McpLoadResult, Error>>;
 }

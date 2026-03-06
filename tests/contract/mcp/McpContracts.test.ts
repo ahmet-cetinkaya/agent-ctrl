@@ -92,4 +92,91 @@ describe("MCP contracts", () => {
       await rm(projectPath, { recursive: true, force: true });
     }
   });
+
+  it("detects duplicate server IDs across multiple files and reports errors", async () => {
+    const projectPath = await mkdtemp(join(tmpdir(), "mcp-conflict-"));
+
+    try {
+      const mcpDir = join(projectPath, ".agent-ctrl", "mcps");
+      await mkdir(mcpDir, { recursive: true });
+
+      // Create two files with duplicate server ID
+      await writeFile(
+        join(mcpDir, "file1.json"),
+        JSON.stringify({
+          mcpServers: {
+            "duplicate-server": { command: "npx", args: ["server1"] }
+          }
+        }, null, 2)
+      );
+
+      await writeFile(
+        join(mcpDir, "file2.json"),
+        JSON.stringify({
+          mcpServers: {
+            "duplicate-server": { command: "npx", args: ["server2"] }
+          }
+        }, null, 2)
+      );
+
+      const aggregator = new McpServerAggregator();
+      const result = await aggregator.load(projectPath);
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      expect(result.data.report.totalLoaded).toBe(0);
+      expect(result.data.report.totalFailed).toBe(2);
+
+      const conflictIssues = result.data.report.fileResults
+        .flatMap(f => f.issues)
+        .filter(i => i.code === "MCP_SERVER_CONFLICT");
+
+      expect(conflictIssues.length).toBeGreaterThanOrEqual(2);
+      expect(conflictIssues[0].message).toContain("duplicate-server");
+    } finally {
+      await rm(projectPath, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects non-string env values", async () => {
+    const projectPath = await mkdtemp(join(tmpdir(), "mcp-env-invalid-"));
+
+    try {
+      const mcpDir = join(projectPath, ".agent-ctrl", "mcps");
+      await mkdir(mcpDir, { recursive: true });
+
+      await writeFile(
+        join(mcpDir, "invalid-env.json"),
+        JSON.stringify({
+          mcpServers: {
+            test: {
+              command: "npx",
+              args: ["test"],
+              env: {
+                VALID: "string",
+                INVALID_NUMBER: 123,
+                INVALID_BOOL: true,
+                INVALID_OBJECT: { key: "value" }
+              }
+            }
+          }
+        }, null, 2)
+      );
+
+      const aggregator = new McpServerAggregator();
+      const result = await aggregator.load(projectPath);
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      const envIssues = result.data.report.fileResults
+        .flatMap(f => f.issues)
+        .filter(i => i.code === "MCP_ENV_VALUE_INVALID");
+
+      expect(envIssues.length).toBeGreaterThanOrEqual(3);
+    } finally {
+      await rm(projectPath, { recursive: true, force: true });
+    }
+  });
 });

@@ -9,6 +9,7 @@ import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ClaudeAdapter } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
 import { createMcpConfigLoader } from "@/infrastructure/features/apply";
 import type { McpFileResult } from "@/core/domain/shared/interfaces/IMcpConfigLoader";
+import { PathSecurity } from "@/infrastructure/shared/utils/PathSecurity";
 
 export interface ApplyCommandOptions {
   projectPath: string;
@@ -46,10 +47,19 @@ export class ApplyCommand {
       warnings.push("No artifacts found in project. Configuration file will be created anyway.");
     }
 
+    // Validate project path for security before loading MCP configurations
+    const pathSecurity = new PathSecurity(projectPath);
+    const pathValidation = pathSecurity.resolveSafe(projectPath);
+    if (!pathValidation.safe) {
+      return err(new UserError(`Invalid project path: ${pathValidation.error}`));
+    }
+
     const mcpLoader = createMcpConfigLoader();
     const mcpResult = await mcpLoader.load(projectPath);
     if (!mcpResult.success) {
-      return err(new SystemError(`Failed to load MCP configurations: ${mcpResult.error.message}`));
+      const errorDetails = mcpResult.error.message;
+      const enhancedMessage = `Failed to load MCP configurations from ${projectPath}. Check your MCP JSON files in .agent-ctrl/mcps/ for syntax errors. Details: ${errorDetails}`;
+      return err(new SystemError(enhancedMessage));
     }
 
     const mcpLoad = mcpResult.data;

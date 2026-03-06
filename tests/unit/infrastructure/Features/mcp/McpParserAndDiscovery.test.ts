@@ -37,4 +37,14 @@ describe("Mcp parser and discovery", () => {
     const badResult = parser.parse("/tmp/test.json", ["not-object"]);
     expect(badResult.issues.some((issue) => issue.code === "MCP_INVALID_JSON_ROOT")).toBe(true);
   });
+
+  it("handles empty mcpServers object without errors", () => {
+    const parser = new McpServersParser();
+    const result = parser.parse("/tmp/empty.json", {
+      mcpServers: {}
+    });
+
+    expect(result.issues).toHaveLength(0);
+    expect(result.servers).toHaveLength(0);
+  });
 });

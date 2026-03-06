@@ -10,7 +10,15 @@ export class McpFileDiscovery {
         .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".json"))
         .map((entry) => resolve(mcpDir, entry.name))
         .sort((a, b) => a.localeCompare(b));
-    } catch {
+    } catch (error) {
+      const err = error as NodeJS.ErrnoException;
+      // Directory doesn't exist - this is expected and fine
+      if (err.code === 'ENOENT' || err.code === 'ENOTDIR') {
+        return [];
+      }
+      // Log unexpected errors for debugging
+      console.error(`[MCP] Unexpected error discovering MCP files in ${mcpDir}:`, error);
+      // Still return empty to allow graceful degradation
       return [];
     }
   }

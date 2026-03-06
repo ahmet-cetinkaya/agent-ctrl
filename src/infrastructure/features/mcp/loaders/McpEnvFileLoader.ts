@@ -45,7 +45,12 @@ export class McpEnvFileLoader {
         variables,
         malformedLines,
       };
-    } catch {
+    } catch (error) {
+      // Log unexpected errors for debugging while still allowing graceful degradation
+      const err = error as NodeJS.ErrnoException;
+      if (err.code !== 'ENOENT') {
+        console.error(`[MCP] Unexpected error reading .env file at ${envPath}:`, error);
+      }
       return {
         exists: false,
         malformed: false,

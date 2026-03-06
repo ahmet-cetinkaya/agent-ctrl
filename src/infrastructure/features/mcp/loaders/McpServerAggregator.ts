@@ -45,6 +45,29 @@ export class McpServerAggregator implements IMcpConfigLoader {
   private readonly reportBuilder = new McpLoadReportBuilder();
   private readonly formatter = new McpErrorFormatter();
 
+  /**
+   * Loads and aggregates MCP server configurations through a multi-phase pipeline:
+   *
+   * PHASE 1 - Discovery: Locate MCP JSON files in <config-root>/mcps/
+   * PHASE 2 - Env Loading: Load MCPs/.env if present
+   * PHASE 3 - File Processing (per file):
+   *   3a. Read and parse JSON
+   *   3b. Extract mcpServers entries
+   *   3c. Validate each entry (command, args, env, cwd)
+   *   3d. Scan for ${VAR} placeholders
+   *   3e. Validate placeholder resolution
+   *   3f. Resolve placeholders and compose env
+   * PHASE 4 - Conflict Detection: Find duplicate serverId across files
+   * PHASE 5 - Finalization: Build load report with per-file status
+   *
+   * ERROR HANDLING STRATEGY:
+   * - Individual file/entry failures are isolated (valid entries still load)
+   * - Catastrophic failures (e.g., filesystem errors) return err()
+   * - All validation issues are collected and reported
+   *
+   * @param projectPath - Project root directory
+   * @returns ok(servers + report) or err(catastrophic error)
+   */
   async load(projectPath: string) {
     try {
       const startedAt = new Date();
@@ -217,7 +240,13 @@ export class McpServerAggregator implements IMcpConfigLoader {
 
       return ok(result);
     } catch (error) {
-      return err(new Error(`Failed to aggregate MCP servers: ${String(error)}`));
+      const nodeErr = error as NodeJS.ErrnoException;
+      // Only catch expected I/O errors, re-throw programming errors
+      if (nodeErr.code === 'ENOENT' || nodeErr.code === 'EACCES' || nodeErr.code === 'EPERM') {
+        return err(new Error(`Failed to aggregate MCP servers: ${nodeErr.message}`));
+      }
+      // Re-throw unexpected errors (programming errors like TypeError, ReferenceError)
+      throw error;
     }
   }
 
