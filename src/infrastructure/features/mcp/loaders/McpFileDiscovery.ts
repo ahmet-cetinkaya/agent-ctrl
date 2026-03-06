@@ -2,6 +2,8 @@ import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 export class McpFileDiscovery {
+  constructor() {}
+
   async discover(mcpDir: string): Promise<string[]> {
     try {
       const entries = await readdir(mcpDir, { withFileTypes: true });

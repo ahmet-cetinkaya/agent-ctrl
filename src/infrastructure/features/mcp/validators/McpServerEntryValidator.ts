@@ -14,6 +14,8 @@ export interface ValidatedMcpServer {
 export class McpServerEntryValidator {
   private readonly formatter = new McpErrorFormatter();
 
+  constructor() {}
+
   validate(
     serverId: string,
     filePath: string,

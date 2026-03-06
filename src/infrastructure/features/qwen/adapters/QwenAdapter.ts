@@ -7,6 +7,10 @@ export class QwenAdapter extends BaseTextAppyAdapter {
 
   private readonly scopeResolver = new CommandScopePrecedenceResolver();
 
+  constructor() {
+    super();
+  }
+
   async resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
     return this.scopeResolver.resolve({
       platform: this.platformName,

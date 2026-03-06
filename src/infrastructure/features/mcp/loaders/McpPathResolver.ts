@@ -8,6 +8,8 @@ export interface McpPaths {
 }
 
 export class McpPathResolver {
+  constructor() {}
+
   resolve(projectPath: string): McpPaths {
     const configuredRoot = process.env.AGENT_CTRL_CONFIG_DIR;
     const defaultConfigRoot = resolve(projectPath, ".agent-ctrl");

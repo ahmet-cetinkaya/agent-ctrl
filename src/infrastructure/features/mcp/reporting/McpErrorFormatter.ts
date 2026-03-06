@@ -1,6 +1,8 @@
 import type { McpIssue } from "@/core/domain/shared/interfaces/IMcpConfigLoader";
 
 export class McpErrorFormatter {
+  constructor() {}
+
   createIssue(params: {
     severity: "warning" | "error";
     code: string;

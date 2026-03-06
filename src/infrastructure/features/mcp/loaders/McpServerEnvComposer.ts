@@ -1,4 +1,6 @@
 export class McpServerEnvComposer {
+  constructor() {}
+
   /**
    * Composes the final runtime environment for an MCP server by merging base .env
    * variables with server-specific env overrides.

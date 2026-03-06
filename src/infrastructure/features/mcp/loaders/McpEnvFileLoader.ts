@@ -8,6 +8,8 @@ export interface LoadedMcpEnv {
 }
 
 export class McpEnvFileLoader {
+  constructor() {}
+
   async load(envPath: string): Promise<LoadedMcpEnv> {
     try {
       const content = await readFile(envPath, "utf-8");

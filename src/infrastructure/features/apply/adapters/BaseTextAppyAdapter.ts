@@ -12,6 +12,8 @@ import { AppyMergePolicy } from "@/infrastructure/features/apply/adapters/AppyMe
 export abstract class BaseTextAppyAdapter implements IAppyPlatformAdapter {
   abstract readonly platformName: SupportedApplyPlatform;
 
+  protected constructor() {}
+
   abstract resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
 
   protected abstract buildDesiredContent(target: AppyConfigTarget): string;

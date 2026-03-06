@@ -15,6 +15,8 @@ export interface ParseMcpServersResult {
 export class McpServersParser {
   private readonly formatter = new McpErrorFormatter();
 
+  constructor() {}
+
   parse(filePath: string, document: unknown): ParseMcpServersResult {
     if (!this.isObject(document)) {
       return {
