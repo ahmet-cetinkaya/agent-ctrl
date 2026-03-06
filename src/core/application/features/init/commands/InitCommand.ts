@@ -13,7 +13,10 @@ export interface InitCommandResult {
 }
 
 export class InitCommand {
-  private static readonly DIRECTORIES = ["rules", "skills", "agents", "commands"];
+  private static readonly BASE_DIRECTORIES = ["rules", "skills", "agents", "commands"];
+  private static readonly CONFIG_ROOT_DIR = ".agent-ctrl";
+  private static readonly MCP_DIR = "mcps";
+  private static readonly GITKEEP_FILE = ".gitkeep";
   private static readonly CONFIG_FILE = "agent-ctrl.config.json";
   private fileSystem: IFileSystem;
 
@@ -29,8 +32,11 @@ export class InitCommand {
       return validationResult as Result<never, Error>;
     }
 
+    const mcpDirectory = this.getMcpDirectoryForTarget(targetPath);
+    const directories = this.getDirectoriesForTarget(mcpDirectory);
     const createdDirs: string[] = [];
-    for (const dir of InitCommand.DIRECTORIES) {
+    const createdFiles: string[] = [];
+    for (const dir of directories) {
       const dirPath = this.fileSystem.resolve(targetPath, dir);
       try {
         await this.fileSystem.mkdir(dirPath, { recursive: true });
@@ -38,19 +44,28 @@ export class InitCommand {
       } catch (error) {
         return err(new SystemError(`Permission denied: cannot create directory ${dir}`));
       }
+
+      const gitkeepPath = this.fileSystem.resolve(dirPath, InitCommand.GITKEEP_FILE);
+      try {
+        await this.fileSystem.writeFile(gitkeepPath, "", "utf-8");
+        createdFiles.push(`${dir}/${InitCommand.GITKEEP_FILE}`);
+      } catch (error) {
+        return err(new SystemError(`Permission denied: cannot create ${InitCommand.GITKEEP_FILE} in directory ${dir}`));
+      }
     }
 
     const configPath = this.fileSystem.resolve(targetPath, InitCommand.CONFIG_FILE);
     try {
       const configContent = await this.getConfigTemplate();
       await this.fileSystem.writeFile(configPath, configContent, "utf-8");
+      createdFiles.push(InitCommand.CONFIG_FILE);
     } catch (error) {
       return err(new SystemError(`Permission denied: cannot create config file`));
     }
 
     return ok({
       createdDirectories: createdDirs,
-      createdFiles: [InitCommand.CONFIG_FILE],
+      createdFiles,
     });
   }
 
@@ -69,6 +84,15 @@ export class InitCommand {
     } catch (error) {
       return ok(true);
     }
+  }
+
+  private getDirectoriesForTarget(mcpDirectory: string): string[] {
+    return [...InitCommand.BASE_DIRECTORIES, mcpDirectory];
+  }
+
+  private getMcpDirectoryForTarget(targetPath: string): string {
+    const isConfigRootTarget = new RegExp(`(^|[\\\\/])${InitCommand.CONFIG_ROOT_DIR}$`).test(targetPath);
+    return isConfigRootTarget ? InitCommand.MCP_DIR : `${InitCommand.CONFIG_ROOT_DIR}/${InitCommand.MCP_DIR}`;
   }
 
   private async getConfigTemplate(): Promise<string> {

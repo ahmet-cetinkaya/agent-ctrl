@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { ListSkillsQuery } from '@/core/application/features/skill/queries/ListSkillsQuery';
-import { SkillScanner } from '@/infrastructure/features/skill/scanners/SkillScanner';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -9,11 +8,9 @@ import { ArtifactType } from '@/core/domain/shared/value-objects/ArtifactType';
 describe('ListSkillsQuery', () => {
   let query: ListSkillsQuery;
   let testDir: string;
-  let scanner: SkillScanner;
 
   beforeEach(async () => {
-    scanner = new SkillScanner();
-    query = new ListSkillsQuery(scanner);
+    query = new ListSkillsQuery();
     testDir = resolve(tmpdir(), `skills-query-test-${Date.now()}`);
     await mkdir(testDir, { recursive: true });
   });

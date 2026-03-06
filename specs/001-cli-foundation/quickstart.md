@@ -259,11 +259,11 @@ bun run format
 
 ## Environment Variables
 
-| Variable                 | Description                                 | Default       |
-| ------------------------ | ------------------------------------------- | ------------- |
-| `AGENT_CTRL_CLAUDE_HOME` | Override base home used for `~/.claude`     | User home dir |
-| `AGENT_CTRL_VERBOSE`     | Enable debug logging                        | `false`       |
-| `NODE_ENV`               | Environment mode                            | `development` |
+| Variable                 | Description                             | Default       |
+| ------------------------ | --------------------------------------- | ------------- |
+| `AGENT_CTRL_CLAUDE_HOME` | Override base home used for `~/.claude` | User home dir |
+| `AGENT_CTRL_VERBOSE`     | Enable debug logging                    | `false`       |
+| `NODE_ENV`               | Environment mode                        | `development` |
 
 ## Troubleshooting
 

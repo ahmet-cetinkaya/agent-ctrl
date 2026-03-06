@@ -7,7 +7,6 @@ import { createSkillCommand } from "@/presentation/cli/features/skill/commands/s
 import { createAgentCommand } from "@/presentation/cli/features/agent/commands/agent";
 import { createApplyCommand } from "@/presentation/cli/features/apply/commands/apply";
 import { ErrorHandler } from "@/presentation/cli/shared/middleware/errorHandler";
-import { createAgentListCommand } from "@/presentation/cli/features/agent/commands/agent_ls";
 
 const VERSION = "0.1.0";
 
@@ -21,7 +20,6 @@ program
   .option("-v, --verbose", "Enable verbose output", false)
   .option("-q, --quiet", "Suppress warnings", false);
 
-// TODO: Register commands here (T030, T050, T069)
 program.addCommand(createInitCommand());
 program.addCommand(createRuleCommand());
 program.addCommand(createSkillCommand());

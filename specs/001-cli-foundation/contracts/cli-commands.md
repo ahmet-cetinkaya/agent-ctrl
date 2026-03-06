@@ -308,10 +308,10 @@ agent-ctrl apply <platform> [options]
 
 ### Options
 
-| Option       | Short | Type | Description                                       |
-| ------------ | ----- | ---- | ------------------------------------------------- |
-| `--dry-run`  | `-d`  | flag | Show changes without applying                     |
-| `--override` | `-o`  | flag | Clean existing managed artifacts before applying  |
+| Option       | Short | Type | Description                                      |
+| ------------ | ----- | ---- | ------------------------------------------------ |
+| `--dry-run`  | `-d`  | flag | Show changes without applying                    |
+| `--override` | `-o`  | flag | Clean existing managed artifacts before applying |
 
 ### Arguments
 
