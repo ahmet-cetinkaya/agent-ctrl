@@ -31,8 +31,13 @@ export class McpPlaceholderResolver {
     }
 
     if (typeof value === "object" && value !== null) {
-      const result: Record<string, unknown> = {};
+      // Use Object.create(null) to prevent prototype pollution attacks
+      const result: Record<string, unknown> = Object.create(null);
       for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+        // Skip dangerous prototype keys to prevent pollution
+        if (key === "__proto__" || key === "constructor") {
+          continue;
+        }
         result[key] = this.resolve(entry, variables);
       }
       return result;

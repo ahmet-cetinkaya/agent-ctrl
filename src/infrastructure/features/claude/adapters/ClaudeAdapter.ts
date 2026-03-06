@@ -15,8 +15,8 @@ import type { Agent } from "@/core/domain/shared/entities/Agent";
 export class ClaudeAdapter implements IPlatformAdapter {
   readonly platformName = "claude";
   readonly configPath: string;
+  readonly claudeMcpConfigPath: string;
   private readonly statePath: string;
-  private readonly claudeMcpConfigPath: string;
   private readonly projectPath: string;
   private readonly claudeRoot: string;
 
@@ -267,12 +267,10 @@ export class ClaudeAdapter implements IPlatformAdapter {
 
     const mergedDocument = {
       ...normalizedExisting,
-      mcpServers: Object.fromEntries(
-        [...Object.entries(existingMcpServers), ...Object.entries(incomingMcpServers)].map(([name, value]) => [
-          name,
-          value,
-        ])
-      ),
+      mcpServers: {
+        ...existingMcpServers,
+        ...incomingMcpServers,
+      },
     };
 
     await writeFile(this.claudeMcpConfigPath, `${JSON.stringify(mergedDocument, null, 2)}\n`, "utf-8");

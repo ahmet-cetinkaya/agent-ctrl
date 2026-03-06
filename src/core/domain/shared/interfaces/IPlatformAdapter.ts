@@ -3,6 +3,7 @@ import type { Artifact } from "@/core/domain/shared/types/Artifact";
 export interface IPlatformAdapter {
   readonly platformName: string;
   readonly configPath: string;
+  readonly claudeMcpConfigPath?: string;
 
   /**
    * Generate platform-specific configuration from artifacts

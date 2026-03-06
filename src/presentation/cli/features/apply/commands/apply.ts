@@ -2,7 +2,6 @@ import { Command } from "commander";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
-import { homedir } from "node:os";
 import { resolve } from "node:path";
 
 export function createApplyCommand(): Command {
@@ -44,9 +43,9 @@ export function createApplyCommand(): Command {
           mcpFilesFailed,
           mcpFilesSkipped,
           configPath,
+          claudeMcpConfigPath,
           warnings,
         } = result.data;
-        const claudeMcpPath = resolve(process.env.AGENT_CTRL_CLAUDE_HOME || homedir(), ".claude.json");
 
         if (options.dryRun) {
           console.log(`[Dry run] Would apply ${rulesApplied} rules to Claude Code`);
@@ -56,7 +55,7 @@ export function createApplyCommand(): Command {
             `[Dry run] MCP servers loaded: ${mcpServersLoaded} (files discovered: ${mcpFilesDiscovered}, failed entries: ${mcpFilesFailed}, skipped files: ${mcpFilesSkipped})`
           );
           console.log(`\nWould write to: ${configPath}`);
-          console.log(`[Dry run] Would write Claude MCP configuration to: ${claudeMcpPath}`);
+          console.log(`[Dry run] Would write Claude MCP configuration to: ${claudeMcpConfigPath}`);
         } else {
           if (rulesApplied > 0) console.log(`✓ Applied ${rulesApplied} rules to Claude Code`);
           if (skillsApplied > 0) console.log(`✓ Applied ${skillsApplied} skills to Claude Code`);
@@ -65,7 +64,7 @@ export function createApplyCommand(): Command {
             `✓ MCP servers loaded: ${mcpServersLoaded} (files discovered: ${mcpFilesDiscovered}, failed entries: ${mcpFilesFailed}, skipped files: ${mcpFilesSkipped})`
           );
           console.log(`\nConfiguration written to: ${configPath}`);
-          console.log(`MCP configuration written to: ${claudeMcpPath}`);
+          console.log(`MCP configuration written to: ${claudeMcpConfigPath}`);
         }
 
         if (warnings.length > 0) {

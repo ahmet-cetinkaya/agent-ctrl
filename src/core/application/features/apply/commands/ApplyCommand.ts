@@ -28,6 +28,7 @@ export interface ApplyCommandResult {
   mcpFilesSkipped: number;
   mcpFileResults: McpFileResult[];
   configPath: string;
+  claudeMcpConfigPath: string;
   warnings: string[];
 }
 
@@ -95,6 +96,7 @@ export class ApplyCommand {
         mcpFilesSkipped: mcpLoad.report.totalSkipped,
         mcpFileResults: mcpLoad.report.fileResults,
         configPath: adapter.configPath,
+        claudeMcpConfigPath: adapter.claudeMcpConfigPath ?? "",
         warnings,
       });
     }
@@ -121,6 +123,7 @@ export class ApplyCommand {
       mcpFilesSkipped: mcpLoad.report.totalSkipped,
       mcpFileResults: mcpLoad.report.fileResults,
       configPath: adapter.configPath,
+      claudeMcpConfigPath: adapter.claudeMcpConfigPath ?? "",
       warnings,
     });
   }
