@@ -9,6 +9,26 @@ import {
 } from "@/presentation/cli/shared/handlers/resultHandler";
 
 /**
+ * Redacts sensitive values from environment variables for safe JSON output.
+ * Masks API keys, tokens, passwords, and other sensitive credentials.
+ */
+function redactEnvVars(env: Record<string, string>): Record<string, string> {
+  const redacted: Record<string, string> = {};
+  const sensitiveKeys = [
+    "key", "token", "secret", "password", "apikey", "api_key", "auth",
+    "credential", "private", "certificate"
+  ];
+
+  for (const [key, value] of Object.entries(env)) {
+    const keyLower = key.toLowerCase();
+    const isSensitive = sensitiveKeys.some(sensitive => keyLower.includes(sensitive));
+    redacted[key] = isSensitive ? "***REDACTED***" : value;
+  }
+
+  return redacted;
+}
+
+/**
  * Creates the 'mcp ls' CLI subcommand for listing all MCP servers in the project.
  *
  * The mcp ls subcommand lists all MCP server configurations found in the mcps/ directory.
@@ -65,12 +85,18 @@ export function createMcpListCommand(): Command {
       const issues = report.fileResults.flatMap((entry) => entry.issues);
 
       if (options.json) {
+        // Redact sensitive environment variables for security
+        const safeServers = servers.map(server => ({
+          ...server,
+          env: redactEnvVars(server.env),
+        }));
+
         console.log(
           JSON.stringify(
             {
               configRoot: configRootPath,
               mcpDir,
-              servers,
+              servers: safeServers,
               report,
             },
             null,
