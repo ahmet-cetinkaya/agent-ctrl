@@ -60,8 +60,9 @@ export class CommandScopePrecedenceResolver {
     if (platform === "codex") {
       const trustedProject = (process.env.AGENT_CTRL_CODEX_TRUSTED_PROJECT ?? "true").toLowerCase();
       if (trustedProject === "false") {
-        return true;
+        return true; // Force user scope if not trusted
       }
+      return false; // For trusted projects, use project scope
     }
 
     if (platform === "cursor") {

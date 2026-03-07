@@ -94,7 +94,7 @@ describe("CommandScopePrecedenceResolver", () => {
       }
     });
 
-    it("defaults to user scope when codex trusted project env var is not set", () => {
+    it("defaults to project scope when codex trusted project env var is not set", () => {
       delete process.env.AGENT_CTRL_CODEX_TRUSTED_PROJECT;
 
       const target = resolver.resolve({
@@ -104,8 +104,8 @@ describe("CommandScopePrecedenceResolver", () => {
         userRelativePath: "codex/skills/appy/SKILL.md",
       });
 
-      // Default behavior is to use user scope
-      expect(target.scope).toBe("user");
+      // Default behavior is to use project scope for trusted projects
+      expect(target.scope).toBe("project");
     });
 
     it("handles case variations for global apply scope", () => {
