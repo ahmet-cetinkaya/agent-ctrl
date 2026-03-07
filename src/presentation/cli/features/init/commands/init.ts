@@ -5,12 +5,22 @@ import { InitCommand } from "@/core/application/features/init/commands/InitComma
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { NodeFileSystem } from "@/infrastructure/shared/file-system/NodeFileSystem";
+import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandler";
 
 export function createInitCommand(): Command {
   const command = new Command("init")
     .description("Initialize the agent-ctrl global configuration structure")
     .argument("[path]", "Target configuration root path (default: ~/.agent-ctrl)")
     .action(async (targetPath?: string) => {
+      // Validate user-provided path for security
+      if (targetPath) {
+        const pathError = validateUserPath(targetPath, "[path]");
+        if (pathError) {
+          console.error(`✗ ${pathError}`);
+          process.exit(1);
+        }
+      }
+
       const initCommand = new InitCommand(new NodeFileSystem());
       const resolvedTargetPath = targetPath ? resolve(targetPath) : resolve(homedir(), ".agent-ctrl");
 
