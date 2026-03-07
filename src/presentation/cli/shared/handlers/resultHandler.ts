@@ -8,6 +8,8 @@ import type { Result } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
+import { isAbsolute } from "node:path";
+import { homedir } from "node:os";
 
 /**
  * Result of error analysis for query failures.
@@ -189,16 +191,34 @@ export function validateUserPath(path: string, optionName: string): string | und
     return `Invalid ${optionName}: path contains null bytes`;
   }
 
-  // Check for obvious path traversal patterns
+  // Check for path traversal patterns - handle both ../ and ..\
+  // Also check for paths ending with .. (e.g., "some/path/..")
   const normalizedPath = path.replace(/\\/g, "/");
   if (normalizedPath.includes("../") || normalizedPath.includes("..\\")) {
     return `Invalid ${optionName}: path traversal detected`;
   }
+  if (normalizedPath.endsWith("..") || normalizedPath.endsWith("/..") || normalizedPath.endsWith("\\..")) {
+    return `Invalid ${optionName}: path traversal detected`;
+  }
 
-  // Check for absolute paths (may be allowed but should be explicit)
-  if (path.startsWith("/") && !path.startsWith("/home/") && !path.startsWith("/users/")) {
-    // Allow absolute paths but log a warning
-    console.warn(`Warning: ${optionName} is an absolute path. Ensure this is intentional.`);
+  // Platform-agnostic check for absolute paths outside home directory
+  if (isAbsolute(path)) {
+    const homeDir = homedir();
+    // Normalize paths for comparison
+    const normalizedHome = homeDir.replace(/\\/g, "/");
+    const normalizedPathWithoutDrive = normalizedPath.replace(/^[A-Za-z]:/, ""); // Remove Windows drive letter
+
+    // Check if path is within home directory
+    let isInHome = false;
+    if (process.platform === "win32") {
+      isInHome = normalizedPathWithoutDrive.toLowerCase().startsWith(normalizedHome.toLowerCase());
+    } else {
+      isInHome = normalizedPath.startsWith(normalizedHome);
+    }
+
+    if (!isInHome) {
+      console.warn(`Warning: ${optionName} is an absolute path outside the home directory. Ensure this is intentional.`);
+    }
   }
 
   return undefined; // Valid
