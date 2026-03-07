@@ -1,4 +1,4 @@
-import { readdir, lstat } from "node:fs/promises";
+import { readdir, lstat, realpath } from "node:fs/promises";
 import { basename, extname, relative, resolve, sep } from "node:path";
 import { FileValidator } from "@/infrastructure/shared/validation/FileValidator";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
@@ -107,6 +107,29 @@ export class CommandScanner {
 
           // Skip symlinks that point outside the project
           if (stats.isDirectory()) {
+            // Validate that the resolved symlink target is within rootPath
+            try {
+              const resolvedTarget = await realpath(entryPath);
+              // Normalize paths for comparison
+              const normalizedRoot = rootPath.replace(/\\/g, "/");
+              const normalizedTarget = resolvedTarget.replace(/\\/g, "/");
+
+              // Check if resolved target is within rootPath
+              if (!normalizedTarget.startsWith(normalizedRoot) &&
+                  !normalizedTarget.startsWith(normalizedRoot + "/")) {
+                warnings.push(
+                  `Skipped ${this.normalizeSeparators(relative(rootPath, entryPath))} (symlink points outside project)`
+                );
+                continue;
+              }
+            } catch {
+              // If realpath fails, skip the symlink
+              warnings.push(
+                `Skipped ${this.normalizeSeparators(relative(rootPath, entryPath))} (cannot resolve symlink target)`
+              );
+              continue;
+            }
+
             visitedInodes.add(inodeKey);
             await this.scanDirectory(rootPath, entryPath, artifacts, warnings, currentDepth + 1, visitedInodes);
             visitedInodes.delete(inodeKey); // Backtrack
