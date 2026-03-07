@@ -1,4 +1,6 @@
 export class McpPlaceholderResolver {
+  constructor() {}
+
   /**
    * Resolves ${VAR} placeholders in arbitrary data structures using provided variables.
    *

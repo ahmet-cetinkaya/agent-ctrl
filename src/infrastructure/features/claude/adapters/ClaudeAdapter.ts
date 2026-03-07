@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { dirname, resolve, relative, extname } from "node:path";
 import { readFile, writeFile, access, mkdir, cp, readdir, rm } from "node:fs/promises";
+import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import type {
   IPlatformAdapter,
   PlatformConfig,
@@ -11,6 +12,8 @@ import { ArtifactType } from "@/core/domain/shared/value-objects/ArtifactType";
 import type { Rule } from "@/core/domain/shared/entities/Rule";
 import type { Skill } from "@/core/domain/shared/entities/Skill";
 import type { Agent } from "@/core/domain/shared/entities/Agent";
+import { SystemError } from "@/core/domain/shared/errors/SystemError";
+import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 
 export class ClaudeAdapter implements IPlatformAdapter {
   readonly platformName = "claude";
@@ -32,30 +35,36 @@ export class ClaudeAdapter implements IPlatformAdapter {
     this.claudeMcpConfigPath = resolve(claudeHome, ".claude.json");
   }
 
-  async generateConfig(artifacts: Artifact[]): Promise<PlatformConfig> {
-    const config: PlatformConfig = {
-      rules: [],
-      skills: [],
-      agents: [],
-      mcpServers: [],
-    };
+  async generateConfig(artifacts: Artifact[]): Promise<Result<PlatformConfig, SystemError>> {
+    // Use mutable arrays during construction, then cast to readonly
+    const rules: { name: string; path: string }[] = [];
+    const skills: { name: string; path: string }[] = [];
+    const agents: { name: string; path: string }[] = [];
+    const mcpServers: {
+      name: string;
+      command: string;
+      args: string[];
+      cwd?: string;
+      env: Record<string, string>;
+      sourceFile: string;
+    }[] = [];
 
     for (const artifact of artifacts) {
       switch (artifact.type) {
         case ArtifactType.RULE:
-          config.rules.push({
+          rules.push({
             name: (artifact as Rule).id,
             path: artifact.path,
           });
           break;
         case ArtifactType.SKILL:
-          config.skills.push({
+          skills.push({
             name: (artifact as Skill).id,
             path: artifact.path,
           });
           break;
         case ArtifactType.AGENT:
-          config.agents.push({
+          agents.push({
             name: (artifact as Agent).id,
             path: artifact.path,
           });
@@ -63,44 +72,81 @@ export class ClaudeAdapter implements IPlatformAdapter {
       }
     }
 
-    return config;
+    const config: PlatformConfig = {
+      rules,
+      skills,
+      agents,
+      mcpServers,
+    };
+
+    return ok(config);
   }
 
-  async readExistingConfig(): Promise<PlatformConfig | null> {
+  async readExistingConfig(): Promise<Result<PlatformConfig | null, SystemError>> {
     try {
       const state = await readFile(this.statePath, "utf-8");
       const parsed = JSON.parse(state);
-      return {
+      return ok({
         rules: Array.isArray(parsed.rules) ? parsed.rules : [],
         skills: Array.isArray(parsed.skills) ? parsed.skills : [],
         agents: Array.isArray(parsed.agents) ? parsed.agents : [],
         mcpServers: Array.isArray(parsed.mcpServers) ? parsed.mcpServers : [],
-      };
-    } catch {
-      return null;
+      });
+    } catch (error) {
+      const nodeErr = error as NodeJS.ErrnoException;
+      if (nodeErr.code === "ENOENT") {
+        return ok(null);
+      }
+      return err(
+        new SystemError(
+          `Failed to read existing Claude config: ${error instanceof Error ? error.message : String(error)}`,
+          ERROR_IDS.FILE_READ_FAILED
+        )
+      );
     }
   }
 
-  async writeConfig(config: PlatformConfig, options?: WriteConfigOptions): Promise<void> {
+  async writeConfig(config: PlatformConfig, options?: WriteConfigOptions): Promise<Result<void, SystemError>> {
     try {
-      await access(this.claudeRoot);
-    } catch {
-      await mkdir(this.claudeRoot, { recursive: true });
+      try {
+        await access(this.claudeRoot);
+      } catch {
+        await mkdir(this.claudeRoot, { recursive: true });
+      }
+
+      if (options?.cleanExistingArtifacts) {
+        await this.cleanManagedArtifacts();
+      }
+
+      const existingContent = await readFile(this.configPath, "utf-8").catch(() => "");
+      const mergedContent = this.upsertManagedSection(existingContent, config, await this.loadRuleContents(config));
+      await writeFile(this.configPath, mergedContent, "utf-8");
+      await writeFile(this.statePath, JSON.stringify(config, null, 2), "utf-8");
+      await this.writeClaudeMcpConfig(config);
+
+      await this.syncSkills(config);
+      await this.syncAgents(config);
+      await this.syncCommands();
+
+      return ok(undefined);
+    } catch (error) {
+      const nodeErr = error as NodeJS.ErrnoException;
+      let message = "Failed to write Claude configuration";
+
+      if (nodeErr.code === "EACCES") {
+        message += ": Permission denied. Check file/directory permissions.";
+      } else if (nodeErr.code === "ENOSPC") {
+        message += ": No space left on device.";
+      } else if (nodeErr.code === "EROFS") {
+        message += ": Filesystem is read-only.";
+      } else if (error instanceof Error) {
+        message += `: ${error.message}`;
+      } else {
+        message += `: ${String(error)}`;
+      }
+
+      return err(new SystemError(message, ERROR_IDS.FILE_WRITE_FAILED));
     }
-
-    if (options?.cleanExistingArtifacts) {
-      await this.cleanManagedArtifacts();
-    }
-
-    const existingContent = await readFile(this.configPath, "utf-8").catch(() => "");
-    const mergedContent = this.upsertManagedSection(existingContent, config, await this.loadRuleContents(config));
-    await writeFile(this.configPath, mergedContent, "utf-8");
-    await writeFile(this.statePath, JSON.stringify(config, null, 2), "utf-8");
-    await this.writeClaudeMcpConfig(config);
-
-    await this.syncSkills(config);
-    await this.syncAgents(config);
-    await this.syncCommands();
   }
 
   mergeConfigs(existing: PlatformConfig | null, newConfig: PlatformConfig): PlatformConfig {
@@ -182,7 +228,9 @@ export class ClaudeAdapter implements IPlatformAdapter {
     const skillsRoot = resolve(this.claudeRoot, "skills");
     await mkdir(skillsRoot, { recursive: true });
 
-    for (const skill of config.skills) {
+    // Iterate over readonly array - spread to make it mutable for iteration
+    const skills = [...config.skills];
+    for (const skill of skills) {
       const targetPath = resolve(skillsRoot, skill.name);
       await cp(skill.path, targetPath, { recursive: true, force: true }).catch(async () => {
         // Ensure destination path exists for filesystems that need an explicit mkdir.
@@ -196,7 +244,9 @@ export class ClaudeAdapter implements IPlatformAdapter {
     const agentsRoot = resolve(this.claudeRoot, "agents");
     await mkdir(agentsRoot, { recursive: true });
 
-    for (const agent of config.agents) {
+    // Iterate over readonly array - spread to make it mutable for iteration
+    const agents = [...config.agents];
+    for (const agent of agents) {
       const source = await readFile(agent.path, "utf-8");
       const targetPath = resolve(agentsRoot, `${agent.name}.md`);
       const normalizedName = this.normalizeAgentName(agent.name);

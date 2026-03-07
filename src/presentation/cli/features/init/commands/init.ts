@@ -1,20 +1,32 @@
 import { Command } from "commander";
+import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { InitCommand } from "@/core/application/features/init/commands/InitCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { NodeFileSystem } from "@/infrastructure/shared/file-system/NodeFileSystem";
+import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandler";
 
 export function createInitCommand(): Command {
   const command = new Command("init")
-    .description("Initialize a new agent-ctrl project with standard directory structure")
-    .argument("[path]", "Target directory path (default: current directory)", ".")
-    .action(async (targetPath: string) => {
+    .description("Initialize the agent-ctrl global configuration structure")
+    .argument("[path]", "Target configuration root path (default: ~/.agent-ctrl)")
+    .action(async (targetPath?: string) => {
+      // Validate user-provided path for security
+      if (targetPath) {
+        const pathError = validateUserPath(targetPath, "[path]");
+        if (pathError) {
+          console.error(`✗ ${pathError}`);
+          process.exit(1);
+        }
+      }
+
       const initCommand = new InitCommand(new NodeFileSystem());
+      const resolvedTargetPath = targetPath ? resolve(targetPath) : resolve(homedir(), ".agent-ctrl");
 
       try {
         const result = await initCommand.execute({
-          targetPath: resolve(targetPath),
+          targetPath: resolvedTargetPath,
         });
 
         if (result.success) {
@@ -25,7 +37,8 @@ export function createInitCommand(): Command {
           for (const file of result.data.createdFiles) {
             console.log(`✓ Created ${file}`);
           }
-          console.log("\nProject initialized successfully! Add artifacts to your directories, then run:");
+          console.log(`\nConfiguration root: ${resolvedTargetPath}`);
+          console.log("Configuration initialized successfully! Add artifacts to your directories, then run:");
           console.log("  agent-ctrl rule ls");
           console.log("  agent-ctrl skill ls");
           console.log("  agent-ctrl agent ls");

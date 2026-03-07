@@ -10,6 +10,8 @@ export interface SkillScanResult {
 }
 
 export class SkillScanner {
+  constructor() {}
+
   async scan(skillsPath: string): Promise<SkillScanResult> {
     const artifacts: Skill[] = [];
     const warnings: string[] = [];

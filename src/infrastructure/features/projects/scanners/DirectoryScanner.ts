@@ -16,6 +16,8 @@ export interface ScanResult {
 }
 
 export class DirectoryScanner {
+  constructor() {}
+
   async scan(
     directoryPath: string,
     options: {

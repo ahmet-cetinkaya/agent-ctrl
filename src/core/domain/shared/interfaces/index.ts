@@ -1,5 +1,14 @@
 export type { IFileValidator } from "./IFileValidator";
-export type { IPlatformAdapter, PlatformConfig } from "./IPlatformAdapter";
+export type {
+  IPlatformAdapter,
+  PlatformConfig,
+  IAppyPlatformAdapter,
+  AppyConfigTarget,
+  AppyIntegrationRequest,
+  AppyIntegrationResult,
+  ApplyPlatformScope,
+  ApplyPlatformStatus,
+} from "./IPlatformAdapter";
 export type { IAgentScanner, AgentScanResult } from "./IAgentScanner";
 export type { IFileSystem, FileSystemEntry } from "./IFileSystem";
 export type {

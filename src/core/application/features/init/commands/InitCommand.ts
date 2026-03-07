@@ -2,6 +2,7 @@ import type { IFileSystem } from "@/core/domain/shared/interfaces/IFileSystem";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
+import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 
 export interface InitCommandOptions {
   targetPath: string;
@@ -42,7 +43,22 @@ export class InitCommand {
         await this.fileSystem.mkdir(dirPath, { recursive: true });
         createdDirs.push(dir);
       } catch (error) {
-        return err(new SystemError(`Permission denied: cannot create directory ${dir}`));
+        const nodeErr = error as NodeJS.ErrnoException;
+        let message = `Failed to create directory ${dir}`;
+
+        if (nodeErr.code === "EACCES") {
+          message += ": Permission denied. Check directory permissions.";
+        } else if (nodeErr.code === "ENOSPC") {
+          message += ": No space left on device. Free up disk space and try again.";
+        } else if (nodeErr.code === "EROFS") {
+          message += ": Filesystem is read-only. Cannot write to this location.";
+        } else if (error instanceof Error) {
+          message += `: ${error.message}`;
+        } else {
+          message += `: ${String(error)}`;
+        }
+
+        return err(new SystemError(message, ERROR_IDS.DIRECTORY_CREATE_FAILED));
       }
 
       const gitkeepPath = this.fileSystem.resolve(dirPath, InitCommand.GITKEEP_FILE);
@@ -50,7 +66,22 @@ export class InitCommand {
         await this.fileSystem.writeFile(gitkeepPath, "", "utf-8");
         createdFiles.push(`${dir}/${InitCommand.GITKEEP_FILE}`);
       } catch (error) {
-        return err(new SystemError(`Permission denied: cannot create ${InitCommand.GITKEEP_FILE} in directory ${dir}`));
+        const nodeErr = error as NodeJS.ErrnoException;
+        let message = `Failed to create ${InitCommand.GITKEEP_FILE} in directory ${dir}`;
+
+        if (nodeErr.code === "EACCES") {
+          message += ": Permission denied. Check file/directory permissions.";
+        } else if (nodeErr.code === "ENOSPC") {
+          message += ": No space left on device. Free up disk space and try again.";
+        } else if (nodeErr.code === "EROFS") {
+          message += ": Filesystem is read-only. Cannot write to this location.";
+        } else if (error instanceof Error) {
+          message += `: ${error.message}`;
+        } else {
+          message += `: ${String(error)}`;
+        }
+
+        return err(new SystemError(message, ERROR_IDS.FILE_WRITE_FAILED));
       }
     }
 
@@ -60,7 +91,22 @@ export class InitCommand {
       await this.fileSystem.writeFile(configPath, configContent, "utf-8");
       createdFiles.push(InitCommand.CONFIG_FILE);
     } catch (error) {
-      return err(new SystemError(`Permission denied: cannot create config file`));
+      const nodeErr = error as NodeJS.ErrnoException;
+      let message = "Failed to create config file";
+
+      if (nodeErr.code === "EACCES") {
+        message += ": Permission denied. Check file/directory permissions.";
+      } else if (nodeErr.code === "ENOSPC") {
+        message += ": No space left on device. Free up disk space and try again.";
+      } else if (nodeErr.code === "EROFS") {
+        message += ": Filesystem is read-only. Cannot write to this location.";
+      } else if (error instanceof Error) {
+        message += `: ${error.message}`;
+      } else {
+        message += `: ${String(error)}`;
+      }
+
+      return err(new SystemError(message, ERROR_IDS.FILE_WRITE_FAILED));
     }
 
     return ok({
@@ -82,7 +128,24 @@ export class InitCommand {
 
       return ok(true);
     } catch (error) {
-      return ok(true);
+      const nodeErr = error as NodeJS.ErrnoException;
+
+      // ENOENT is expected - directory doesn't exist yet
+      if (nodeErr.code === "ENOENT") {
+        return ok(true);
+      }
+
+      // Any other error is a real problem
+      let message = "Failed to validate target directory";
+      if (nodeErr.code === "EACCES") {
+        message += ": Permission denied accessing this location.";
+      } else if (error instanceof Error) {
+        message += `: ${error.message}`;
+      } else {
+        message += `: ${String(error)}`;
+      }
+
+      return err(new SystemError(message, ERROR_IDS.DIRECTORY_ACCESS_FAILED));
     }
   }
 

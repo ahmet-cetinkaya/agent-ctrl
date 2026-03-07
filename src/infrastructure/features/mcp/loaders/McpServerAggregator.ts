@@ -242,7 +242,7 @@ export class McpServerAggregator implements IMcpConfigLoader {
     } catch (error) {
       const nodeErr = error as NodeJS.ErrnoException;
       // Only catch expected I/O errors, re-throw programming errors
-      if (nodeErr.code === 'ENOENT' || nodeErr.code === 'EACCES' || nodeErr.code === 'EPERM') {
+      if (nodeErr.code === "ENOENT" || nodeErr.code === "EACCES" || nodeErr.code === "EPERM") {
         return err(new Error(`Failed to aggregate MCP servers: ${nodeErr.message}`));
       }
       // Re-throw unexpected errors (programming errors like TypeError, ReferenceError)

@@ -1,34 +1,44 @@
 import { Command } from "commander";
 import { ListRulesQuery } from "@/core/application/features/rule/queries/ListRulesQuery";
-import { UserError } from "@/core/domain/shared/errors/UserError";
+import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { access, constants } from "node:fs/promises";
+import {
+  handleDirectoryAccess,
+  handleQueryResult,
+  validateUserPath,
+} from "@/presentation/cli/shared/handlers/resultHandler";
 
 export function createRuleListCommand(): Command {
   return new Command("ls")
     .description("List all rules in the project")
+    .argument("[path]", "Configuration root path (default: ~/.agent-ctrl)")
     .option("-j, --json", "Output as JSON")
-    .action(async (options: { json?: boolean }) => {
-      const rulesPath = resolve(process.cwd(), "rules");
+    .action(async (targetPath: string | undefined, options: { json?: boolean }) => {
+      // Validate user-provided path
+      if (targetPath) {
+        const pathError = validateUserPath(targetPath, "--path");
+        if (pathError) {
+          console.error(`✗ ${pathError}`);
+          process.exit(1);
+        }
+      }
 
-      try {
-        await access(rulesPath, constants.R_OK);
-      } catch {
-        console.error("✗ rules/ directory not found. Run 'agent-ctrl init' first.");
+      const configRootPath = targetPath
+        ? resolve(targetPath)
+        : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
+      const rulesPath = resolve(configRootPath, "rules");
+
+      // Check directory access with specific error handling
+      const accessResult = await handleDirectoryAccess(rulesPath, "rules/");
+      if (!accessResult.success) {
+        console.error(`✗ ${accessResult.error}`);
         process.exit(1);
       }
 
       const listRulesQuery = new ListRulesQuery();
       const result = await listRulesQuery.execute({ rulesPath });
 
-      if (!result.success) {
-        if (result.error instanceof UserError) {
-          console.error(`✗ ${result.error.message}`);
-          process.exit(result.error.exitCode);
-        }
-        console.error(`✗ Unexpected error: ${result.error}`);
-        process.exit(2);
-      }
+      handleQueryResult(result);
 
       const { artifacts, warnings } = result.data;
 

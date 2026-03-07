@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach } from 'bun:test';
 import { PathResolver } from '@/infrastructure/shared/utils/PathResolver';
 
 describe('PathResolver', () => {

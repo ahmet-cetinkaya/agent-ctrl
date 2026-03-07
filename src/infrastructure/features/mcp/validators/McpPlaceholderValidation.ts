@@ -5,6 +5,8 @@ import { McpErrorFormatter } from "@/infrastructure/features/mcp/reporting/McpEr
 export class McpPlaceholderValidation {
   private readonly formatter = new McpErrorFormatter();
 
+  constructor() {}
+
   validate(
     refs: McpInterpolationRef[],
     variables: Record<string, string>,

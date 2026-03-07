@@ -2,6 +2,8 @@ import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 export class McpFileDiscovery {
+  constructor() {}
+
   async discover(mcpDir: string): Promise<string[]> {
     try {
       const entries = await readdir(mcpDir, { withFileTypes: true });
@@ -13,7 +15,7 @@ export class McpFileDiscovery {
     } catch (error) {
       const err = error as NodeJS.ErrnoException;
       // Directory doesn't exist - this is expected and fine
-      if (err.code === 'ENOENT' || err.code === 'ENOTDIR') {
+      if (err.code === "ENOENT" || err.code === "ENOTDIR") {
         return [];
       }
       // Log unexpected errors for debugging

@@ -1,249 +1,95 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
-import { mkdir, rm, writeFile, readFile, access } from "node:fs/promises";
-import { resolve } from "node:path";
-import { tmpdir } from "node:os";
 
 describe("ApplyCommand", () => {
+  let projectPath: string;
   let command: ApplyCommand;
-  let testDir: string;
-  let claudeConfigPath: string;
-  let claudeStatePath: string;
 
   beforeEach(async () => {
-    testDir = resolve(tmpdir(), `apply-command-test-${Date.now()}`);
-    await mkdir(testDir, { recursive: true });
-    await mkdir(resolve(testDir, "rules"), { recursive: true });
-    await mkdir(resolve(testDir, "skills"), { recursive: true });
-    await mkdir(resolve(testDir, "agents"), { recursive: true });
-
-    process.env.AGENT_CTRL_CLAUDE_HOME = testDir;
+    projectPath = await mkdtemp(join(tmpdir(), "apply-command-"));
+    process.env.AGENT_CTRL_HOME = projectPath;
     command = new ApplyCommand();
-    claudeConfigPath = resolve(testDir, ".claude", "CLAUDE.md");
-    claudeStatePath = resolve(testDir, ".claude", ".agent-ctrl.json");
   });
 
   afterEach(async () => {
-    delete process.env.AGENT_CTRL_CLAUDE_HOME;
-    await rm(testDir, { recursive: true, force: true });
+    delete process.env.AGENT_CTRL_HOME;
+    await rm(projectPath, { recursive: true, force: true });
   });
 
-  describe("execute", () => {
-    it("should fail for unsupported platform", async () => {
-      const result = await command.execute({
-        projectPath: testDir,
-        platform: "unsupported-platform",
-      });
-
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toBeInstanceOf(UserError);
-        expect(result.error.message).toContain("not supported");
-        expect(result.error.message).toContain("claude");
-      }
+  it("fails for unsupported platform", async () => {
+    const result = await command.execute({
+      projectPath,
+      platform: "unknown",
     });
 
-    it("should apply rules successfully to Claude", async () => {
-      await writeFile(resolve(testDir, "rules", "my-rule.md"), "# My Rule");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBeInstanceOf(UserError);
+      expect(result.error.message).toContain("Supported platforms");
+      expect(result.error.message).toContain("opencode");
+    }
+  });
 
-      const result = await command.execute({
-        projectPath: testDir,
-        platform: "claude",
-        dryRun: true,
-      });
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.rulesApplied).toBe(1);
-        expect(result.data.skillsApplied).toBe(0);
-        expect(result.data.agentsApplied).toBe(0);
-        expect(result.data.configPath).toBe(claudeConfigPath);
-      }
+  it("applies a selected platform successfully", async () => {
+    const result = await command.execute({
+      projectPath,
+      platform: "gemini",
     });
 
-    it("should apply multiple artifacts to Claude", async () => {
-      await writeFile(resolve(testDir, "rules", "rule1.md"), "# Rule 1");
-      await writeFile(resolve(testDir, "rules", "rule2.md"), "# Rule 2");
+    expect(result.success).toBe(true);
+    if (!result.success) return;
 
-      const skill1Dir = resolve(testDir, "skills", "skill1");
-      const skill2Dir = resolve(testDir, "skills", "skill2");
-      await mkdir(skill1Dir, { recursive: true });
-      await mkdir(skill2Dir, { recursive: true });
-      await writeFile(resolve(skill1Dir, "SKILL.md"), "# Skill 1");
-      await writeFile(resolve(skill2Dir, "SKILL.md"), "# Skill 2");
+    expect(result.data.platform).toBe("gemini");
+    expect(result.data.status).toBe("success");
+    expect(result.data.scope).toBe("user");
+    expect(result.data.configPath).toContain("gemini/commands/appy.toml");
+  });
 
-      await writeFile(resolve(testDir, "agents", "agent1.md"), "# Agent 1");
-      await writeFile(resolve(testDir, "agents", "agent2.md"), "# Agent 2");
+  it("returns unchanged on deterministic rerun", async () => {
+    const first = await command.execute({
+      projectPath,
+      platform: "cursor",
+    });
+    expect(first.success).toBe(true);
 
-      const result = await command.execute({
-        projectPath: testDir,
-        platform: "claude",
-        dryRun: true,
-      });
+    const second = await command.execute({
+      projectPath,
+      platform: "cursor",
+    });
+    expect(second.success).toBe(true);
+    if (!second.success) return;
 
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.data.rulesApplied).toBe(2);
-        expect(result.data.skillsApplied).toBe(2);
-        expect(result.data.agentsApplied).toBe(2);
-      }
+    expect(second.data.status).toBe("unchanged");
+  });
+
+  it("supports dry-run without writes", async () => {
+    const result = await command.execute({
+      projectPath,
+      platform: "windsurf",
+      dryRun: true,
     });
 
-    it("should write CLAUDE.md file successfully", async () => {
-      await writeFile(resolve(testDir, "rules", "my-rule.md"), "# My Rule");
+    expect(result.success).toBe(true);
+    if (!result.success) return;
 
-      const result = await command.execute({
-        projectPath: testDir,
-        platform: "claude",
-      });
+    expect(result.data.warnings).toContain("Dry run mode: no file system changes were written.");
+  });
 
-      expect(result.success).toBe(true);
-
-      const configExists = await access(claudeConfigPath).then(
-        () => true,
-        () => false
-      );
-      expect(configExists).toBe(true);
-
-      const content = await readFile(claudeConfigPath, "utf-8");
-      expect(content).toContain("<!-- agent-ctrl:start -->");
-      expect(content).toContain("<!-- agent-ctrl:end -->");
-      expect(content).toContain("# My Rule");
-      expect(content).not.toContain("<!-- agent-ctrl:config:start -->");
-      expect(content).not.toContain("<!-- agent-ctrl:config:end -->");
+  it("applies to project scope when requested", async () => {
+    const result = await command.execute({
+      projectPath,
+      platform: "windsurf",
+      targetScope: "project",
     });
 
-    it("should merge with existing state config", async () => {
-      await mkdir(resolve(testDir, ".claude"), { recursive: true });
-      const existingConfig = {
-        rules: [{ name: "existing-rule", path: "/old/path" }],
-        skills: [],
-        agents: [],
-      };
-      await writeFile(claudeStatePath, JSON.stringify(existingConfig, null, 2), "utf-8");
+    expect(result.success).toBe(true);
+    if (!result.success) return;
 
-      await writeFile(resolve(testDir, "rules", "new-rule.md"), "# New Rule");
-
-      const result = await command.execute({
-        projectPath: testDir,
-        platform: "claude",
-      });
-
-      expect(result.success).toBe(true);
-
-      const state = JSON.parse(await readFile(claudeStatePath, "utf-8"));
-      expect(state.rules.map((r: { name: string }) => r.name)).toContain("existing-rule");
-      expect(state.rules.map((r: { name: string }) => r.name)).toContain("new-rule");
-    });
-
-    it("should replace entries with same name when not using override", async () => {
-      await mkdir(resolve(testDir, ".claude"), { recursive: true });
-      const existingConfig = {
-        rules: [{ name: "my-rule", path: "/old/path" }],
-        skills: [],
-        agents: [],
-      };
-      await writeFile(claudeStatePath, JSON.stringify(existingConfig, null, 2), "utf-8");
-
-      await writeFile(resolve(testDir, "rules", "my-rule.md"), "# Updated Rule");
-
-      const result = await command.execute({
-        projectPath: testDir,
-        platform: "claude",
-      });
-
-      expect(result.success).toBe(true);
-
-      const state = JSON.parse(await readFile(claudeStatePath, "utf-8"));
-      expect(state.rules).toHaveLength(1);
-      expect(state.rules[0].path).not.toBe("/old/path");
-      expect(state.rules[0].path).toContain("my-rule.md");
-    });
-
-    it("should use override option to overwrite existing config", async () => {
-      await mkdir(resolve(testDir, ".claude"), { recursive: true });
-      const existingConfig = {
-        rules: [{ name: "existing-rule", path: "/old/path" }],
-        skills: [],
-        agents: [],
-      };
-      await writeFile(claudeStatePath, JSON.stringify(existingConfig, null, 2), "utf-8");
-
-      await writeFile(resolve(testDir, "rules", "new-rule.md"), "# New Rule");
-
-      const result = await command.execute({
-        projectPath: testDir,
-        platform: "claude",
-        override: true,
-      });
-
-      expect(result.success).toBe(true);
-
-      const state = JSON.parse(await readFile(claudeStatePath, "utf-8"));
-      expect(state.rules).toHaveLength(1);
-      expect(state.rules[0].name).toBe("new-rule");
-      expect(state.rules.map((r: { name: string }) => r.name)).not.toContain("existing-rule");
-    });
-
-    it("should clean managed skills, agents, and commands when using override", async () => {
-      await mkdir(resolve(testDir, ".claude", "skills", "old-skill"), { recursive: true });
-      await writeFile(resolve(testDir, ".claude", "skills", "old-skill", "SKILL.md"), "# Old Skill");
-
-      await mkdir(resolve(testDir, ".claude", "agents"), { recursive: true });
-      await writeFile(resolve(testDir, ".claude", "agents", "old-agent.md"), "# Old Agent");
-
-      await mkdir(resolve(testDir, ".claude", "commands"), { recursive: true });
-      await writeFile(resolve(testDir, ".claude", "commands", "old-command.md"), "# Old Command");
-
-      const newSkillDir = resolve(testDir, "skills", "new-skill");
-      await mkdir(newSkillDir, { recursive: true });
-      await writeFile(resolve(newSkillDir, "SKILL.md"), "# New Skill");
-      await writeFile(resolve(testDir, "agents", "new-agent.md"), "# New Agent");
-      await mkdir(resolve(testDir, "commands"), { recursive: true });
-      await writeFile(resolve(testDir, "commands", "new-command.md"), "# New Command");
-
-      const result = await command.execute({
-        projectPath: testDir,
-        platform: "claude",
-        override: true,
-      });
-
-      expect(result.success).toBe(true);
-
-      const oldSkillExists = await access(resolve(testDir, ".claude", "skills", "old-skill")).then(
-        () => true,
-        () => false
-      );
-      const oldAgentExists = await access(resolve(testDir, ".claude", "agents", "old-agent.md")).then(
-        () => true,
-        () => false
-      );
-      const oldCommandExists = await access(resolve(testDir, ".claude", "commands", "old-command.md")).then(
-        () => true,
-        () => false
-      );
-
-      expect(oldSkillExists).toBe(false);
-      expect(oldAgentExists).toBe(false);
-      expect(oldCommandExists).toBe(false);
-
-      const newSkillExists = await access(resolve(testDir, ".claude", "skills", "new-skill")).then(
-        () => true,
-        () => false
-      );
-      const newAgentExists = await access(resolve(testDir, ".claude", "agents", "new-agent.md")).then(
-        () => true,
-        () => false
-      );
-      const newCommandExists = await access(resolve(testDir, ".claude", "commands", "new-command.md")).then(
-        () => true,
-        () => false
-      );
-
-      expect(newSkillExists).toBe(true);
-      expect(newAgentExists).toBe(true);
-      expect(newCommandExists).toBe(true);
-    });
+    expect(result.data.scope).toBe("project");
+    expect(result.data.configPath).toContain(".windsurf/rules/appy.md");
   });
 });

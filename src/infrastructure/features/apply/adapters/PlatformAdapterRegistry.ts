@@ -1,0 +1,72 @@
+import type { IAppyPlatformAdapter } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
+import { OpenCodeAdapter } from "@/infrastructure/features/opencode/adapters/OpenCodeAdapter";
+import { GeminiAdapter } from "@/infrastructure/features/gemini/adapters/GeminiAdapter";
+import { QwenAdapter } from "@/infrastructure/features/qwen/adapters/QwenAdapter";
+import { KiloAdapter } from "@/infrastructure/features/kilo/adapters/KiloAdapter";
+import { AntigravityAdapter } from "@/infrastructure/features/antigravity/adapters/AntigravityAdapter";
+import { CodexAdapter } from "@/infrastructure/features/codex/adapters/CodexAdapter";
+import { CursorAdapter } from "@/infrastructure/features/cursor/adapters/CursorAdapter";
+import { WindsurfAdapter } from "@/infrastructure/features/windsurf/adapters/WindsurfAdapter";
+import { SystemError } from "@/core/domain/shared/errors/SystemError";
+import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
+import { SUPPORTED_APPLY_PLATFORMS } from "@/core/domain/shared/types/SupportedApplyPlatform";
+
+/**
+ * Registry for platform adapters with validation.
+ * Ensures all supported platforms have registered adapters.
+ */
+export class PlatformAdapterRegistry {
+  private readonly registry: Map<SupportedApplyPlatform, IAppyPlatformAdapter>;
+
+  constructor() {
+    const adapters: IAppyPlatformAdapter[] = [
+      new OpenCodeAdapter(),
+      new GeminiAdapter(),
+      new QwenAdapter(),
+      new KiloAdapter(),
+      new AntigravityAdapter(),
+      new CodexAdapter(),
+      new CursorAdapter(),
+      new WindsurfAdapter(),
+    ];
+
+    this.registry = new Map(adapters.map((adapter) => [adapter.platformName, adapter]));
+
+    // Validate that all supported platforms have adapters
+    const registeredPlatforms = new Set(adapters.map((a) => a.platformName));
+    const missing = SUPPORTED_APPLY_PLATFORMS.filter((p) => !registeredPlatforms.has(p));
+    if (missing.length > 0) {
+      throw new SystemError(
+        `Missing adapters for platforms: ${missing.join(", ")}. This is a programming error.`,
+        ERROR_IDS.ADAPTER_NOT_REGISTERED
+      );
+    }
+  }
+
+  /**
+   * Resolves the adapter for the given platform.
+   * @throws {SystemError} If the adapter is not registered (should never happen with validation)
+   */
+  resolve(platform: SupportedApplyPlatform): IAppyPlatformAdapter {
+    const adapter = this.registry.get(platform);
+    if (!adapter) {
+      throw new SystemError(
+        `Adapter is not registered for platform '${platform}'. This is a programming error - platform validation should have occurred before calling resolve().`,
+        ERROR_IDS.ADAPTER_RESOLUTION_FAILED
+      );
+    }
+    return adapter;
+  }
+
+  /**
+   * Checks if a platform has a registered adapter.
+   */
+  has(platform: SupportedApplyPlatform): boolean {
+    return this.registry.has(platform);
+  }
+
+  listSupportedPlatforms(): SupportedApplyPlatform[] {
+    return Array.from(this.registry.keys());
+  }
+}

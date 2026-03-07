@@ -1,156 +1,99 @@
-import type { Artifact } from "@/core/domain/shared/types/Artifact";
-import type { IPlatformAdapter } from "@/core/domain/shared/interfaces/IPlatformAdapter";
-import { RuleScanner } from "@/infrastructure/features/rule/scanners/RuleScanner";
-import { SkillScanner } from "@/infrastructure/features/skill/scanners/SkillScanner";
-import { AgentScanner } from "@/infrastructure/features/agent/scanners/AgentScanner";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
-import { ClaudeAdapter } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
-import { createMcpConfigLoader } from "@/infrastructure/features/apply";
-import type { McpFileResult } from "@/core/domain/shared/interfaces/IMcpConfigLoader";
-import { PathSecurity } from "@/infrastructure/shared/utils/PathSecurity";
+import type { ApplyPlatformScope, ApplyPlatformStatus } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import {
+  getSupportedApplyPlatformsDisplay,
+  parseSupportedApplyPlatform,
+} from "@/core/domain/shared/types/SupportedApplyPlatform";
+import { PlatformAdapterRegistry } from "@/infrastructure/features/apply/adapters/PlatformAdapterRegistry";
+import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 
 export interface ApplyCommandOptions {
   projectPath: string;
   platform: string;
   dryRun?: boolean;
   override?: boolean;
+  targetScope?: ApplyPlatformScope;
+  userConfigRootPath?: string;
 }
 
 export interface ApplyCommandResult {
-  rulesApplied: number;
-  skillsApplied: number;
-  agentsApplied: number;
-  mcpServersLoaded: number;
-  mcpFilesDiscovered: number;
-  mcpFilesFailed: number;
-  mcpFilesSkipped: number;
-  mcpFileResults: McpFileResult[];
+  platform: string;
+  status: ApplyPlatformStatus;
   configPath: string;
-  claudeMcpConfigPath: string;
+  scope: "project" | "user";
+  surface: string;
+  message: string;
+  durationMs: number;
   warnings: string[];
 }
 
 export class ApplyCommand {
+  private readonly adapterRegistry: PlatformAdapterRegistry;
+
+  constructor(adapterRegistry?: PlatformAdapterRegistry) {
+    this.adapterRegistry = adapterRegistry ?? new PlatformAdapterRegistry();
+  }
+
   async execute(options: ApplyCommandOptions): Promise<Result<ApplyCommandResult, Error>> {
-    const { projectPath, platform, dryRun, override } = options;
+    const { projectPath, platform, dryRun, override, targetScope, userConfigRootPath } = options;
 
-    const adapter = this.createAdapter(platform, projectPath);
-    if (!adapter) {
-      return err(new UserError(`Platform '${platform}' not supported. Supported platforms: claude`));
+    const selectedPlatform = parseSupportedApplyPlatform(platform);
+    if (!selectedPlatform) {
+      return err(
+        new UserError(
+          `Platform '${platform}' is not supported. Supported platforms: ${getSupportedApplyPlatformsDisplay()}. Check for typos or run 'agent-ctrl apply --help' for more information.`,
+          ERROR_IDS.CLI_INVALID_ARGUMENT
+        )
+      );
     }
 
-    const artifacts = await this.scanArtifacts(projectPath);
-    const warnings: string[] = [];
-
-    if (artifacts.length === 0) {
-      warnings.push("No artifacts found in project. Configuration file will be created anyway.");
-    }
-
-    // Validate project path for security before loading MCP configurations
-    const pathSecurity = new PathSecurity(projectPath);
-    const pathValidation = pathSecurity.resolveSafe(projectPath);
-    if (!pathValidation.safe) {
-      return err(new UserError(`Invalid project path: ${pathValidation.error}`));
-    }
-
-    const mcpLoader = createMcpConfigLoader();
-    const mcpResult = await mcpLoader.load(projectPath);
-    if (!mcpResult.success) {
-      const errorDetails = mcpResult.error.message;
-      const enhancedMessage = `Failed to load MCP configurations from ${projectPath}. Check your MCP JSON files in .agent-ctrl/mcps/ for syntax errors. Details: ${errorDetails}`;
-      return err(new SystemError(enhancedMessage));
-    }
-
-    const mcpLoad = mcpResult.data;
-    const newConfig = await adapter.generateConfig(artifacts);
-    newConfig.mcpServers = mcpLoad.servers.map((server) => ({
-      name: server.serverId,
-      command: server.command,
-      args: server.args,
-      cwd: server.cwd,
-      env: server.env,
-      sourceFile: server.filePath,
-    }));
-
-    const existingConfig = await adapter.readExistingConfig();
-
-    const finalConfig = override ? newConfig : adapter.mergeConfigs(existingConfig, newConfig);
-
-    warnings.push(
-      ...mcpLoad.report.fileResults
-        .flatMap((fileResult) => fileResult.issues)
-        .filter((issue) => issue.severity === "warning")
-        .map((issue) => issue.message)
-    );
-
-    if (dryRun) {
-      return ok({
-        rulesApplied: newConfig.rules.length,
-        skillsApplied: newConfig.skills.length,
-        agentsApplied: newConfig.agents.length,
-        mcpServersLoaded: mcpLoad.report.totalLoaded,
-        mcpFilesDiscovered: mcpLoad.report.totalDiscovered,
-        mcpFilesFailed: mcpLoad.report.totalFailed,
-        mcpFilesSkipped: mcpLoad.report.totalSkipped,
-        mcpFileResults: mcpLoad.report.fileResults,
-        configPath: adapter.configPath,
-        claudeMcpConfigPath: adapter.claudeMcpConfigPath ?? "",
-        warnings,
-      });
-    }
+    const adapter = this.adapterRegistry.resolve(selectedPlatform);
+    const startedAt = Date.now();
 
     try {
-      await adapter.writeConfig(finalConfig, { cleanExistingArtifacts: Boolean(override) });
+      const applyResult = await adapter.applyAppyIntegration({
+        projectPath,
+        dryRun,
+        override,
+        targetScope,
+        userConfigRootPath,
+      });
+
+      const durationMs = Date.now() - startedAt;
+      const warnings: string[] = [];
+      if (dryRun) {
+        warnings.push("Dry run mode: no file system changes were written.");
+      }
+
+      return ok({
+        platform: applyResult.platform,
+        status: applyResult.status,
+        configPath: applyResult.configPath,
+        scope: applyResult.scope,
+        surface: applyResult.surface,
+        message: applyResult.message,
+        durationMs,
+        warnings,
+      });
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "EACCES") {
-        return err(new SystemError(`Permission denied: cannot write to ${adapter.configPath}`));
+      const nodeErr = error as NodeJS.ErrnoException;
+      let message = `Failed to apply 'appy' integration for '${selectedPlatform}'`;
+
+      if (nodeErr.code === "EACCES") {
+        message += ": Permission denied writing platform configuration. Check file/directory permissions.";
+      } else if (nodeErr.code === "ENOSPC") {
+        message += ": No space left on device. Free up disk space and try again.";
+      } else if (nodeErr.code === "EROFS") {
+        message += ": Filesystem is read-only. Cannot write configuration.";
+      } else if (error instanceof Error) {
+        message += `: ${error.message}`;
+      } else {
+        message += `: ${String(error)}`;
       }
-      if ((error as NodeJS.ErrnoException).code === "EBUSY") {
-        return err(new SystemError(`Configuration file is locked or in use. Close Claude Code and try again.`));
-      }
-      return err(new SystemError(`Failed to write configuration: ${error}`));
+
+      return err(new SystemError(message, ERROR_IDS.PLATFORM_CONFIG_WRITE_FAILED));
     }
-
-    return ok({
-      rulesApplied: newConfig.rules.length,
-      skillsApplied: newConfig.skills.length,
-      agentsApplied: newConfig.agents.length,
-      mcpServersLoaded: mcpLoad.report.totalLoaded,
-      mcpFilesDiscovered: mcpLoad.report.totalDiscovered,
-      mcpFilesFailed: mcpLoad.report.totalFailed,
-      mcpFilesSkipped: mcpLoad.report.totalSkipped,
-      mcpFileResults: mcpLoad.report.fileResults,
-      configPath: adapter.configPath,
-      claudeMcpConfigPath: adapter.claudeMcpConfigPath ?? "",
-      warnings,
-    });
-  }
-
-  private createAdapter(platform: string, projectPath: string): IPlatformAdapter | null {
-    if (platform === "claude") {
-      return new ClaudeAdapter(projectPath);
-    }
-    return null;
-  }
-
-  private async scanArtifacts(projectPath: string): Promise<Artifact[]> {
-    const artifacts: Artifact[] = [];
-
-    const ruleScanner = new RuleScanner();
-    const skillScanner = new SkillScanner();
-    const agentScanner = new AgentScanner();
-
-    const rulesResult = await ruleScanner.scan(`${projectPath}/rules`);
-    artifacts.push(...rulesResult.artifacts);
-
-    const skillsResult = await skillScanner.scan(`${projectPath}/skills`);
-    artifacts.push(...skillsResult.artifacts);
-
-    const agentsResult = await agentScanner.scan(`${projectPath}/agents`);
-    artifacts.push(...agentsResult.artifacts);
-
-    return artifacts;
   }
 }

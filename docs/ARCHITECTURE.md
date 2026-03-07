@@ -54,27 +54,28 @@ The CLI operates on a project-local structure that defines agent behavior:
 
 ## Adapter Pattern
 
-Each target platform uses a specialized adapter to transform standard artifacts into platform-specific formats:
+Each target platform uses a specialized adapter to apply a managed `appy` integration artifact into platform-specific configuration surfaces:
 
-| Platform                 | Adapter         | Strategy                                                    | Output                      |
-| ------------------------ | --------------- | ----------------------------------------------------------- | --------------------------- |
-| **Claude Code**          | `ClaudeAdapter` | Symmetric mapping of `rules`, `skills`, `commands`          | `~/.claude/config.json`     |
-| **Gemini / Antigravity** | `GeminiAdapter` | Rules → System Instructions, Skills → Function Declarations | API Context / System Prompt |
-| **Codex**                | `CursorAdapter` | Injects `rules/` and `agents/` into context                 | `.cursorrules`              |
-| **Generic (MCP)**        | `McpAdapter`    | Standardized MCP settings                                   | `mcp_settings.json`         |
+| Platform        | Adapter              | Strategy                                     | Output                        |
+| --------------- | -------------------- | -------------------------------------------- | ----------------------------- |
+| **OpenCode**    | `OpenCodeAdapter`    | Managed command file upsert                  | `.opencode/commands/appy.md`  |
+| **Gemini**      | `GeminiAdapter`      | Managed TOML command upsert                  | `.gemini/commands/appy.toml`  |
+| **Qwen**        | `QwenAdapter`        | Managed TOML command upsert                  | `.qwen/commands/appy.toml`    |
+| **Kilo**        | `KiloAdapter`        | Managed workflow content upsert              | `.kilocode/workflows/appy.md` |
+| **Antigravity** | `AntigravityAdapter` | Managed rules/workflow surface update        | `.antigravity/rules/appy.md`  |
+| **Codex**       | `CodexAdapter`       | Managed skill/config guidance surface update | `.codex/skills/appy/SKILL.md` |
+| **Cursor**      | `CursorAdapter`      | Managed rules surface update                 | `.cursor/rules/appy.mdc`      |
+| **Windsurf**    | `WindsurfAdapter`    | Managed rules/workflow surface update        | `.windsurf/rules/appy.md`     |
 
 ### Adapter Interface
 
 ```typescript
-interface Adapter {
-  // Transform standard artifacts to platform-specific format
-  apply(artifacts: Artifacts): Promise<ConfigOutput>;
+interface IAppyPlatformAdapter {
+  // Resolve target path and scope (project/user) for selected platform
+  resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
 
-  // Validate platform-specific requirements
-  validate(config: ConfigOutput): ValidationResult;
-
-  // Get target platform name
-  getPlatform(): string;
+  // Apply deterministic appy integration
+  applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult>;
 }
 ```
 
