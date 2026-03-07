@@ -7,6 +7,36 @@ import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { getSupportedApplyPlatformsDisplay } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandler";
 
+/**
+ * Creates the 'apply' CLI command for managing appy platform integration.
+ *
+ * The apply command supports:
+ * - Multiple AI platforms (opencode, gemini, cursor, windsurf, codex, qwen, kilo, antigravity)
+ * - Project-scoped and user-scoped configuration
+ * - Dry-run mode for previewing changes
+ * - Override mode for replacing conflicting configurations
+ * - Custom user configuration root path
+ *
+ * @returns {Command} Configured Commander Command instance
+ *
+ * @example
+ * ```bash
+ * # Apply to user configuration (default)
+ * agent-ctrl apply cursor
+ *
+ * # Apply to project configuration
+ * agent-ctrl apply cursor --project
+ *
+ * # Preview changes without writing
+ * agent-ctl apply cursor --dry-run
+ *
+ * # Override existing configuration
+ * agent-ctrl apply cursor --override
+ *
+ * # Use custom config root
+ * agent-ctrl apply cursor --path /custom/path
+ * ```
+ */
 export function createApplyCommand(): Command {
   const supportedPlatformsDisplay = getSupportedApplyPlatformsDisplay();
 
@@ -90,7 +120,17 @@ export function createApplyCommand(): Command {
             }
           }
         } catch (error) {
-          console.error(`✗ Unexpected error: ${error}`);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`✗ Unexpected error applying to '${platform}': ${errorMessage}`);
+          // TODO: Add Sentry logging when available
+          // logError("Apply command unexpected error", {
+          //   error,
+          //   platform,
+          //   projectPath: resolve(process.cwd()),
+          //   targetScope,
+          //   userConfigRootPath,
+          //   errorId: ERROR_IDS.CLI_EXECUTION_FAILED,
+          // });
           process.exit(2);
         }
       }

@@ -120,5 +120,42 @@ describe("CommandScopePrecedenceResolver", () => {
 
       expect(target1.scope).toBe("user");
     });
+
+    it("uses global scope for windsurf when WINDSURF_SCOPE=global", () => {
+      process.env.AGENT_CTRL_WINDSURF_SCOPE = "global";
+      const target = resolver.resolve({
+        platform: "windsurf",
+        projectPath,
+        projectRelativePath: ".windsurf/rules/appy.md",
+        userRelativePath: "windsurf/rules/appy.md",
+      });
+      expect(target.scope).toBe("user");
+    });
+
+    it("uses project scope for windsurf when WINDSURF_SCOPE=workspace", () => {
+      process.env.AGENT_CTRL_WINDSURF_SCOPE = "workspace";
+      const target = resolver.resolve({
+        platform: "windsurf",
+        projectPath,
+        projectRelativePath: ".windsurf/rules/appy.md",
+        userRelativePath: "windsurf/rules/appy.md",
+      });
+      expect(target.scope).toBe("project");
+    });
+
+    it("defaults to user scope for platforms without specific env vars", () => {
+      // Test default behavior for antigravity, kilo, opencode, gemini, qwen
+      const platforms = ["antigravity", "kilo", "opencode", "gemini", "qwen"] as const;
+
+      for (const platform of platforms) {
+        const target = resolver.resolve({
+          platform,
+          projectPath,
+          projectRelativePath: `.${platform}/appy.md`,
+          userRelativePath: `${platform}/appy.md`,
+        });
+        expect(target.scope).toBe("user");
+      }
+    });
   });
 });

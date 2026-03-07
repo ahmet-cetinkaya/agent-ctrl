@@ -8,6 +8,27 @@ import {
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
 
+/**
+ * Creates the 'command ls' CLI subcommand for listing all commands in the project.
+ *
+ * The command ls subcommand lists all command artifacts found in the commands/ directory.
+ * Supports both project-scoped and global user configuration via the AGENT_CTRL_HOME
+ * environment variable or --path option.
+ *
+ * @returns {Command} Configured Commander Command instance
+ *
+ * @example
+ * ```bash
+ * # List commands in default location
+ * agent-ctrl command ls
+ *
+ * # List commands in JSON format
+ * agent-ctrl command ls --json
+ *
+ * # List commands from custom config root
+ * agent-ctrl command ls /custom/path
+ * ```
+ */
 export function createCommandListCommand(): Command {
   return new Command("ls")
     .description("List all commands in the project")

@@ -8,6 +8,27 @@ import {
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
 
+/**
+ * Creates the 'mcp ls' CLI subcommand for listing all MCP servers in the project.
+ *
+ * The mcp ls subcommand lists all MCP server configurations found in the mcps/ directory.
+ * Displays server IDs and reports any issues with server configurations.
+ * Supports both project-scoped and global user configuration.
+ *
+ * @returns {Command} Configured Commander Command instance
+ *
+ * @example
+ * ```bash
+ * # List MCP servers in default location
+ * agent-ctrl mcp ls
+ *
+ * # List MCP servers in JSON format with full details
+ * agent-ctrl mcp ls --json
+ *
+ * # List MCP servers from custom config root
+ * agent-ctrl mcp ls /custom/path
+ * ```
+ */
 export function createMcpListCommand(): Command {
   return new Command("ls")
     .description("List all MCP servers in the project")

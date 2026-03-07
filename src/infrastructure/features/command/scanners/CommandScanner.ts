@@ -6,7 +6,17 @@ import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 
 const MARKDOWN_EXTENSIONS = [".md", ".markdown"] as const;
 
-// Maximum directory depth to prevent DoS via deeply nested directories
+/**
+ * Maximum directory depth to prevent DoS via deeply nested directories.
+ *
+ * Set to 20 based on typical project structure analysis (most projects < 10 levels deep).
+ * This prevents malicious directory structures while accommodating legitimate deep nesting.
+ *
+ * @security This limit prevents:
+ * - Stack overflow from recursive directory traversal
+ * - DoS attacks via deeply nested directory structures
+ * - Excessive memory consumption from deep recursion
+ */
 const MAX_SCAN_DEPTH = 20;
 
 export interface CommandArtifact {
@@ -109,8 +119,8 @@ export class CommandScanner {
       }
 
       const originalExt = extname(entry.name);
-      const ext = originalExt.toLowerCase() as (typeof MARKDOWN_EXTENSIONS)[number];
-      if (!MARKDOWN_EXTENSIONS.includes(ext)) {
+      const ext = originalExt.toLowerCase();
+      if (!MARKDOWN_EXTENSIONS.includes(ext as (typeof MARKDOWN_EXTENSIONS)[number])) {
         warnings.push(`Skipped ${this.normalizeSeparators(relative(rootPath, entryPath))} (invalid extension)`);
         continue;
       }

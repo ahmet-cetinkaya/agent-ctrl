@@ -28,11 +28,13 @@ describe("ClaudeAdapter", () => {
 
   describe("generateConfig", () => {
     it("generates empty config for empty artifacts", async () => {
-      const config = await adapter.generateConfig([]);
-      expect(config.rules).toEqual([]);
-      expect(config.skills).toEqual([]);
-      expect(config.agents).toEqual([]);
-      expect(config.mcpServers).toEqual([]);
+      const result = await adapter.generateConfig([]);
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data.rules).toEqual([]);
+      expect(result.data.skills).toEqual([]);
+      expect(result.data.agents).toEqual([]);
+      expect(result.data.mcpServers).toEqual([]);
     });
 
     it("maps rule/skill/agent artifacts", async () => {
@@ -40,17 +42,21 @@ describe("ClaudeAdapter", () => {
       const skill = createSkill("my-skill", "my-skill", "/path/to/my-skill");
       const agent = createAgent("my-agent", "my-agent.md", "/path/to/my-agent.md");
 
-      const config = await adapter.generateConfig([rule, skill, agent]);
-      expect(config.rules[0]).toEqual({ name: "my-rule", path: "/path/to/my-rule.md" });
-      expect(config.skills[0]).toEqual({ name: "my-skill", path: "/path/to/my-skill" });
-      expect(config.agents[0]).toEqual({ name: "my-agent", path: "/path/to/my-agent.md" });
+      const result = await adapter.generateConfig([rule, skill, agent]);
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data.rules[0]).toEqual({ name: "my-rule", path: "/path/to/my-rule.md" });
+      expect(result.data.skills[0]).toEqual({ name: "my-skill", path: "/path/to/my-skill" });
+      expect(result.data.agents[0]).toEqual({ name: "my-agent", path: "/path/to/my-agent.md" });
     });
   });
 
   describe("readExistingConfig", () => {
     it("returns null when state does not exist", async () => {
-      const existing = await adapter.readExistingConfig();
-      expect(existing).toBeNull();
+      const result = await adapter.readExistingConfig();
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data).toBeNull();
     });
 
     it("reads normalized arrays from state file", async () => {
@@ -67,13 +73,15 @@ describe("ClaudeAdapter", () => {
         "utf-8"
       );
 
-      const existing = await adapter.readExistingConfig();
-      expect(existing).not.toBeNull();
-      if (!existing) return;
-      expect(existing.rules).toHaveLength(1);
-      expect(existing.skills).toHaveLength(1);
-      expect(existing.agents).toHaveLength(1);
-      expect(existing.mcpServers).toHaveLength(1);
+      const result = await adapter.readExistingConfig();
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data).not.toBeNull();
+      if (!result.data) return;
+      expect(result.data.rules).toHaveLength(1);
+      expect(result.data.skills).toHaveLength(1);
+      expect(result.data.agents).toHaveLength(1);
+      expect(result.data.mcpServers).toHaveLength(1);
     });
   });
 
@@ -139,7 +147,8 @@ describe("ClaudeAdapter", () => {
         mcpServers: [{ name: "Bright", command: "npx", args: ["x"], env: { TOKEN: "1" }, sourceFile: "mcp.json" }],
       };
 
-      await adapter.writeConfig(config);
+      const writeResult = await adapter.writeConfig(config);
+      expect(writeResult.success).toBe(true);
 
       const claudeFile = await readFile(resolve(homePath, ".claude", "CLAUDE.md"), "utf-8");
       expect(claudeFile).toContain("<!-- agent-ctrl:start -->");
@@ -174,12 +183,13 @@ describe("ClaudeAdapter", () => {
         "utf-8"
       );
 
-      await adapter.writeConfig({
+      const writeResult = await adapter.writeConfig({
         rules: [{ name: "rule-b", path: rulePath }],
         skills: [],
         agents: [],
         mcpServers: [],
       });
+      expect(writeResult.success).toBe(true);
 
       const content = await readFile(claudePath, "utf-8");
       expect(content).toContain("User Intro");
@@ -196,7 +206,7 @@ describe("ClaudeAdapter", () => {
       await writeFile(resolve(homePath, ".claude", "agents", "old.md"), "old", "utf-8");
       await writeFile(resolve(homePath, ".claude", "commands", "old.md"), "old", "utf-8");
 
-      await adapter.writeConfig(
+      const cleanResult = await adapter.writeConfig(
         {
           rules: [],
           skills: [],
@@ -205,6 +215,7 @@ describe("ClaudeAdapter", () => {
         },
         { cleanExistingArtifacts: true }
       );
+      expect(cleanResult.success).toBe(true);
 
       await expect(access(resolve(homePath, ".claude", "skills", "old"))).rejects.toBeDefined();
       await expect(access(resolve(homePath, ".claude", "agents", "old.md"))).rejects.toBeDefined();
@@ -223,12 +234,13 @@ describe("ClaudeAdapter", () => {
         "utf-8"
       );
 
-      await adapter.writeConfig({
+      const writeResult = await adapter.writeConfig({
         rules: [],
         skills: [],
         agents: [],
         mcpServers: [{ name: "New", command: "npx", args: ["x"], env: {}, sourceFile: "mcp.json" }],
       });
+      expect(writeResult.success).toBe(true);
 
       const doc = JSON.parse(await readFile(resolve(homePath, ".claude.json"), "utf-8"));
       expect(doc.ui.theme).toBe("dark");
@@ -241,12 +253,13 @@ describe("ClaudeAdapter", () => {
       await mkdir(resolve(projectPath, "agents"), { recursive: true });
       await writeFile(agentPath, "---\nname: ready\n---\nagent body\n", "utf-8");
 
-      await adapter.writeConfig({
+      const writeResult = await adapter.writeConfig({
         rules: [{ name: "missing-rule", path: "/missing/rule.md" }],
         skills: [],
         agents: [{ name: "ready", path: agentPath }],
         mcpServers: [],
       });
+      expect(writeResult.success).toBe(true);
 
       const claudeFile = await readFile(resolve(homePath, ".claude", "CLAUDE.md"), "utf-8");
       expect(claudeFile).toContain("Rule content unavailable");

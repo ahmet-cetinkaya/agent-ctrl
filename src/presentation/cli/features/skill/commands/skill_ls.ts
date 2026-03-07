@@ -8,6 +8,27 @@ import {
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
 
+/**
+ * Creates the 'skill ls' CLI subcommand for listing all skills in the project.
+ *
+ * The skill ls subcommand lists all skill artifacts found in the skills/ directory.
+ * Supports both project-scoped and global user configuration via the AGENT_CTRL_HOME
+ * environment variable or --path option.
+ *
+ * @returns {Command} Configured Commander Command instance
+ *
+ * @example
+ * ```bash
+ * # List skills in default location
+ * agent-ctrl skill ls
+ *
+ * # List skills in JSON format
+ * agent-ctrl skill ls --json
+ *
+ * # List skills from custom config root
+ * agent-ctrl skill ls /custom/path
+ * ```
+ */
 export function createSkillListCommand(): Command {
   return new Command("ls")
     .description("List all skills in the project")
