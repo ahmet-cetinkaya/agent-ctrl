@@ -7,6 +7,7 @@ import {
   parseSupportedApplyPlatform,
 } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { PlatformAdapterRegistry } from "@/infrastructure/features/apply/adapters/PlatformAdapterRegistry";
+import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 
 export interface ApplyCommandOptions {
   projectPath: string;
@@ -42,7 +43,8 @@ export class ApplyCommand {
     if (!selectedPlatform) {
       return err(
         new UserError(
-          `Platform '${platform}' not supported. Supported platforms: ${getSupportedApplyPlatformsDisplay()}`
+          `Platform '${platform}' is not supported. Supported platforms: ${getSupportedApplyPlatformsDisplay()}. Check for typos or run 'agent-ctrl apply --help' for more information.`,
+          ERROR_IDS.CLI_INVALID_ARGUMENT
         )
       );
     }
@@ -76,18 +78,22 @@ export class ApplyCommand {
         warnings,
       });
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "EACCES") {
-        return err(
-          new SystemError(`Permission denied: cannot write selected platform config for '${selectedPlatform}'.`)
-        );
+      const nodeErr = error as NodeJS.ErrnoException;
+      let message = `Failed to apply 'appy' integration for '${selectedPlatform}'`;
+
+      if (nodeErr.code === "EACCES") {
+        message += ": Permission denied writing platform configuration. Check file/directory permissions.";
+      } else if (nodeErr.code === "ENOSPC") {
+        message += ": No space left on device. Free up disk space and try again.";
+      } else if (nodeErr.code === "EROFS") {
+        message += ": Filesystem is read-only. Cannot write configuration.";
+      } else if (error instanceof Error) {
+        message += `: ${error.message}`;
+      } else {
+        message += `: ${String(error)}`;
       }
-      return err(
-        new SystemError(
-          `Failed to apply 'appy' integration for '${selectedPlatform}'. ${String(
-            error instanceof Error ? error.message : error
-          )}`
-        )
-      );
+
+      return err(new SystemError(message, ERROR_IDS.PLATFORM_CONFIG_WRITE_FAILED));
     }
   }
 }

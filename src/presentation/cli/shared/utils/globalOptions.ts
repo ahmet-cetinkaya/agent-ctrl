@@ -1,3 +1,5 @@
+import type { Command } from "commander";
+
 export interface GlobalOptions {
   verbose?: boolean;
   quiet?: boolean;
@@ -12,7 +14,7 @@ export interface LogOptions extends GlobalOptions {
  * Get global CLI options from Commander program
  * Provides proper access to command configuration instead of manual argv parsing
  */
-export function getGlobalOptions(program: any): LogOptions {
+export function getGlobalOptions(program: Command): LogOptions {
   const opts = program.opts() as { verbose?: boolean; quiet?: boolean };
   return {
     verbose: opts.verbose ?? false,

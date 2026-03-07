@@ -75,4 +75,50 @@ describe("CommandScopePrecedenceResolver", () => {
     expect(target.scope).toBe("project");
     expect(target.configPath).toContain(".cursor/rules/appy.mdc");
   });
+
+  describe("Environment Variable Parsing", () => {
+    it("handles case-insensitive 'false' value for codex trusted project", () => {
+      // Test that only "false" (case-insensitive) results in user scope
+      const falseValues = ["false", "FALSE", "False", "fAlSe"];
+
+      for (const value of falseValues) {
+        process.env.AGENT_CTRL_CODEX_TRUSTED_PROJECT = value;
+        const target = resolver.resolve({
+          platform: "codex",
+          projectPath,
+          projectRelativePath: ".codex/skills/appy/SKILL.md",
+          userRelativePath: "codex/skills/appy/SKILL.md",
+        });
+
+        expect(target.scope).toBe("user");
+      }
+    });
+
+    it("defaults to user scope when codex trusted project env var is not set", () => {
+      delete process.env.AGENT_CTRL_CODEX_TRUSTED_PROJECT;
+
+      const target = resolver.resolve({
+        platform: "codex",
+        projectPath,
+        projectRelativePath: ".codex/skills/appy/SKILL.md",
+        userRelativePath: "codex/skills/appy/SKILL.md",
+      });
+
+      // Default behavior is to use user scope
+      expect(target.scope).toBe("user");
+    });
+
+    it("handles case variations for global apply scope", () => {
+      // Test that case variations are handled correctly
+      process.env.AGENT_CTRL_APPLY_SCOPE = "USER";
+      const target1 = resolver.resolve({
+        platform: "cursor",
+        projectPath,
+        projectRelativePath: ".cursor/rules/appy.mdc",
+        userRelativePath: "cursor/rules/appy.mdc",
+      });
+
+      expect(target1.scope).toBe("user");
+    });
+  });
 });

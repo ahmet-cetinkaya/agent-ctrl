@@ -1,9 +1,12 @@
 import { Command } from "commander";
 import { ListSkillsQuery } from "@/core/application/features/skill/queries/ListSkillsQuery";
-import { UserError } from "@/core/domain/shared/errors/UserError";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { access, constants } from "node:fs/promises";
+import {
+  handleDirectoryAccess,
+  handleQueryResult,
+  validateUserPath,
+} from "@/presentation/cli/shared/handlers/resultHandler";
 
 export function createSkillListCommand(): Command {
   return new Command("ls")
@@ -11,29 +14,31 @@ export function createSkillListCommand(): Command {
     .argument("[path]", "Configuration root path (default: ~/.agent-ctrl)")
     .option("-j, --json", "Output as JSON")
     .action(async (targetPath: string | undefined, options: { json?: boolean }) => {
+      // Validate user-provided path
+      if (targetPath) {
+        const pathError = validateUserPath(targetPath, "--path");
+        if (pathError) {
+          console.error(`✗ ${pathError}`);
+          process.exit(1);
+        }
+      }
+
       const configRootPath = targetPath
         ? resolve(targetPath)
         : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
       const skillsPath = resolve(configRootPath, "skills");
 
-      try {
-        await access(skillsPath, constants.R_OK);
-      } catch {
-        console.error(`✗ skills/ directory not found at ${skillsPath}. Run 'agent-ctrl init' first.`);
+      // Check directory access with specific error handling
+      const accessResult = await handleDirectoryAccess(skillsPath, "skills/");
+      if (!accessResult.success) {
+        console.error(`✗ ${accessResult.error}`);
         process.exit(1);
       }
 
       const listSkillsQuery = new ListSkillsQuery();
       const result = await listSkillsQuery.execute({ skillsPath });
 
-      if (!result.success) {
-        if (result.error instanceof UserError) {
-          console.error(`✗ ${result.error.message}`);
-          process.exit(result.error.exitCode);
-        }
-        console.error(`✗ Unexpected error: ${result.error}`);
-        process.exit(2);
-      }
+      handleQueryResult(result);
 
       const { artifacts, warnings } = result.data;
 

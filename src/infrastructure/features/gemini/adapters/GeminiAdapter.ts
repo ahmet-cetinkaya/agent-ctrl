@@ -1,15 +1,8 @@
-import { CommandScopePrecedenceResolver } from "@/infrastructure/features/apply/adapters/CommandScopePrecedenceResolver";
 import { BaseTextAppyAdapter } from "@/infrastructure/features/apply/adapters/BaseTextAppyAdapter";
 import type { AppyConfigTarget, AppyIntegrationRequest } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 
 export class GeminiAdapter extends BaseTextAppyAdapter {
   readonly platformName = "gemini" as const;
-
-  private readonly scopeResolver = new CommandScopePrecedenceResolver();
-
-  constructor() {
-    super();
-  }
 
   async resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
     return this.scopeResolver.resolve({

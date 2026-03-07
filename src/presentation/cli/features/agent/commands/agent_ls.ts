@@ -1,10 +1,13 @@
 import { Command } from "commander";
 import { ListAgentsQuery } from "@/core/application/features/agent/queries/ListAgentsQuery";
-import { UserError } from "@/core/domain/shared/errors/UserError";
 import { AgentScanner } from "@/infrastructure/features/agent/scanners/AgentScanner";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { access, constants } from "node:fs/promises";
+import {
+  handleDirectoryAccess,
+  handleQueryResult,
+  validateUserPath,
+} from "@/presentation/cli/shared/handlers/resultHandler";
 
 export function createAgentListCommand(): Command {
   return new Command("ls")
@@ -12,29 +15,31 @@ export function createAgentListCommand(): Command {
     .argument("[path]", "Configuration root path (default: ~/.agent-ctrl)")
     .option("-j, --json", "Output as JSON")
     .action(async (targetPath: string | undefined, options: { json?: boolean }) => {
+      // Validate user-provided path
+      if (targetPath) {
+        const pathError = validateUserPath(targetPath, "--path");
+        if (pathError) {
+          console.error(`✗ ${pathError}`);
+          process.exit(1);
+        }
+      }
+
       const configRootPath = targetPath
         ? resolve(targetPath)
         : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
       const agentsPath = resolve(configRootPath, "agents");
 
-      try {
-        await access(agentsPath, constants.R_OK);
-      } catch {
-        console.error(`✗ agents/ directory not found at ${agentsPath}. Run 'agent-ctrl init' first.`);
+      // Check directory access with specific error handling
+      const accessResult = await handleDirectoryAccess(agentsPath, "agents/");
+      if (!accessResult.success) {
+        console.error(`✗ ${accessResult.error}`);
         process.exit(1);
       }
 
       const listAgentsQuery = new ListAgentsQuery(new AgentScanner());
       const result = await listAgentsQuery.execute({ agentsPath });
 
-      if (!result.success) {
-        if (result.error instanceof UserError) {
-          console.error(`✗ ${result.error.message}`);
-          process.exit(result.error.exitCode);
-        }
-        console.error(`✗ Unexpected error: ${result.error}`);
-        process.exit(2);
-      }
+      handleQueryResult(result);
 
       const { artifacts, warnings } = result.data;
 

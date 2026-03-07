@@ -5,6 +5,7 @@ import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCo
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { getSupportedApplyPlatformsDisplay } from "@/core/domain/shared/types/SupportedApplyPlatform";
+import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandler";
 
 export function createApplyCommand(): Command {
   const supportedPlatformsDisplay = getSupportedApplyPlatformsDisplay();
@@ -25,6 +26,15 @@ export function createApplyCommand(): Command {
     )
     .action(
       async (platform: string, options: { dryRun?: boolean; override?: boolean; project?: boolean; path?: string }) => {
+        // Validate user-provided path for security
+        if (options.path) {
+          const pathError = validateUserPath(options.path, "--path");
+          if (pathError) {
+            console.error(`✗ ${pathError}`);
+            process.exit(1);
+          }
+        }
+
         const applyCommand = new ApplyCommand();
         const userConfigRootPath = options.path ? resolve(options.path) : resolve(homedir(), ".agent-ctrl");
         const targetScope = options.project ? "project" : "user";
