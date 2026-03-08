@@ -25,34 +25,36 @@ export interface McpCatalogSyncResult {
   report: SyncReport;
 }
 
+interface McpCatalogSynchronizerDependencies {
+  store: ICatalogStateStore;
+  client: ISmitheryRegistryClient;
+  reportBuilder: CatalogOperationReportBuilder;
+  stateSupport: CatalogStateSupport;
+  compatibilityEvaluator: CatalogCompatibilityEvaluator;
+  cachePolicy: CatalogCachePolicy;
+  logStore: CatalogOperationLogStore;
+  credentialBootstrap: CatalogCredentialBootstrap;
+}
+
 export class McpCatalogSynchronizer {
-  constructor(
-    private readonly store: ICatalogStateStore = new CatalogStateFileStore(),
-    private readonly client: ISmitheryRegistryClient = new SmitheryRegistryClient(),
-    private readonly reportBuilder = new CatalogOperationReportBuilder(),
-    private readonly stateSupport = new CatalogStateSupport(),
-    private readonly compatibilityEvaluator = new CatalogCompatibilityEvaluator(),
-    private readonly cachePolicy = new CatalogCachePolicy(),
-    private readonly logStore = new CatalogOperationLogStore(),
-    private readonly credentialBootstrap = new CatalogCredentialBootstrap()
-  ) {}
+  constructor(private readonly deps: Partial<McpCatalogSynchronizerDependencies> = {}) {}
 
   async synchronize(options: McpCatalogSyncOptions): Promise<McpCatalogSyncResult> {
-    await this.credentialBootstrap.applySmitheryCredentials(options.configRoot, options.apiKey);
-    const loaded = await this.store.load(options.configRoot);
+    await this.getCredentialBootstrap().applySmitheryCredentials(options.configRoot, options.apiKey);
+    const loaded = await this.getStore().load(options.configRoot);
     if (!loaded.success) {
       throw loaded.error;
     }
 
     const state = loaded.data;
-    const registry = this.stateSupport.getRegistry(state, "smithery");
-    const cacheDecision = this.cachePolicy.shouldRefresh(registry, { force: options.force });
-    const report = this.reportBuilder.createSyncReport(["smithery"], options.query ? [options.query] : ["all"]);
+    const registry = this.getStateSupport().getRegistry(state, "smithery");
+    const cacheDecision = this.getCachePolicy().shouldRefresh(registry, { force: options.force });
+    const report = this.getReportBuilder().createSyncReport(["smithery"], options.query ? [options.query] : ["all"]);
     if (!cacheDecision.shouldRefresh && state.catalogItems.some((item) => item.registryId === "smithery")) {
       const cached = this.filterItems(state.catalogItems, options.query);
-      this.reportBuilder.addRegistryResult(
+      this.getReportBuilder().addRegistryResult(
         report,
-        this.reportBuilder.createRegistryResult({
+        this.getReportBuilder().createRegistryResult({
           registryId: "smithery",
           status: "cached",
           usedCache: true,
@@ -62,7 +64,7 @@ export class McpCatalogSynchronizer {
       return { state, items: cached, report };
     }
 
-    this.stateSupport.updateRegistrySyncState(state, "smithery", {
+    this.getStateSupport().updateRegistrySyncState(state, "smithery", {
       lastSyncStartedAt: new Date().toISOString(),
     });
 
@@ -73,7 +75,7 @@ export class McpCatalogSynchronizer {
     let totalPages = 1;
 
     do {
-      const response = await this.client.listServers({ query: options.query, page, pageSize: 100 });
+      const response = await this.getClient().listServers({ query: options.query, page, pageSize: 100 });
       if (!response.success) {
         issues.push(response.error.message);
         break;
@@ -81,7 +83,7 @@ export class McpCatalogSynchronizer {
 
       totalPages = response.data.totalPages ?? page;
       for (const server of response.data.servers) {
-        const details = await this.client.getServerDetails(server.id);
+        const details = await this.getClient().getServerDetails(server.id);
         const merged = details.success ? details.data : server;
         const catalogItem = createCatalogItem({
           registryId: "smithery",
@@ -107,14 +109,14 @@ export class McpCatalogSynchronizer {
       page += 1;
     } while (page <= totalPages);
 
-    this.stateSupport.upsertCatalogItems(state, synchronizedItems);
+    this.getStateSupport().upsertCatalogItems(state, synchronizedItems);
     for (const item of synchronizedItems) {
-      this.stateSupport.setCompatibility(state, this.compatibilityEvaluator.evaluate(item));
+      this.getStateSupport().setCompatibility(state, this.getCompatibilityEvaluator().evaluate(item));
     }
-    this.stateSupport.updateCatalogAvailability(state, "smithery", seenKeys, {
+    this.getStateSupport().updateCatalogAvailability(state, "smithery", seenKeys, {
       markMissingUnavailable: !options.query,
     });
-    this.stateSupport.updateRegistrySyncState(state, "smithery", {
+    this.getStateSupport().updateRegistrySyncState(state, "smithery", {
       authState: issues.some(
         (issue) => issue.toLowerCase().includes("api key") || issue.toLowerCase().includes("authentication")
       )
@@ -122,7 +124,8 @@ export class McpCatalogSynchronizer {
         : "configured",
       lastSyncSucceededAt: synchronizedItems.length > 0 ? new Date().toISOString() : registry.lastSyncSucceededAt,
       lastSyncStatus: issues.length === 0 ? "success" : synchronizedItems.length > 0 ? "partial" : "failed",
-      cacheFreshUntil: synchronizedItems.length > 0 ? this.cachePolicy.computeFreshUntil() : registry.cacheFreshUntil,
+      cacheFreshUntil:
+        synchronizedItems.length > 0 ? this.getCachePolicy().computeFreshUntil() : registry.cacheFreshUntil,
       catalogItemCount: state.catalogItems.filter((item) => item.registryId === "smithery").length,
     });
 
@@ -134,17 +137,17 @@ export class McpCatalogSynchronizer {
       message: issues.join(" ") || `Synchronized ${synchronizedItems.length} Smithery MCP items.`,
       occurredAt: new Date().toISOString(),
     });
-    this.stateSupport.addOperationLog(state, operationEntry);
+    this.getStateSupport().addOperationLog(state, operationEntry);
 
-    const saved = await this.store.save(options.configRoot, state);
+    const saved = await this.getStore().save(options.configRoot, state);
     if (!saved.success) {
       throw saved.error;
     }
-    await this.logStore.append(options.configRoot, operationEntry);
+    await this.getLogStore().append(options.configRoot, operationEntry);
 
-    this.reportBuilder.addRegistryResult(
+    this.getReportBuilder().addRegistryResult(
       report,
-      this.reportBuilder.createRegistryResult({
+      this.getReportBuilder().createRegistryResult({
         registryId: "smithery",
         status: issues.length === 0 ? "success" : synchronizedItems.length > 0 ? "partial" : "failed",
         discovered: synchronizedItems.length,
@@ -160,6 +163,38 @@ export class McpCatalogSynchronizer {
       items: this.filterItems(state.catalogItems, options.query),
       report,
     };
+  }
+
+  private getStore(): ICatalogStateStore {
+    return (this.deps.store ??= new CatalogStateFileStore());
+  }
+
+  private getClient(): ISmitheryRegistryClient {
+    return (this.deps.client ??= new SmitheryRegistryClient());
+  }
+
+  private getReportBuilder(): CatalogOperationReportBuilder {
+    return (this.deps.reportBuilder ??= new CatalogOperationReportBuilder());
+  }
+
+  private getStateSupport(): CatalogStateSupport {
+    return (this.deps.stateSupport ??= new CatalogStateSupport());
+  }
+
+  private getCompatibilityEvaluator(): CatalogCompatibilityEvaluator {
+    return (this.deps.compatibilityEvaluator ??= new CatalogCompatibilityEvaluator());
+  }
+
+  private getCachePolicy(): CatalogCachePolicy {
+    return (this.deps.cachePolicy ??= new CatalogCachePolicy());
+  }
+
+  private getLogStore(): CatalogOperationLogStore {
+    return (this.deps.logStore ??= new CatalogOperationLogStore());
+  }
+
+  private getCredentialBootstrap(): CatalogCredentialBootstrap {
+    return (this.deps.credentialBootstrap ??= new CatalogCredentialBootstrap());
   }
 
   private filterItems(items: CatalogItem[], query?: string): CatalogItem[] {

@@ -20,18 +20,20 @@ export interface SearchSkillsQueryResult {
   report?: SyncReport;
 }
 
+interface SearchSkillsQueryDependencies {
+  store: CatalogStateFileStore;
+  stateSupport: CatalogStateSupport;
+  synchronizer: SkillCatalogSynchronizer;
+}
+
 export class SearchSkillsQuery {
-  constructor(
-    private readonly store = new CatalogStateFileStore(),
-    private readonly stateSupport = new CatalogStateSupport(),
-    private readonly synchronizer = new SkillCatalogSynchronizer()
-  ) {}
+  constructor(private readonly deps: Partial<SearchSkillsQueryDependencies> = {}) {}
 
   async execute(options: SearchSkillsQueryOptions): Promise<Result<SearchSkillsQueryResult, Error>> {
     try {
       let report: SyncReport | undefined;
       if (options.refresh) {
-        const synchronized = await this.synchronizer.synchronize({
+        const synchronized = await this.getSynchronizer().synchronize({
           configRoot: options.configRoot,
           query: options.query,
           ai: options.ai,
@@ -41,13 +43,13 @@ export class SearchSkillsQuery {
         report = synchronized.report;
       }
 
-      const loaded = await this.store.load(options.configRoot);
+      const loaded = await this.getStore().load(options.configRoot);
       if (!loaded.success) {
         return err(loaded.error);
       }
 
       const state = loaded.data;
-      const registry = this.stateSupport.getRegistry(state, "skillsmp");
+      const registry = this.getStateSupport().getRegistry(state, "skillsmp");
       const needle = options.query.toLowerCase();
       const items = state.catalogItems
         .filter((item) => item.registryId === "skillsmp")
@@ -73,5 +75,17 @@ export class SearchSkillsQuery {
     return [item.activationState, item.compatibilityState, item.availabilityState].includes(
       status as CatalogItem["activationState"]
     );
+  }
+
+  private getStore(): CatalogStateFileStore {
+    return (this.deps.store ??= new CatalogStateFileStore());
+  }
+
+  private getStateSupport(): CatalogStateSupport {
+    return (this.deps.stateSupport ??= new CatalogStateSupport());
+  }
+
+  private getSynchronizer(): SkillCatalogSynchronizer {
+    return (this.deps.synchronizer ??= new SkillCatalogSynchronizer());
   }
 }

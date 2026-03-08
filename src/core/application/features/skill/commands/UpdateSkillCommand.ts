@@ -19,27 +19,33 @@ export interface UpdateSkillCommandOptions {
   apiKey?: string;
 }
 
+interface UpdateSkillCommandDependencies {
+  store: CatalogStateFileStore;
+  stateSupport: CatalogStateSupport;
+  synchronizer: SkillCatalogSynchronizer;
+  compatibilityEvaluator: CatalogCompatibilityEvaluator;
+  materializer: SkillInstallMaterializer;
+  reportBuilder: CatalogOperationReportBuilder;
+  logStore: CatalogOperationLogStore;
+  credentialBootstrap: CatalogCredentialBootstrap;
+  client: SkillsMpClient;
+}
+
 export class UpdateSkillCommand {
-  constructor(
-    private readonly store = new CatalogStateFileStore(),
-    private readonly stateSupport = new CatalogStateSupport(),
-    private readonly synchronizer = new SkillCatalogSynchronizer(),
-    private readonly compatibilityEvaluator = new CatalogCompatibilityEvaluator(),
-    private readonly materializer = new SkillInstallMaterializer(),
-    private readonly reportBuilder = new CatalogOperationReportBuilder(),
-    private readonly logStore = new CatalogOperationLogStore(),
-    private readonly credentialBootstrap = new CatalogCredentialBootstrap(),
-    private readonly client = new SkillsMpClient()
-  ) {}
+  constructor(private readonly deps: Partial<UpdateSkillCommandDependencies> = {}) {}
 
   async execute(options: UpdateSkillCommandOptions): Promise<Result<LifecycleOperationSummary, Error>> {
     try {
-      await this.credentialBootstrap.applySkillCredentials(options.configRoot, options.apiKey);
+      await this.getCredentialBootstrap().applySkillCredentials(options.configRoot, options.apiKey);
       if (options.refresh) {
-        await this.synchronizer.synchronize({ configRoot: options.configRoot, force: true, apiKey: options.apiKey });
+        await this.getSynchronizer().synchronize({
+          configRoot: options.configRoot,
+          force: true,
+          apiKey: options.apiKey,
+        });
       }
 
-      const loaded = await this.store.load(options.configRoot);
+      const loaded = await this.getStore().load(options.configRoot);
       if (!loaded.success) {
         return err(loaded.error);
       }
@@ -58,7 +64,7 @@ export class UpdateSkillCommand {
       let unavailable = 0;
 
       for (const managed of targets) {
-        let item = this.stateSupport.findCatalogItem(state, managed.catalogKey);
+        let item = this.getStateSupport().findCatalogItem(state, managed.catalogKey);
         if (!item) {
           failed += 1;
           continue;
@@ -67,8 +73,8 @@ export class UpdateSkillCommand {
           unavailable += 1;
           continue;
         }
-        const gate = this.compatibilityEvaluator.canActivate(item);
-        this.stateSupport.setCompatibility(state, gate.assessment);
+        const gate = this.getCompatibilityEvaluator().canActivate(item);
+        this.getStateSupport().setCompatibility(state, gate.assessment);
         if (!gate.allowed) {
           skipped += 1;
           continue;
@@ -83,9 +89,9 @@ export class UpdateSkillCommand {
           continue;
         }
         item = installable.data;
-        this.stateSupport.upsertCatalogItems(state, [item]);
-        await this.materializer.install(options.configRoot, item);
-        this.stateSupport.upsertManagedIntegration(state, {
+        this.getStateSupport().upsertCatalogItems(state, [item]);
+        await this.getMaterializer().install(options.configRoot, item);
+        this.getStateSupport().upsertManagedIntegration(state, {
           ...managed,
           state: "active",
           installedVersion: item.sourceVersion,
@@ -95,12 +101,12 @@ export class UpdateSkillCommand {
         changed += 1;
       }
 
-      const saved = await this.store.save(options.configRoot, state);
+      const saved = await this.getStore().save(options.configRoot, state);
       if (!saved.success) {
         return err(saved.error);
       }
 
-      const summary = this.reportBuilder.createLifecycleSummary({
+      const summary = this.getReportBuilder().createLifecycleSummary({
         operation: "update",
         status: failed > 0 ? "partial" : "success",
         changed,
@@ -110,7 +116,7 @@ export class UpdateSkillCommand {
         unavailable,
         message: `Updated ${changed} skill(s), ${unchanged} unchanged, ${skipped} skipped, ${unavailable} unavailable, ${failed} failed.`,
       });
-      await this.logStore.append(options.configRoot, {
+      await this.getLogStore().append(options.configRoot, {
         operationId: `skill-update-${Date.now()}`,
         operationType: "update",
         registryId: "skillsmp",
@@ -130,7 +136,7 @@ export class UpdateSkillCommand {
       return ok(item);
     }
 
-    const detail = await this.client.getSkillDetails(item.sourceItemId, {
+    const detail = await this.getClient().getSkillDetails(item.sourceItemId, {
       id: item.sourceItemId,
       name: item.displayName,
       description: item.description,
@@ -173,5 +179,41 @@ export class UpdateSkillCommand {
   private hasInstallPayload(item: CatalogItem): boolean {
     const installation = item.metadata?.installation;
     return Boolean(installation?.skillMarkdown || (installation?.files && Object.keys(installation.files).length > 0));
+  }
+
+  private getStore(): CatalogStateFileStore {
+    return (this.deps.store ??= new CatalogStateFileStore());
+  }
+
+  private getStateSupport(): CatalogStateSupport {
+    return (this.deps.stateSupport ??= new CatalogStateSupport());
+  }
+
+  private getSynchronizer(): SkillCatalogSynchronizer {
+    return (this.deps.synchronizer ??= new SkillCatalogSynchronizer());
+  }
+
+  private getCompatibilityEvaluator(): CatalogCompatibilityEvaluator {
+    return (this.deps.compatibilityEvaluator ??= new CatalogCompatibilityEvaluator());
+  }
+
+  private getMaterializer(): SkillInstallMaterializer {
+    return (this.deps.materializer ??= new SkillInstallMaterializer());
+  }
+
+  private getReportBuilder(): CatalogOperationReportBuilder {
+    return (this.deps.reportBuilder ??= new CatalogOperationReportBuilder());
+  }
+
+  private getLogStore(): CatalogOperationLogStore {
+    return (this.deps.logStore ??= new CatalogOperationLogStore());
+  }
+
+  private getCredentialBootstrap(): CatalogCredentialBootstrap {
+    return (this.deps.credentialBootstrap ??= new CatalogCredentialBootstrap());
+  }
+
+  private getClient(): SkillsMpClient {
+    return (this.deps.client ??= new SkillsMpClient());
   }
 }

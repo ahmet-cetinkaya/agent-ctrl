@@ -24,23 +24,25 @@ export interface AddMcpCommandResult {
   managedIntegration: ManagedIntegration;
 }
 
+interface AddMcpCommandDependencies {
+  store: CatalogStateFileStore;
+  stateSupport: CatalogStateSupport;
+  materializer: ManagedMcpMaterializer;
+  synchronizer: McpCatalogSynchronizer;
+  client: SmitheryRegistryClient;
+  compatibilityEvaluator: CatalogCompatibilityEvaluator;
+  logStore: CatalogOperationLogStore;
+  credentialBootstrap: CatalogCredentialBootstrap;
+}
+
 export class AddMcpCommand {
-  constructor(
-    private readonly store = new CatalogStateFileStore(),
-    private readonly stateSupport = new CatalogStateSupport(),
-    private readonly materializer = new ManagedMcpMaterializer(),
-    private readonly synchronizer = new McpCatalogSynchronizer(),
-    private readonly client = new SmitheryRegistryClient(),
-    private readonly compatibilityEvaluator = new CatalogCompatibilityEvaluator(),
-    private readonly logStore = new CatalogOperationLogStore(),
-    private readonly credentialBootstrap = new CatalogCredentialBootstrap()
-  ) {}
+  constructor(private readonly deps: Partial<AddMcpCommandDependencies> = {}) {}
 
   async execute(options: AddMcpCommandOptions): Promise<Result<AddMcpCommandResult, Error>> {
     try {
-      await this.credentialBootstrap.applySmitheryCredentials(options.configRoot, options.apiKey);
+      await this.getCredentialBootstrap().applySmitheryCredentials(options.configRoot, options.apiKey);
       if (options.refresh) {
-        await this.synchronizer.synchronize({
+        await this.getSynchronizer().synchronize({
           configRoot: options.configRoot,
           query: this.normalizeRef(options.ref),
           force: true,
@@ -48,15 +50,15 @@ export class AddMcpCommand {
         });
       }
 
-      const loaded = await this.store.load(options.configRoot);
+      const loaded = await this.getStore().load(options.configRoot);
       if (!loaded.success) {
         return err(loaded.error);
       }
       const state = loaded.data;
 
-      let item = this.stateSupport.findCatalogItem(state, options.ref);
+      let item = this.getStateSupport().findCatalogItem(state, options.ref);
       if (!item) {
-        const detail = await this.client.getServerDetails(this.normalizeRef(options.ref));
+        const detail = await this.getClient().getServerDetails(this.normalizeRef(options.ref));
         if (!detail.success) {
           return err(detail.error);
         }
@@ -78,20 +80,20 @@ export class AddMcpCommand {
           sourceUrl: detail.data.homepage,
           metadata: detail.data.metadata,
         };
-        this.stateSupport.upsertCatalogItems(state, [item]);
+        this.getStateSupport().upsertCatalogItems(state, [item]);
       }
 
       if (item.availabilityState !== "available") {
         return err(new Error(`MCP ${item.sourceItemId} is no longer available and cannot be activated.`));
       }
 
-      const gate = this.compatibilityEvaluator.canActivate(item);
-      this.stateSupport.setCompatibility(state, gate.assessment);
+      const gate = this.getCompatibilityEvaluator().canActivate(item);
+      this.getStateSupport().setCompatibility(state, gate.assessment);
       if (!gate.allowed) {
         return err(new Error(gate.message ?? "MCP is incompatible."));
       }
 
-      const materialized = await this.materializer.install(options.configRoot, {
+      const materialized = await this.getMaterializer().install(options.configRoot, {
         ...item,
         sourceVersion: options.version ?? item.sourceVersion,
       });
@@ -110,7 +112,7 @@ export class AddMcpCommand {
         sourceRef: `smithery:${item.sourceItemId}`,
       });
 
-      this.stateSupport.upsertManagedIntegration(state, managed);
+      this.getStateSupport().upsertManagedIntegration(state, managed);
       const entry = createOperationLogEntry({
         operationId: `mcp-add-${Date.now()}`,
         operationType: "activate",
@@ -120,18 +122,50 @@ export class AddMcpCommand {
         message: `Activated MCP ${item.sourceItemId}`,
         occurredAt: now,
       });
-      this.stateSupport.addOperationLog(state, entry);
+      this.getStateSupport().addOperationLog(state, entry);
 
-      const saved = await this.store.save(options.configRoot, state);
+      const saved = await this.getStore().save(options.configRoot, state);
       if (!saved.success) {
         return err(saved.error);
       }
-      await this.logStore.append(options.configRoot, entry);
+      await this.getLogStore().append(options.configRoot, entry);
 
       return ok({ item, managedIntegration: managed });
     } catch (error) {
       return err(error instanceof Error ? error : new Error(String(error)));
     }
+  }
+
+  private getStore(): CatalogStateFileStore {
+    return (this.deps.store ??= new CatalogStateFileStore());
+  }
+
+  private getStateSupport(): CatalogStateSupport {
+    return (this.deps.stateSupport ??= new CatalogStateSupport());
+  }
+
+  private getMaterializer(): ManagedMcpMaterializer {
+    return (this.deps.materializer ??= new ManagedMcpMaterializer());
+  }
+
+  private getSynchronizer(): McpCatalogSynchronizer {
+    return (this.deps.synchronizer ??= new McpCatalogSynchronizer());
+  }
+
+  private getClient(): SmitheryRegistryClient {
+    return (this.deps.client ??= new SmitheryRegistryClient());
+  }
+
+  private getCompatibilityEvaluator(): CatalogCompatibilityEvaluator {
+    return (this.deps.compatibilityEvaluator ??= new CatalogCompatibilityEvaluator());
+  }
+
+  private getLogStore(): CatalogOperationLogStore {
+    return (this.deps.logStore ??= new CatalogOperationLogStore());
+  }
+
+  private getCredentialBootstrap(): CatalogCredentialBootstrap {
+    return (this.deps.credentialBootstrap ??= new CatalogCredentialBootstrap());
   }
 
   private normalizeRef(ref: string): string {

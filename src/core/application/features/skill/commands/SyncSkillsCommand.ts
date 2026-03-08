@@ -16,15 +16,23 @@ export interface SyncSkillsCommandResult {
   report: SyncReport;
 }
 
+interface SyncSkillsCommandDependencies {
+  synchronizer: SkillCatalogSynchronizer;
+}
+
 export class SyncSkillsCommand {
-  constructor(private readonly synchronizer = new SkillCatalogSynchronizer()) {}
+  constructor(private readonly deps: Partial<SyncSkillsCommandDependencies> = {}) {}
 
   async execute(options: SyncSkillsCommandOptions): Promise<Result<SyncSkillsCommandResult, Error>> {
     try {
-      const result = await this.synchronizer.synchronize(options);
+      const result = await this.getSynchronizer().synchronize(options);
       return ok({ items: result.items, report: result.report });
     } catch (error) {
       return err(error instanceof Error ? error : new Error(String(error)));
     }
+  }
+
+  private getSynchronizer(): SkillCatalogSynchronizer {
+    return (this.deps.synchronizer ??= new SkillCatalogSynchronizer());
   }
 }

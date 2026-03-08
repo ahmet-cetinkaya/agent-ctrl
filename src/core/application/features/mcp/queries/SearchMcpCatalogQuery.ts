@@ -19,18 +19,20 @@ export interface SearchMcpCatalogQueryResult {
   report?: SyncReport;
 }
 
+interface SearchMcpCatalogQueryDependencies {
+  store: CatalogStateFileStore;
+  stateSupport: CatalogStateSupport;
+  synchronizer: McpCatalogSynchronizer;
+}
+
 export class SearchMcpCatalogQuery {
-  constructor(
-    private readonly store = new CatalogStateFileStore(),
-    private readonly stateSupport = new CatalogStateSupport(),
-    private readonly synchronizer = new McpCatalogSynchronizer()
-  ) {}
+  constructor(private readonly deps: Partial<SearchMcpCatalogQueryDependencies> = {}) {}
 
   async execute(options: SearchMcpCatalogQueryOptions): Promise<Result<SearchMcpCatalogQueryResult, Error>> {
     try {
       let report: SyncReport | undefined;
       if (options.refresh) {
-        const synchronized = await this.synchronizer.synchronize({
+        const synchronized = await this.getSynchronizer().synchronize({
           configRoot: options.configRoot,
           query: options.query,
           force: true,
@@ -39,13 +41,13 @@ export class SearchMcpCatalogQuery {
         report = synchronized.report;
       }
 
-      const loaded = await this.store.load(options.configRoot);
+      const loaded = await this.getStore().load(options.configRoot);
       if (!loaded.success) {
         return err(loaded.error);
       }
 
       const state = loaded.data;
-      const registry = this.stateSupport.getRegistry(state, "smithery");
+      const registry = this.getStateSupport().getRegistry(state, "smithery");
       const needle = options.query.toLowerCase();
       const items = state.catalogItems
         .filter((item) => item.registryId === "smithery")
@@ -68,5 +70,17 @@ export class SearchMcpCatalogQuery {
     } catch (error) {
       return err(error instanceof Error ? error : new Error(String(error)));
     }
+  }
+
+  private getStore(): CatalogStateFileStore {
+    return (this.deps.store ??= new CatalogStateFileStore());
+  }
+
+  private getStateSupport(): CatalogStateSupport {
+    return (this.deps.stateSupport ??= new CatalogStateSupport());
+  }
+
+  private getSynchronizer(): McpCatalogSynchronizer {
+    return (this.deps.synchronizer ??= new McpCatalogSynchronizer());
   }
 }

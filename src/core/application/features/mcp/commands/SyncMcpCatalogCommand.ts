@@ -14,15 +14,23 @@ export interface SyncMcpCatalogCommandResult {
   report: SyncReport;
 }
 
+interface SyncMcpCatalogCommandDependencies {
+  synchronizer: McpCatalogSynchronizer;
+}
+
 export class SyncMcpCatalogCommand {
-  constructor(private readonly synchronizer = new McpCatalogSynchronizer()) {}
+  constructor(private readonly deps: Partial<SyncMcpCatalogCommandDependencies> = {}) {}
 
   async execute(options: SyncMcpCatalogCommandOptions): Promise<Result<SyncMcpCatalogCommandResult, Error>> {
     try {
-      const result = await this.synchronizer.synchronize(options);
+      const result = await this.getSynchronizer().synchronize(options);
       return ok({ items: result.items, report: result.report });
     } catch (error) {
       return err(error instanceof Error ? error : new Error(String(error)));
     }
+  }
+
+  private getSynchronizer(): McpCatalogSynchronizer {
+    return (this.deps.synchronizer ??= new McpCatalogSynchronizer());
   }
 }

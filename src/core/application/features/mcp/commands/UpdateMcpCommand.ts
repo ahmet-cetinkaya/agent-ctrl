@@ -17,26 +17,32 @@ export interface UpdateMcpCommandOptions {
   apiKey?: string;
 }
 
+interface UpdateMcpCommandDependencies {
+  store: CatalogStateFileStore;
+  stateSupport: CatalogStateSupport;
+  synchronizer: McpCatalogSynchronizer;
+  compatibilityEvaluator: CatalogCompatibilityEvaluator;
+  materializer: ManagedMcpMaterializer;
+  reportBuilder: CatalogOperationReportBuilder;
+  logStore: CatalogOperationLogStore;
+  credentialBootstrap: CatalogCredentialBootstrap;
+}
+
 export class UpdateMcpCommand {
-  constructor(
-    private readonly store = new CatalogStateFileStore(),
-    private readonly stateSupport = new CatalogStateSupport(),
-    private readonly synchronizer = new McpCatalogSynchronizer(),
-    private readonly compatibilityEvaluator = new CatalogCompatibilityEvaluator(),
-    private readonly materializer = new ManagedMcpMaterializer(),
-    private readonly reportBuilder = new CatalogOperationReportBuilder(),
-    private readonly logStore = new CatalogOperationLogStore(),
-    private readonly credentialBootstrap = new CatalogCredentialBootstrap()
-  ) {}
+  constructor(private readonly deps: Partial<UpdateMcpCommandDependencies> = {}) {}
 
   async execute(options: UpdateMcpCommandOptions): Promise<Result<LifecycleOperationSummary, Error>> {
     try {
-      await this.credentialBootstrap.applySmitheryCredentials(options.configRoot, options.apiKey);
+      await this.getCredentialBootstrap().applySmitheryCredentials(options.configRoot, options.apiKey);
       if (options.refresh) {
-        await this.synchronizer.synchronize({ configRoot: options.configRoot, force: true, apiKey: options.apiKey });
+        await this.getSynchronizer().synchronize({
+          configRoot: options.configRoot,
+          force: true,
+          apiKey: options.apiKey,
+        });
       }
 
-      const loaded = await this.store.load(options.configRoot);
+      const loaded = await this.getStore().load(options.configRoot);
       if (!loaded.success) {
         return err(loaded.error);
       }
@@ -55,7 +61,7 @@ export class UpdateMcpCommand {
       let unavailable = 0;
 
       for (const managed of targets) {
-        const item = this.stateSupport.findCatalogItem(state, managed.catalogKey);
+        const item = this.getStateSupport().findCatalogItem(state, managed.catalogKey);
         if (!item) {
           failed += 1;
           continue;
@@ -64,8 +70,8 @@ export class UpdateMcpCommand {
           unavailable += 1;
           continue;
         }
-        const gate = this.compatibilityEvaluator.canActivate(item);
-        this.stateSupport.setCompatibility(state, gate.assessment);
+        const gate = this.getCompatibilityEvaluator().canActivate(item);
+        this.getStateSupport().setCompatibility(state, gate.assessment);
         if (!gate.allowed) {
           skipped += 1;
           continue;
@@ -74,8 +80,8 @@ export class UpdateMcpCommand {
           unchanged += 1;
           continue;
         }
-        await this.materializer.install(options.configRoot, item);
-        this.stateSupport.upsertManagedIntegration(state, {
+        await this.getMaterializer().install(options.configRoot, item);
+        this.getStateSupport().upsertManagedIntegration(state, {
           ...managed,
           state: "active",
           installedVersion: item.sourceVersion,
@@ -85,12 +91,12 @@ export class UpdateMcpCommand {
         changed += 1;
       }
 
-      const saved = await this.store.save(options.configRoot, state);
+      const saved = await this.getStore().save(options.configRoot, state);
       if (!saved.success) {
         return err(saved.error);
       }
 
-      const summary = this.reportBuilder.createLifecycleSummary({
+      const summary = this.getReportBuilder().createLifecycleSummary({
         operation: "update",
         status: failed > 0 ? "partial" : "success",
         changed,
@@ -100,7 +106,7 @@ export class UpdateMcpCommand {
         unavailable,
         message: `Updated ${changed} MCP(s), ${unchanged} unchanged, ${skipped} skipped, ${unavailable} unavailable, ${failed} failed.`,
       });
-      await this.logStore.append(options.configRoot, {
+      await this.getLogStore().append(options.configRoot, {
         operationId: `mcp-update-${Date.now()}`,
         operationType: "update",
         registryId: "smithery",
@@ -113,5 +119,37 @@ export class UpdateMcpCommand {
     } catch (error) {
       return err(error instanceof Error ? error : new Error(String(error)));
     }
+  }
+
+  private getStore(): CatalogStateFileStore {
+    return (this.deps.store ??= new CatalogStateFileStore());
+  }
+
+  private getStateSupport(): CatalogStateSupport {
+    return (this.deps.stateSupport ??= new CatalogStateSupport());
+  }
+
+  private getSynchronizer(): McpCatalogSynchronizer {
+    return (this.deps.synchronizer ??= new McpCatalogSynchronizer());
+  }
+
+  private getCompatibilityEvaluator(): CatalogCompatibilityEvaluator {
+    return (this.deps.compatibilityEvaluator ??= new CatalogCompatibilityEvaluator());
+  }
+
+  private getMaterializer(): ManagedMcpMaterializer {
+    return (this.deps.materializer ??= new ManagedMcpMaterializer());
+  }
+
+  private getReportBuilder(): CatalogOperationReportBuilder {
+    return (this.deps.reportBuilder ??= new CatalogOperationReportBuilder());
+  }
+
+  private getLogStore(): CatalogOperationLogStore {
+    return (this.deps.logStore ??= new CatalogOperationLogStore());
+  }
+
+  private getCredentialBootstrap(): CatalogCredentialBootstrap {
+    return (this.deps.credentialBootstrap ??= new CatalogCredentialBootstrap());
   }
 }

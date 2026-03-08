@@ -29,47 +29,49 @@ export interface SkillCatalogSyncResult {
   report: SyncReport;
 }
 
+interface SkillCatalogSynchronizerDependencies {
+  store: ICatalogStateStore;
+  client: ISkillsMpClient;
+  planner: DiscoveryScopePlanner;
+  reportBuilder: CatalogOperationReportBuilder;
+  stateSupport: CatalogStateSupport;
+  compatibilityEvaluator: CatalogCompatibilityEvaluator;
+  cachePolicy: CatalogCachePolicy;
+  logStore: CatalogOperationLogStore;
+  credentialBootstrap: CatalogCredentialBootstrap;
+}
+
 export class SkillCatalogSynchronizer {
-  constructor(
-    private readonly store: ICatalogStateStore = new CatalogStateFileStore(),
-    private readonly client: ISkillsMpClient = new SkillsMpClient(),
-    private readonly planner = new DiscoveryScopePlanner(),
-    private readonly reportBuilder = new CatalogOperationReportBuilder(),
-    private readonly stateSupport = new CatalogStateSupport(),
-    private readonly compatibilityEvaluator = new CatalogCompatibilityEvaluator(),
-    private readonly cachePolicy = new CatalogCachePolicy(),
-    private readonly logStore = new CatalogOperationLogStore(),
-    private readonly credentialBootstrap = new CatalogCredentialBootstrap()
-  ) {}
+  constructor(private readonly deps: Partial<SkillCatalogSynchronizerDependencies> = {}) {}
 
   async synchronize(options: SkillCatalogSyncOptions): Promise<SkillCatalogSyncResult> {
-    await this.credentialBootstrap.applySkillCredentials(options.configRoot, options.apiKey);
-    const loaded = await this.store.load(options.configRoot);
+    await this.getCredentialBootstrap().applySkillCredentials(options.configRoot, options.apiKey);
+    const loaded = await this.getStore().load(options.configRoot);
     if (!loaded.success) {
       throw loaded.error;
     }
 
     const state = loaded.data;
-    const registry = this.stateSupport.getRegistry(state, "skillsmp");
+    const registry = this.getStateSupport().getRegistry(state, "skillsmp");
     const trackedItems = state.managedIntegrations
       .filter((entry) => entry.itemType === "skill")
       .map((entry) => entry.sourceRef.replace(/^skillsmp:/, ""));
-    const scopes = this.planner.planSkillScopes(state, {
+    const scopes = this.getPlanner().planSkillScopes(state, {
       query: options.query,
       category: options.category,
       trackedItems: trackedItems.length > 0 && !options.query && !options.category ? trackedItems : undefined,
     });
 
-    const cacheDecision = this.cachePolicy.shouldRefresh(registry, { force: options.force });
-    const report = this.reportBuilder.createSyncReport(
+    const cacheDecision = this.getCachePolicy().shouldRefresh(registry, { force: options.force });
+    const report = this.getReportBuilder().createSyncReport(
       ["skillsmp"],
       scopes.map((scope) => scope.scopeId)
     );
     if (!cacheDecision.shouldRefresh && state.catalogItems.some((item) => item.registryId === "skillsmp")) {
       const cachedItems = this.filterItemsForScopes(state.catalogItems, scopes);
-      this.reportBuilder.addRegistryResult(
+      this.getReportBuilder().addRegistryResult(
         report,
-        this.reportBuilder.createRegistryResult({
+        this.getReportBuilder().createRegistryResult({
           registryId: "skillsmp",
           status: "cached",
           usedCache: true,
@@ -84,14 +86,14 @@ export class SkillCatalogSynchronizer {
     const issues: string[] = [];
     let discovered = 0;
 
-    this.stateSupport.updateRegistrySyncState(state, "skillsmp", {
+    this.getStateSupport().updateRegistrySyncState(state, "skillsmp", {
       lastSyncStartedAt: new Date().toISOString(),
     });
 
     for (const scope of scopes) {
       const queries = this.scopeToQueries(scope);
       for (const query of queries) {
-        const response = await this.client.search({
+        const response = await this.getClient().search({
           query,
           ai: options.ai,
           category: scope.category,
@@ -136,16 +138,16 @@ export class SkillCatalogSynchronizer {
       }
     }
 
-    this.stateSupport.upsertCatalogItems(state, synchronizedItems);
+    this.getStateSupport().upsertCatalogItems(state, synchronizedItems);
     for (const item of synchronizedItems) {
-      const assessment = this.compatibilityEvaluator.evaluate(item);
-      this.stateSupport.setCompatibility(state, assessment);
+      const assessment = this.getCompatibilityEvaluator().evaluate(item);
+      this.getStateSupport().setCompatibility(state, assessment);
     }
-    this.stateSupport.updateCatalogAvailability(state, "skillsmp", seenKeys, {
+    this.getStateSupport().updateCatalogAvailability(state, "skillsmp", seenKeys, {
       markMissingUnavailable: scopes.some((scope) => scope.scopeType === "tracked-items"),
     });
 
-    this.stateSupport.updateRegistrySyncState(state, "skillsmp", {
+    this.getStateSupport().updateRegistrySyncState(state, "skillsmp", {
       authState: issues.some(
         (issue) => issue.toLowerCase().includes("api key") || issue.toLowerCase().includes("authentication")
       )
@@ -153,7 +155,8 @@ export class SkillCatalogSynchronizer {
         : "configured",
       lastSyncSucceededAt: issues.length === 0 ? new Date().toISOString() : registry.lastSyncSucceededAt,
       lastSyncStatus: issues.length === 0 ? "success" : synchronizedItems.length > 0 ? "partial" : "failed",
-      cacheFreshUntil: synchronizedItems.length > 0 ? this.cachePolicy.computeFreshUntil() : registry.cacheFreshUntil,
+      cacheFreshUntil:
+        synchronizedItems.length > 0 ? this.getCachePolicy().computeFreshUntil() : registry.cacheFreshUntil,
       catalogItemCount: state.catalogItems.filter((item) => item.registryId === "skillsmp").length,
     });
 
@@ -165,17 +168,17 @@ export class SkillCatalogSynchronizer {
       message: issues.join(" ") || `Synchronized ${synchronizedItems.length} SkillsMP items.`,
       occurredAt: new Date().toISOString(),
     });
-    this.stateSupport.addOperationLog(state, operationEntry);
+    this.getStateSupport().addOperationLog(state, operationEntry);
 
-    const saved = await this.store.save(options.configRoot, state);
+    const saved = await this.getStore().save(options.configRoot, state);
     if (!saved.success) {
       throw saved.error;
     }
-    await this.logStore.append(options.configRoot, operationEntry);
+    await this.getLogStore().append(options.configRoot, operationEntry);
 
-    this.reportBuilder.addRegistryResult(
+    this.getReportBuilder().addRegistryResult(
       report,
-      this.reportBuilder.createRegistryResult({
+      this.getReportBuilder().createRegistryResult({
         registryId: "skillsmp",
         status: issues.length === 0 ? "success" : synchronizedItems.length > 0 ? "partial" : "failed",
         discovered,
@@ -192,6 +195,42 @@ export class SkillCatalogSynchronizer {
       scopes,
       report,
     };
+  }
+
+  private getStore(): ICatalogStateStore {
+    return (this.deps.store ??= new CatalogStateFileStore());
+  }
+
+  private getClient(): ISkillsMpClient {
+    return (this.deps.client ??= new SkillsMpClient());
+  }
+
+  private getPlanner(): DiscoveryScopePlanner {
+    return (this.deps.planner ??= new DiscoveryScopePlanner());
+  }
+
+  private getReportBuilder(): CatalogOperationReportBuilder {
+    return (this.deps.reportBuilder ??= new CatalogOperationReportBuilder());
+  }
+
+  private getStateSupport(): CatalogStateSupport {
+    return (this.deps.stateSupport ??= new CatalogStateSupport());
+  }
+
+  private getCompatibilityEvaluator(): CatalogCompatibilityEvaluator {
+    return (this.deps.compatibilityEvaluator ??= new CatalogCompatibilityEvaluator());
+  }
+
+  private getCachePolicy(): CatalogCachePolicy {
+    return (this.deps.cachePolicy ??= new CatalogCachePolicy());
+  }
+
+  private getLogStore(): CatalogOperationLogStore {
+    return (this.deps.logStore ??= new CatalogOperationLogStore());
+  }
+
+  private getCredentialBootstrap(): CatalogCredentialBootstrap {
+    return (this.deps.credentialBootstrap ??= new CatalogCredentialBootstrap());
   }
 
   private filterItemsForScopes(items: CatalogItem[], scopes: DiscoveryScope[]): CatalogItem[] {

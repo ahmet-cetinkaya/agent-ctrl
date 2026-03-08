@@ -8,19 +8,24 @@ import { SUPPORTED_APPLY_PLATFORMS } from "@/core/domain/shared/types/SupportedA
 
 describe("Selected-platform apply integration flow", () => {
   let projectPath: string;
+  let claudeHomePath: string;
   let command: ApplyCommand;
   let registry: PlatformAdapterRegistry;
 
   beforeEach(async () => {
     projectPath = await mkdtemp(join(tmpdir(), "apply-flow-"));
+    claudeHomePath = await mkdtemp(join(tmpdir(), "apply-flow-claude-home-"));
     process.env.AGENT_CTRL_HOME = projectPath;
+    process.env.AGENT_CTRL_CLAUDE_HOME = claudeHomePath;
     command = new ApplyCommand();
     registry = new PlatformAdapterRegistry();
   });
 
   afterEach(async () => {
     delete process.env.AGENT_CTRL_HOME;
+    delete process.env.AGENT_CTRL_CLAUDE_HOME;
     await rm(projectPath, { recursive: true, force: true });
+    await rm(claudeHomePath, { recursive: true, force: true });
   });
 
   it("applies only the selected platform", async () => {
