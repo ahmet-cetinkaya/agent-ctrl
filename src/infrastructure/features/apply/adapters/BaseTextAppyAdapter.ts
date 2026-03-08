@@ -26,7 +26,7 @@ export abstract class BaseTextAppyAdapter implements IAppyPlatformAdapter {
    */
   protected readonly scopeResolver = new CommandScopePrecedenceResolver();
 
-  protected constructor() {}
+  constructor() {}
 
   abstract resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
 

@@ -6,6 +6,7 @@ import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 
 export interface InitCommandOptions {
   targetPath: string;
+  override?: boolean;
 }
 
 export interface InitCommandResult {
@@ -19,6 +20,9 @@ export class InitCommand {
   private static readonly MCP_DIR = "mcps";
   private static readonly GITKEEP_FILE = ".gitkeep";
   private static readonly README_FILE = "README.md";
+  private static readonly ENV_FILE = ".env";
+  private static readonly ENV_EXAMPLE_FILE = ".env.example";
+  private static readonly GITIGNORE_FILE = ".gitignore";
   private fileSystem: IFileSystem;
 
   constructor(fileSystem: IFileSystem) {
@@ -28,12 +32,13 @@ export class InitCommand {
   async execute(options: InitCommandOptions): Promise<Result<InitCommandResult, Error>> {
     const targetPath = this.fileSystem.resolve(options.targetPath);
 
-    const validationResult = await this.validateDirectory(targetPath);
+    const validationResult = await this.validateDirectory(targetPath, Boolean(options.override));
     if (!validationResult.success) {
       return validationResult as Result<never, Error>;
     }
 
     const mcpDirectory = this.getMcpDirectoryForTarget(targetPath);
+    const configRootPath = this.getConfigRootPathForTarget(targetPath);
     const directories = this.getDirectoriesForTarget(mcpDirectory);
     const createdDirs: string[] = [];
     const createdFiles: string[] = [];
@@ -85,6 +90,48 @@ export class InitCommand {
       }
     }
 
+    const configFiles = [
+      {
+        path: this.fileSystem.resolve(configRootPath, InitCommand.ENV_FILE),
+        relativePath: this.getRelativePathForCreatedFile(targetPath, configRootPath, InitCommand.ENV_FILE),
+        content: this.getEnvTemplate(),
+      },
+      {
+        path: this.fileSystem.resolve(configRootPath, InitCommand.ENV_EXAMPLE_FILE),
+        relativePath: this.getRelativePathForCreatedFile(targetPath, configRootPath, InitCommand.ENV_EXAMPLE_FILE),
+        content: this.getEnvExampleTemplate(),
+      },
+      {
+        path: this.fileSystem.resolve(configRootPath, InitCommand.GITIGNORE_FILE),
+        relativePath: this.getRelativePathForCreatedFile(targetPath, configRootPath, InitCommand.GITIGNORE_FILE),
+        content: this.getConfigGitignoreTemplate(),
+      },
+    ];
+
+    for (const file of configFiles) {
+      try {
+        await this.fileSystem.writeFile(file.path, file.content, "utf-8");
+        createdFiles.push(file.relativePath);
+      } catch (error) {
+        const nodeErr = error as NodeJS.ErrnoException;
+        let message = `Failed to create ${file.relativePath}`;
+
+        if (nodeErr.code === "EACCES") {
+          message += ": Permission denied. Check file/directory permissions.";
+        } else if (nodeErr.code === "ENOSPC") {
+          message += ": No space left on device. Free up disk space and try again.";
+        } else if (nodeErr.code === "EROFS") {
+          message += ": Filesystem is read-only. Cannot write to this location.";
+        } else if (error instanceof Error) {
+          message += `: ${error.message}`;
+        } else {
+          message += `: ${String(error)}`;
+        }
+
+        return err(new SystemError(message, ERROR_IDS.FILE_WRITE_FAILED));
+      }
+    }
+
     const readmePath = this.fileSystem.resolve(targetPath, InitCommand.README_FILE);
     try {
       await this.fileSystem.writeFile(readmePath, this.getReadmeTemplate(), "utf-8");
@@ -114,15 +161,15 @@ export class InitCommand {
     });
   }
 
-  private async validateDirectory(targetPath: string): Promise<Result<boolean, Error>> {
+  private async validateDirectory(targetPath: string, override: boolean): Promise<Result<boolean, Error>> {
     try {
       await this.fileSystem.access(targetPath);
 
       const entries = await this.fileSystem.readdir(targetPath);
       const nonIgnoredFiles = entries.filter((entry) => entry.name !== ".git" && entry.name !== "node_modules");
 
-      if (nonIgnoredFiles.length > 0) {
-        return err(new UserError("Directory is not empty. Please initialize in an empty directory."));
+      if (nonIgnoredFiles.length > 0 && !override) {
+        return err(new UserError("Directory is not empty. Re-run with --override to initialize anyway."));
       }
 
       return ok(true);
@@ -157,6 +204,15 @@ export class InitCommand {
     return isConfigRootTarget ? InitCommand.MCP_DIR : `${InitCommand.CONFIG_ROOT_DIR}/${InitCommand.MCP_DIR}`;
   }
 
+  private getConfigRootPathForTarget(targetPath: string): string {
+    const isConfigRootTarget = new RegExp(`(^|[\\\\/])${InitCommand.CONFIG_ROOT_DIR}$`).test(targetPath);
+    return isConfigRootTarget ? targetPath : this.fileSystem.resolve(targetPath, InitCommand.CONFIG_ROOT_DIR);
+  }
+
+  private getRelativePathForCreatedFile(targetPath: string, configRootPath: string, filename: string): string {
+    return configRootPath === targetPath ? filename : `${InitCommand.CONFIG_ROOT_DIR}/${filename}`;
+  }
+
   private getReadmeTemplate(): string {
     return `# agent-ctrl configuration
 
@@ -171,12 +227,41 @@ CLI tool repository: https://github.com/ahmet-cetinkaya/agent-ctrl
 - \`agents/\`: Agent persona definitions
 - \`commands/\`: Command prompt templates
 - \`.agent-ctrl/mcps/\`: MCP server definitions
+- \`.agent-ctrl/.env\`: SkillsMP and Smithery API credentials
 
 ## Next steps
 
 1. Add your artifacts to the directories above.
 2. Run \`agent-ctrl rule ls\`, \`agent-ctrl skill ls\`, or \`agent-ctrl agent ls\`.
 3. Apply your configuration with \`agent-ctrl apply <platform>\`.
+`;
+  }
+
+  private getEnvTemplate(): string {
+    return `# agent-ctrl integration credentials
+# Add your real API keys here. This file is ignored by .gitignore.
+# SkillsMP API key: https://skillsmp.com/docs/api
+# Smithery API key: https://smithery.ai/account/api-keys
+
+SKILLSMP_API_KEY=
+SMITHERY_API_KEY=
+`;
+  }
+
+  private getEnvExampleTemplate(): string {
+    return `# Example agent-ctrl integration credentials
+# Copy these keys into .env and populate them with real values.
+# SkillsMP API key: https://skillsmp.com/docs/api
+# Smithery API key: https://smithery.ai/account/api-keys
+
+SKILLSMP_API_KEY=your-skillsmp-api-key
+SMITHERY_API_KEY=your-smithery-api-key
+`;
+  }
+
+  private getConfigGitignoreTemplate(): string {
+    return `# Local secrets for agent-ctrl catalog integrations
+.env
 `;
   }
 }

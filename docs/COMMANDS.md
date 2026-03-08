@@ -10,6 +10,9 @@ Scaffold a new project, optionally from a remote Git template.
 # Create empty project
 agent-ctrl init
 
+# Re-initialize an existing config root
+agent-ctrl init --override
+
 # Clone from GitHub template
 agent-ctrl init owner/repo
 
@@ -134,28 +137,34 @@ agent-ctrl rule add https://example.com/rule.md
 ### Skill Management
 
 ```bash
-# Add a skill
-agent-ctrl skill add git-workflow
+# Seed or refresh a SkillsMP discovery scope
+agent-ctrl skill sync --query "code review"
 
-# Add from SkillsMP
+# Override the SkillsMP API key for one run
+agent-ctrl skill sync --query "code review" --api-key "$SKILLSMP_API_KEY"
+
+# Search synchronized SkillsMP entries
+agent-ctrl skill search "testing" --capability review
+
+# Activate a managed skill from SkillsMP
 agent-ctrl skill add skillsmp:code-review
 
-# Search SkillsMP
-agent-ctrl skill search "testing"
-
-# List installed skills
+# List installed skills plus managed catalog metadata
 agent-ctrl skill ls
 
-# Remove a skill
-agent-ctrl skill rm git-workflow
+# Deactivate a managed skill
+agent-ctrl skill rm code-review
 
-# Update a skill
-agent-ctrl skill update git-workflow
+# Update a single managed skill or all managed skills
+agent-ctrl skill update code-review
+agent-ctrl skill update --all --refresh
 ```
 
 **Location:** `skills/`
 
-**Integrations:** SkillsMP marketplace
+**Integrations:** SkillsMP marketplace, cached under `.agent-ctrl/.catalog/`
+
+**Credentials:** Loaded from `.agent-ctrl/.env` by default. `--api-key` overrides the configured key for a single command.
 
 ---
 
@@ -201,17 +210,30 @@ agent-ctrl agent rm senior-dev
 ### MCP Management
 
 ```bash
-# Interactive MCP setup
-agent-ctrl mcp setup
+# Refresh the Smithery registry cache
+agent-ctrl mcp sync
 
-# Validate mcp.json
-agent-ctrl mcp validate
+# Override the Smithery API key for one run
+agent-ctrl mcp sync --api-key "$SMITHERY_API_KEY"
 
-# List configured servers
+# Search synchronized Smithery servers
+agent-ctrl mcp search github --status unknown
+
+# Activate and deactivate managed MCPs
+agent-ctrl mcp add smithery:github
+agent-ctrl mcp rm github
+
+# List configured servers with managed catalog metadata
 agent-ctrl mcp ls
+
+# Update one managed MCP or all managed MCPs
+agent-ctrl mcp update github
+agent-ctrl mcp update --all --refresh
 ```
 
-**Location:** `mcp.json`
+**Location:** `.agent-ctrl/mcps/`
+
+**Credentials:** Loaded from `.agent-ctrl/.env` by default. `--api-key` overrides the configured key for a single command.
 
 ---
 

@@ -42,3 +42,49 @@
 1. Ensure you run the same platform and scope for both executions.
 2. Check for external edits in managed appy config files between runs.
 3. Re-run once more; deterministic content should settle to `unchanged` if no differences remain.
+
+## Registry Sync
+
+### Missing SkillsMP credentials
+
+**Symptom**: sync or search reports missing SkillsMP API key.
+
+**Resolution**:
+
+1. Export `SKILLSMP_API_KEY` or `SKILLSMP_TOKEN`.
+2. Prefer storing the key in `.agent-ctrl/.env`.
+3. Or pass `--api-key <value>` to `skill sync`, `skill search --refresh`, `skill add --refresh`, or `skill update --refresh`.
+4. Re-run `agent-ctrl skill sync --query "<value>"`.
+5. Confirm cached results still appear for earlier successful syncs if the source remains unavailable.
+
+### Missing Smithery credentials
+
+**Symptom**: sync or search reports Smithery authentication failure.
+
+**Resolution**:
+
+1. Export `SMITHERY_API_KEY` or `SMITHERY_TOKEN`.
+2. Prefer storing the key in `.agent-ctrl/.env`.
+3. Or pass `--api-key <value>` to `mcp sync`, `mcp search --refresh`, `mcp add --refresh`, or `mcp update --refresh`.
+4. Re-run `agent-ctrl mcp sync`.
+5. Use `agent-ctrl mcp search <query>` after a successful sync to confirm the cache is populated.
+
+### Quota or rate-limit reached
+
+**Symptom**: SkillsMP or Smithery sync reports throttling, quota exhaustion, or partial success.
+
+**Resolution**:
+
+1. Reduce the sync scope, especially for SkillsMP query/category windows.
+2. Wait for the source quota window to reset.
+3. Re-run with `--refresh` only when you actually need a fresh source request.
+
+### Cached data looks stale
+
+**Symptom**: list or search output shows old versions or old timestamps.
+
+**Resolution**:
+
+1. Re-run `agent-ctrl skill sync --refresh --query "<value>"` for the affected SkillsMP scope.
+2. Re-run `agent-ctrl mcp sync --refresh` for the Smithery catalog.
+3. Use `agent-ctrl skill ls` or `agent-ctrl mcp ls` to confirm the last successful sync timestamp.

@@ -8,26 +8,22 @@
 src/
 ├── core/
 │   ├── domain/              # Domain models and entities
-│   │   ├── Rule.ts
-│   │   ├── Skill.ts
-│   │   ├── Agent.ts
-│   │   └── McpConfig.ts
+│   │   ├── shared/entities/ # Rule, Skill, Agent, catalog state entities
+│   │   └── shared/interfaces/
 │   └── application/         # Use cases and business logic
-│       ├── init.ts
-│       ├── apply.ts
-│       ├── build.ts
-│       └── artifacts/       # Artifact management use cases
-│           ├── rule.ts
-│           ├── skill.ts
-│           ├── command.ts
-│           └── agent.ts
+│       └── features/
+│           ├── skill/
+│           └── mcp/
 ├── infrastructure/          # External integrations
-│   ├── registry/            # SkillsMP, Git templates
-│   ├── filesystem/          # File I/O, directory scanning
-│   └── validation/          # Zod schemas
+│   └── features/
+│       ├── catalog/         # Cache, remote clients, compatibility, scope planning
+│       ├── skill/           # Skill scanners, metadata, registries
+│       └── mcp/             # MCP loaders, metadata, registries, validators
 └── presentation/
     └── cli/                 # Commander.js interface
-        └── index.ts
+        └── features/
+            ├── skill/
+            └── mcp/
 ```
 
 ### The Standard Directory Pattern
@@ -49,7 +45,9 @@ The CLI operates on a project-local structure that defines agent behavior:
 │   └── explain.md
 ├── agents/             # Agent Personas
 │   └── architect.md
-└── mcp.json            # MCP Server Configuration
+└── .agent-ctrl/
+    ├── mcps/           # Managed MCP configuration files
+    └── .catalog/       # Sync cache, discovery scopes, managed source metadata
 ```
 
 ## Adapter Pattern
@@ -89,13 +87,13 @@ interface IAppyPlatformAdapter {
 - Scans directory structure for artifacts
 - Caches parsed configuration for performance
 
-### Registry Client
+### Registry Clients
 
-**Location:** `src/infrastructure/registry/`
+**Location:** `src/infrastructure/features/catalog/clients/`
 
-- **SkillsMP:** Skill discovery, installation, updates
-- **Git Templates:** Remote project scaffolding via `giget`
-- Supports GitHub, GitLab, Bitbucket
+- **SkillsMP:** Scoped skill discovery through the documented search API, plus page-backed installation metadata lookup
+- **Smithery:** Paginated MCP registry traversal and server-detail retrieval
+- Shared cache/state lives under `src/infrastructure/features/catalog/caching/`
 
 ### Artifact Scanners
 

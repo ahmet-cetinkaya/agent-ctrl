@@ -154,7 +154,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
       return newConfig;
     }
 
-    const mergeByName = <T extends { name: string }>(existing: T[], incoming: T[]): T[] => {
+    const mergeByName = <T extends { name: string }>(existing: readonly T[], incoming: readonly T[]): T[] => {
       const map = new Map<string, T>();
       existing.forEach((item) => map.set(item.name, item));
       incoming.forEach((item) => map.set(item.name, item));

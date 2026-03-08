@@ -8,14 +8,17 @@ SkillsMP is a marketplace for discovering and sharing AI agent skills. agent-ctr
 
 ### Discovery
 
-Search for skills by keyword or category:
+Refresh and search scoped SkillsMP discovery windows:
 
 ```bash
-# Search for testing skills
-agent-ctrl skill search "testing"
+# Refresh a query scope
+agent-ctrl skill sync --query "testing"
 
-# Search with filters
-agent-ctrl skill search "web" --category development
+# Override the SkillsMP credential for one command
+agent-ctrl skill sync --query "testing" --api-key "$SKILLSMP_API_KEY"
+
+# Search the synchronized cache
+agent-ctrl skill search "web" --capability development
 ```
 
 ### Installation
@@ -32,10 +35,17 @@ agent-ctrl skill add skillsmp:git-workflow@1.2.0
 
 **Behavior:**
 
-1. Fetches `SKILL.md` and related assets
-2. Creates `skills/<id>/` directory
-3. Tracks source for updates
-4. Validates SKILL.md standard
+1. Uses the synchronized catalog state when available
+2. Fetches `SKILL.md` or installation metadata when needed
+3. Creates `skills/<id>/` directory
+4. Tracks source for updates
+5. Validates SKILL.md standard
+
+**Credentials:**
+
+- `agent-ctrl init` creates `.agent-ctrl/.env`, `.agent-ctrl/.env.example`, and `.agent-ctrl/.gitignore`.
+- SkillsMP commands load `SKILLSMP_API_KEY` or `SKILLSMP_TOKEN` from `.agent-ctrl/.env`.
+- `--api-key` overrides the configured value for the current command only.
 
 ### Updates
 
@@ -48,8 +58,8 @@ agent-ctrl skill update git-workflow
 # Update all installed skills
 agent-ctrl skill update --all
 
-# Check for updates
-agent-ctrl skill check-updates
+# Refresh before checking updates
+agent-ctrl skill update --all --refresh
 ```
 
 ### Skill Metadata
@@ -64,6 +74,55 @@ Installed skills track their source:
   "updatedAt": "2024-01-20T15:30:00Z"
 }
 ```
+
+---
+
+## Smithery Integration
+
+### Overview
+
+Smithery provides the MCP registry used for discovery and managed MCP activation.
+
+### Discovery
+
+```bash
+# Refresh the cached Smithery registry
+agent-ctrl mcp sync
+
+# Override the Smithery credential for one command
+agent-ctrl mcp sync --api-key "$SMITHERY_API_KEY"
+
+# Search the synchronized registry
+agent-ctrl mcp search github --status unknown
+```
+
+### Activation
+
+```bash
+# Activate a managed MCP from Smithery
+agent-ctrl mcp add smithery:github
+
+# Deactivate it later
+agent-ctrl mcp rm github
+```
+
+### Updates
+
+```bash
+# Update one managed MCP
+agent-ctrl mcp update github
+
+# Update all managed MCPs with a pre-refresh
+agent-ctrl mcp update --all --refresh
+```
+
+### Notes
+
+- `agent-ctrl init` creates `.agent-ctrl/.env`, `.agent-ctrl/.env.example`, and `.agent-ctrl/.gitignore`.
+- Smithery registry access uses `SMITHERY_API_KEY` or `SMITHERY_TOKEN` from `.agent-ctrl/.env`.
+- `--api-key` overrides the configured value for the current command only.
+- agent-ctrl stores synchronized catalog state under `.agent-ctrl/.catalog/`.
+- Managed MCP files remain materialized in `.agent-ctrl/mcps/` so existing MCP loading still works.
 
 ---
 

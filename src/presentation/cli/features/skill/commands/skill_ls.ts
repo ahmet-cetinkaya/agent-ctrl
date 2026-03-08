@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { ListSkillsQuery } from "@/core/application/features/skill/queries/ListSkillsQuery";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { CatalogStateFileStore } from "@/infrastructure/features/catalog/caching/CatalogStateFileStore";
 import {
   handleDirectoryAccess,
   handleQueryResult,
@@ -60,11 +61,44 @@ export function createSkillListCommand(): Command {
       const result = await listSkillsQuery.execute({ skillsPath });
 
       handleQueryResult(result);
+      if (!result.success) {
+        return;
+      }
 
       const { artifacts, warnings } = result.data;
+      const stateStore = new CatalogStateFileStore();
+      const catalogState = await stateStore.load(configRootPath);
+      const managedById = new Map(
+        catalogState.success
+          ? catalogState.data.managedIntegrations
+              .filter((entry) => entry.itemType === "skill")
+              .map((entry) => [entry.managedId, entry])
+          : []
+      );
+      const catalogById = new Map(
+        catalogState.success
+          ? catalogState.data.catalogItems
+              .filter((entry) => entry.itemType === "skill")
+              .map((entry) => [entry.sourceItemId, entry])
+          : []
+      );
 
       if (options.json) {
-        console.log(JSON.stringify({ artifacts, warnings }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              artifacts,
+              warnings,
+              managed: artifacts.map((artifact) => ({
+                artifact,
+                managed: managedById.get(artifact.id),
+                catalog: catalogById.get(artifact.id),
+              })),
+            },
+            null,
+            2
+          )
+        );
         return;
       }
 
@@ -73,7 +107,16 @@ export function createSkillListCommand(): Command {
       } else {
         console.log(`Skills (${artifacts.length}):`);
         for (const artifact of artifacts) {
-          console.log(`  ${artifact.id}`);
+          const managed = managedById.get(artifact.id);
+          const catalog = catalogById.get(artifact.id);
+          const details = [
+            managed?.state,
+            catalog?.compatibilityState,
+            catalog?.sourceVersion ? `v${catalog.sourceVersion}` : undefined,
+          ]
+            .filter(Boolean)
+            .join(" | ");
+          console.log(`  ${artifact.id}${details ? ` (${details})` : ""}`);
         }
       }
 

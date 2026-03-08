@@ -48,7 +48,7 @@ export interface QueryErrorAnalysis {
  * }
  * ```
  */
-export function analyzeQueryResult(result: Result<unknown, Error>): QueryErrorAnalysis {
+export function analyzeQueryResult(result: Result<unknown, unknown>): QueryErrorAnalysis {
   if (!result.success) {
     if (result.error instanceof UserError) {
       return {
