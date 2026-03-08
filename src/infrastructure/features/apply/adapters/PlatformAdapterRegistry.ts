@@ -1,6 +1,7 @@
 import type { IAppyPlatformAdapter } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { OpenCodeAdapter } from "@/infrastructure/features/opencode/adapters/OpenCodeAdapter";
+import { ClaudeApplyAdapter } from "@/infrastructure/features/claude/adapters/ClaudeApplyAdapter";
 import { GeminiAdapter } from "@/infrastructure/features/gemini/adapters/GeminiAdapter";
 import { QwenAdapter } from "@/infrastructure/features/qwen/adapters/QwenAdapter";
 import { KiloAdapter } from "@/infrastructure/features/kilo/adapters/KiloAdapter";
@@ -21,13 +22,14 @@ export class PlatformAdapterRegistry {
 
   constructor() {
     const adapters: IAppyPlatformAdapter[] = [
-      new OpenCodeAdapter(),
-      new GeminiAdapter(),
-      new QwenAdapter(),
-      new KiloAdapter(),
       new AntigravityAdapter(),
+      new ClaudeApplyAdapter(),
       new CodexAdapter(),
       new CursorAdapter(),
+      new GeminiAdapter(),
+      new KiloAdapter(),
+      new OpenCodeAdapter(),
+      new QwenAdapter(),
       new WindsurfAdapter(),
     ];
 

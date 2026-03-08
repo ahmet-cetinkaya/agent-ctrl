@@ -26,6 +26,7 @@ describe("Apply CLI contract", () => {
     const help = cliCommand.helpInformation();
 
     expect(help).toContain("opencode");
+    expect(help).toContain("claude");
     expect(help).toContain("gemini");
     expect(help).toContain("windsurf");
     expect(help).toContain("--project");
@@ -53,7 +54,7 @@ describe("Apply CLI contract", () => {
   it("returns user error for invalid platform input", async () => {
     const result = await command.execute({
       projectPath,
-      platform: "claude",
+      platform: "invalid-platform",
     });
     expect(result.success).toBe(false);
     if (!result.success) {

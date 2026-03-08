@@ -10,6 +10,7 @@ import { AntigravityAdapter } from "@/infrastructure/features/antigravity/adapte
 import { CodexAdapter } from "@/infrastructure/features/codex/adapters/CodexAdapter";
 import { CursorAdapter } from "@/infrastructure/features/cursor/adapters/CursorAdapter";
 import { WindsurfAdapter } from "@/infrastructure/features/windsurf/adapters/WindsurfAdapter";
+import { ClaudeApplyAdapter } from "@/infrastructure/features/claude/adapters/ClaudeApplyAdapter";
 
 describe("Adapter target resolution coverage", () => {
   let projectPath: string;
@@ -28,6 +29,7 @@ describe("Adapter target resolution coverage", () => {
   it("resolves user and project scopes for all adapters", async () => {
     const adapters = [
       new OpenCodeAdapter(),
+      new ClaudeApplyAdapter(),
       new GeminiAdapter(),
       new QwenAdapter(),
       new KiloAdapter(),
@@ -44,7 +46,11 @@ describe("Adapter target resolution coverage", () => {
         userConfigRootPath: userRootPath,
       });
       expect(userTarget.scope).toBe("user");
-      expect(userTarget.configPath).toContain(resolve(userRootPath));
+      if (adapter.platformName === "claude") {
+        expect(userTarget.configPath).toContain(".claude/commands");
+      } else {
+        expect(userTarget.configPath).toContain(resolve(userRootPath));
+      }
 
       const projectTarget = await adapter.resolveTarget(projectPath, {
         projectPath,
@@ -52,7 +58,11 @@ describe("Adapter target resolution coverage", () => {
         userConfigRootPath: userRootPath,
       });
       expect(projectTarget.scope).toBe("project");
-      expect(projectTarget.configPath).toContain(resolve(projectPath));
+      if (adapter.platformName === "claude") {
+        expect(projectTarget.configPath).toContain(resolve(projectPath, ".claude", "commands"));
+      } else {
+        expect(projectTarget.configPath).toContain(resolve(projectPath));
+      }
     }
   });
 });

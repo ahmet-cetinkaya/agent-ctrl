@@ -91,6 +91,7 @@ export class CommandScopePrecedenceResolver {
   private getSurface(platform: SupportedApplyPlatform): string {
     switch (platform) {
       case "opencode":
+      case "claude":
         return "commands";
       case "gemini":
       case "qwen":
