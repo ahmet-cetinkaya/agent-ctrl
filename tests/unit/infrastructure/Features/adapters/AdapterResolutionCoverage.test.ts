@@ -47,7 +47,7 @@ describe("Adapter target resolution coverage", () => {
       });
       expect(userTarget.scope).toBe("user");
       if (adapter.platformName === "claude") {
-        expect(userTarget.configPath).toContain(".claude/commands");
+        expect(userTarget.configPath).toContain(".claude/CLAUDE.md");
       } else {
         expect(userTarget.configPath).toContain(resolve(userRootPath));
       }
@@ -59,7 +59,7 @@ describe("Adapter target resolution coverage", () => {
       });
       expect(projectTarget.scope).toBe("project");
       if (adapter.platformName === "claude") {
-        expect(projectTarget.configPath).toContain(resolve(projectPath, ".claude", "commands"));
+        expect(projectTarget.configPath).toContain(resolve(projectPath, ".claude", "CLAUDE.md"));
       } else {
         expect(projectTarget.configPath).toContain(resolve(projectPath));
       }

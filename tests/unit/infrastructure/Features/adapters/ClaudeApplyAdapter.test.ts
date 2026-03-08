@@ -6,13 +6,11 @@ import { ClaudeApplyAdapter } from "@/infrastructure/features/claude/adapters/Cl
 
 describe("ClaudeApplyAdapter", () => {
   let projectPath: string;
-  let userConfigRootPath: string;
   let claudeHomePath: string;
   let adapter: ClaudeApplyAdapter;
 
   beforeEach(async () => {
     projectPath = await mkdtemp(join(tmpdir(), "claude-apply-project-"));
-    userConfigRootPath = await mkdtemp(join(tmpdir(), "claude-apply-config-"));
     claudeHomePath = await mkdtemp(join(tmpdir(), "claude-apply-home-"));
     process.env.AGENT_CTRL_CLAUDE_HOME = claudeHomePath;
     adapter = new ClaudeApplyAdapter();
@@ -20,71 +18,87 @@ describe("ClaudeApplyAdapter", () => {
 
   afterEach(async () => {
     delete process.env.AGENT_CTRL_CLAUDE_HOME;
+    delete process.env.AGENT_CTRL_CONFIG_DIR;
     await rm(projectPath, { recursive: true, force: true });
-    await rm(userConfigRootPath, { recursive: true, force: true });
     await rm(claudeHomePath, { recursive: true, force: true });
   });
 
-  it("copies markdown commands from user config root into Claude commands", async () => {
-    const sourcePath = resolve(userConfigRootPath, "commands", "dev", "run.md");
-    const ignoredPath = resolve(userConfigRootPath, "commands", "dev", "ignore.txt");
-    await mkdir(resolve(userConfigRootPath, "commands", "dev"), { recursive: true });
-    await writeFile(sourcePath, "# Run\n", "utf-8");
-    await writeFile(ignoredPath, "ignore\n", "utf-8");
+  it("applies full Claude integration from local project artifacts", async () => {
+    await mkdir(resolve(projectPath, ".agent-ctrl", "rules"), { recursive: true });
+    await mkdir(resolve(projectPath, ".agent-ctrl", "skills", "skill-a"), { recursive: true });
+    await mkdir(resolve(projectPath, ".agent-ctrl", "agents"), { recursive: true });
+    await mkdir(resolve(projectPath, ".agent-ctrl", "commands", "dev"), { recursive: true });
+    await mkdir(resolve(projectPath, ".agent-ctrl", "mcps"), { recursive: true });
+
+    await writeFile(resolve(projectPath, ".agent-ctrl", "rules", "rule-a.md"), "# Rule A\n", "utf-8");
+    await writeFile(resolve(projectPath, ".agent-ctrl", "skills", "skill-a", "SKILL.md"), "# Skill A\n", "utf-8");
+    await writeFile(resolve(projectPath, ".agent-ctrl", "agents", "agent-a.md"), "Agent body\n", "utf-8");
+    await writeFile(resolve(projectPath, ".agent-ctrl", "commands", "dev", "run.md"), "# Run\n", "utf-8");
+    await writeFile(
+      resolve(projectPath, ".agent-ctrl", "mcps", "bright.json"),
+      JSON.stringify({
+        mcpServers: {
+          Bright: {
+            command: "npx",
+            args: ["bright"],
+            env: { TOKEN: "1" },
+          },
+        },
+      }),
+      "utf-8"
+    );
 
     const result = await adapter.applyAppyIntegration({
       projectPath,
       targetScope: "user",
-      userConfigRootPath,
     });
 
     expect(result.status).toBe("success");
-    expect(result.configPath).toBe(resolve(claudeHomePath, ".claude", "commands"));
+    expect(result.configPath).toBe(resolve(claudeHomePath, ".claude", "CLAUDE.md"));
+
+    const claudeFile = await readFile(resolve(claudeHomePath, ".claude", "CLAUDE.md"), "utf-8");
+    expect(claudeFile).toContain("# Rule A");
+
+    await expect(access(resolve(claudeHomePath, ".claude", "skills", "skill-a", "SKILL.md"))).resolves.toBeNull();
+    await expect(access(resolve(claudeHomePath, ".claude", "agents", "agent-a.md"))).resolves.toBeNull();
     await expect(access(resolve(claudeHomePath, ".claude", "commands", "dev", "run.md"))).resolves.toBeNull();
-    await expect(access(resolve(claudeHomePath, ".claude", "commands", "dev", "ignore.txt"))).rejects.toBeDefined();
+
+    const mcpConfig = JSON.parse(await readFile(resolve(claudeHomePath, ".claude", "settings.json"), "utf-8"));
+    expect(mcpConfig.mcpServers.Bright.command).toBe("npx");
+    expect(mcpConfig.mcpServers.Bright.env.TOKEN).toBe("1");
   });
 
-  it("returns unchanged when Claude commands are already synced", async () => {
-    const sourcePath = resolve(userConfigRootPath, "commands", "review.md");
-    const destPath = resolve(claudeHomePath, ".claude", "commands", "review.md");
-    await mkdir(resolve(userConfigRootPath, "commands"), { recursive: true });
-    await mkdir(resolve(claudeHomePath, ".claude", "commands"), { recursive: true });
-    await writeFile(sourcePath, "# Review\n", "utf-8");
-    await writeFile(destPath, "# Review\n", "utf-8");
+  it("reapplies Claude artifacts without creating internal state files", async () => {
+    await mkdir(resolve(projectPath, ".agent-ctrl", "rules"), { recursive: true });
+    await writeFile(resolve(projectPath, ".agent-ctrl", "rules", "rule-a.md"), "# Rule A\n", "utf-8");
 
-    const result = await adapter.applyAppyIntegration({
+    const first = await adapter.applyAppyIntegration({
       projectPath,
       targetScope: "user",
-      userConfigRootPath,
     });
+    expect(first.status).toBe("success");
 
-    expect(result.status).toBe("unchanged");
+    const second = await adapter.applyAppyIntegration({
+      projectPath,
+      targetScope: "user",
+    });
+    expect(second.status).toBe("success");
+    await expect(access(resolve(claudeHomePath, ".claude", ".agent-ctrl.json"))).rejects.toBeDefined();
   });
 
-  it("copies markdown commands from project config root for project scope", async () => {
-    const sourcePath = resolve(projectPath, ".agent-ctrl", "commands", "team", "ship.md");
-    await mkdir(resolve(projectPath, ".agent-ctrl", "commands", "team"), { recursive: true });
-    await writeFile(sourcePath, "# Ship\n", "utf-8");
+  it("applies Claude integration to project scope when requested", async () => {
+    await mkdir(resolve(projectPath, ".agent-ctrl", "rules"), { recursive: true });
+    await mkdir(resolve(projectPath, ".agent-ctrl", "commands"), { recursive: true });
+    await writeFile(resolve(projectPath, ".agent-ctrl", "rules", "rule-a.md"), "# Rule A\n", "utf-8");
+    await writeFile(resolve(projectPath, ".agent-ctrl", "commands", "run.md"), "# Run\n", "utf-8");
 
     const result = await adapter.applyAppyIntegration({
       projectPath,
       targetScope: "project",
-      userConfigRootPath,
     });
 
     expect(result.status).toBe("success");
-    expect(result.configPath).toBe(resolve(projectPath, ".claude", "commands"));
-    expect(await readFile(resolve(projectPath, ".claude", "commands", "team", "ship.md"), "utf-8")).toBe("# Ship\n");
-  });
-
-  it("returns unchanged when no managed command source exists", async () => {
-    const result = await adapter.applyAppyIntegration({
-      projectPath,
-      targetScope: "user",
-      userConfigRootPath,
-    });
-
-    expect(result.status).toBe("unchanged");
-    expect(result.message).toContain("No managed Claude commands found");
+    expect(result.configPath).toBe(resolve(projectPath, ".claude", "CLAUDE.md"));
+    await expect(access(resolve(projectPath, ".claude", "commands", "run.md"))).resolves.toBeNull();
   });
 });

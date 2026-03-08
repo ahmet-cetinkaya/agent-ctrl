@@ -1,15 +1,25 @@
-import { access, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
-import { dirname, extname, relative, resolve } from "node:path";
+import { resolve } from "node:path";
 import { homedir } from "node:os";
 import type {
   AppyConfigTarget,
   AppyIntegrationRequest,
   AppyIntegrationResult,
   IAppyPlatformAdapter,
+  PlatformConfig,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import type { Artifact } from "@/core/domain/shared/types/Artifact";
+import { RuleScanner } from "@/infrastructure/features/rule/scanners/RuleScanner";
+import { SkillScanner } from "@/infrastructure/features/skill/scanners/SkillScanner";
+import { AgentScanner } from "@/infrastructure/features/agent/scanners/AgentScanner";
+import { McpServerAggregator } from "@/infrastructure/features/mcp/loaders/McpServerAggregator";
+import { ClaudeAdapter } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
 
 export class ClaudeApplyAdapter implements IAppyPlatformAdapter {
   readonly platformName = "claude" as const;
+  private readonly ruleScanner = new RuleScanner();
+  private readonly skillScanner = new SkillScanner();
+  private readonly agentScanner = new AgentScanner();
+  private readonly mcpLoader = new McpServerAggregator();
 
   async resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
     const scope = request?.targetScope ?? "user";
@@ -19,66 +29,27 @@ export class ClaudeApplyAdapter implements IAppyPlatformAdapter {
         : resolve(process.env.AGENT_CTRL_CLAUDE_HOME || homedir(), ".claude");
 
     return {
-      configPath: resolve(claudeRoot, "commands"),
+      configPath: resolve(claudeRoot, "CLAUDE.md"),
       scope,
-      surface: "commands",
+      surface: "memory-skills-agents-commands-mcp",
     };
   }
 
   async applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
-    const sourceRoot =
-      target.scope === "project"
-        ? resolve(request.projectPath, ".agent-ctrl", "commands")
-        : resolve(request.userConfigRootPath ?? resolve(homedir(), ".agent-ctrl"), "commands");
+    const adapter = new ClaudeAdapter(
+      request.projectPath,
+      target.scope === "project" ? request.projectPath : process.env.AGENT_CTRL_CLAUDE_HOME || homedir()
+    );
+    const desiredConfig = await this.buildDesiredConfig(request.projectPath, adapter);
 
-    const sourceExists = await access(sourceRoot)
-      .then(() => true)
-      .catch(() => false);
-
-    if (!sourceExists) {
-      return {
-        platform: this.platformName,
-        configPath: target.configPath,
-        scope: target.scope,
-        surface: target.surface,
-        status: "unchanged",
-        message: `No managed Claude commands found at ${sourceRoot}.`,
-      };
-    }
-
-    const markdownFiles = await this.collectMarkdownFiles(sourceRoot);
-    if (markdownFiles.length === 0) {
-      return {
-        platform: this.platformName,
-        configPath: target.configPath,
-        scope: target.scope,
-        surface: target.surface,
-        status: "unchanged",
-        message: `No markdown command files found at ${sourceRoot}.`,
-      };
-    }
-
-    let changed = false;
-
-    for (const filePath of markdownFiles) {
-      const rel = relative(sourceRoot, filePath);
-      const dest = resolve(target.configPath, rel);
-      const sourceContent = await readFile(filePath, "utf-8");
-      const existingContent = await readFile(dest, "utf-8").catch(() => null);
-
-      if (existingContent !== sourceContent) {
-        changed = true;
-        if (!request.dryRun) {
-          await mkdir(dirname(dest), { recursive: true });
-          await writeFile(dest, sourceContent, "utf-8");
-        }
+    if (!request.dryRun) {
+      const writeResult = await adapter.writeConfig(desiredConfig, {
+        cleanExistingArtifacts: Boolean(request.override),
+      });
+      if (!writeResult.success) {
+        throw writeResult.error;
       }
-    }
-
-    if (!request.dryRun && changed) {
-      // Ensure the target root exists even if only nested files were copied.
-      await mkdir(target.configPath, { recursive: true });
     }
 
     return {
@@ -86,28 +57,40 @@ export class ClaudeApplyAdapter implements IAppyPlatformAdapter {
       configPath: target.configPath,
       scope: target.scope,
       surface: target.surface,
-      status: changed ? "success" : "unchanged",
-      message: changed
-        ? "Copied managed Claude command markdown files."
-        : "Claude command markdown files are already in sync.",
+      status: "success",
+      message: "Applied Claude configuration, skills, agents, commands, and MCP servers.",
     };
   }
 
-  private async collectMarkdownFiles(root: string): Promise<string[]> {
-    const out: string[] = [];
-    const entries = await readdir(root, { withFileTypes: true });
+  private async buildDesiredConfig(projectPath: string, adapter: ClaudeAdapter): Promise<PlatformConfig> {
+    const artifacts: Artifact[] = [];
+    const configRoot = resolve(projectPath, ".agent-ctrl");
+    const ruleResult = await this.ruleScanner.scan(resolve(configRoot, "rules"));
+    const skillResult = await this.skillScanner.scan(resolve(configRoot, "skills"));
+    const agentResult = await this.agentScanner.scan(resolve(configRoot, "agents"));
 
-    for (const entry of entries) {
-      const fullPath = resolve(root, entry.name);
-      if (entry.isDirectory()) {
-        out.push(...(await this.collectMarkdownFiles(fullPath)));
-        continue;
-      }
-      if (entry.isFile() && extname(entry.name).toLowerCase() === ".md") {
-        out.push(fullPath);
-      }
+    artifacts.push(...ruleResult.artifacts, ...skillResult.artifacts, ...agentResult.artifacts);
+
+    const generated = await adapter.generateConfig(artifacts);
+    if (!generated.success) {
+      throw generated.error;
     }
 
-    return out;
+    const mcpLoad = await this.mcpLoader.load(projectPath);
+    if (!mcpLoad.success) {
+      throw new Error(mcpLoad.error.message);
+    }
+
+    return {
+      ...generated.data,
+      mcpServers: mcpLoad.data.servers.map((server) => ({
+        name: server.serverId,
+        command: server.command,
+        args: server.args,
+        cwd: server.cwd,
+        env: server.env,
+        sourceFile: server.filePath,
+      })),
+    };
   }
 }

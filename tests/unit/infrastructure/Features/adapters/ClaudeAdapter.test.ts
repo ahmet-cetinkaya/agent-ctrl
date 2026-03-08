@@ -52,36 +52,11 @@ describe("ClaudeAdapter", () => {
   });
 
   describe("readExistingConfig", () => {
-    it("returns null when state does not exist", async () => {
+    it("returns null because Claude apply does not use an internal state file", async () => {
       const result = await adapter.readExistingConfig();
       expect(result.success).toBe(true);
       if (!result.success) return;
       expect(result.data).toBeNull();
-    });
-
-    it("reads normalized arrays from state file", async () => {
-      const statePath = resolve(homePath, ".claude", ".agent-ctrl.json");
-      await mkdir(resolve(homePath, ".claude"), { recursive: true });
-      await writeFile(
-        statePath,
-        JSON.stringify({
-          rules: [{ name: "r1", path: "/r1.md" }],
-          skills: [{ name: "s1", path: "/s1" }],
-          agents: [{ name: "a1", path: "/a1.md" }],
-          mcpServers: [{ name: "M1", command: "npx", args: [], env: {}, sourceFile: "x" }],
-        }),
-        "utf-8"
-      );
-
-      const result = await adapter.readExistingConfig();
-      expect(result.success).toBe(true);
-      if (!result.success) return;
-      expect(result.data).not.toBeNull();
-      if (!result.data) return;
-      expect(result.data.rules).toHaveLength(1);
-      expect(result.data.skills).toHaveLength(1);
-      expect(result.data.agents).toHaveLength(1);
-      expect(result.data.mcpServers).toHaveLength(1);
     });
   });
 
@@ -122,17 +97,17 @@ describe("ClaudeAdapter", () => {
   });
 
   describe("writeConfig", () => {
-    it("writes managed CLAUDE.md, state, mcp config, skills, agents, and markdown commands", async () => {
+    it("writes managed CLAUDE.md, mcp settings, skills, agents, and markdown commands", async () => {
       const rulePath = resolve(projectPath, "rules", "rule-a.md");
       const skillPath = resolve(projectPath, "skills", "skill-a");
       const agentPath = resolve(projectPath, "agents", "agent-a.md");
-      const commandMarkdownPath = resolve(projectPath, "commands", "dev", "run.md");
-      const commandTextPath = resolve(projectPath, "commands", "dev", "ignore.txt");
+      const commandMarkdownPath = resolve(projectPath, ".agent-ctrl", "commands", "dev", "run.md");
+      const commandTextPath = resolve(projectPath, ".agent-ctrl", "commands", "dev", "ignore.txt");
 
       await mkdir(resolve(projectPath, "rules"), { recursive: true });
       await mkdir(skillPath, { recursive: true });
       await mkdir(resolve(projectPath, "agents"), { recursive: true });
-      await mkdir(resolve(projectPath, "commands", "dev"), { recursive: true });
+      await mkdir(resolve(projectPath, ".agent-ctrl", "commands", "dev"), { recursive: true });
 
       await writeFile(rulePath, "# Rule A\n", "utf-8");
       await writeFile(resolve(skillPath, "SKILL.md"), "# Skill A\n", "utf-8");
@@ -155,12 +130,7 @@ describe("ClaudeAdapter", () => {
       expect(claudeFile).toContain("<!-- agent-ctrl:end -->");
       expect(claudeFile).toContain("# Rule A");
 
-      const state = JSON.parse(await readFile(resolve(homePath, ".claude", ".agent-ctrl.json"), "utf-8"));
-      expect(state.rules).toHaveLength(1);
-      expect(state.skills).toHaveLength(1);
-      expect(state.agents).toHaveLength(1);
-
-      const mcpDoc = JSON.parse(await readFile(resolve(homePath, ".claude.json"), "utf-8"));
+      const mcpDoc = JSON.parse(await readFile(resolve(homePath, ".claude", "settings.json"), "utf-8"));
       expect(mcpDoc.mcpServers.Bright.command).toBe("npx");
       expect(mcpDoc.mcpServers.Bright.env.TOKEN).toBe("1");
 
@@ -223,8 +193,9 @@ describe("ClaudeAdapter", () => {
     });
 
     it("preserves existing mcp servers while merging new ones", async () => {
+      await mkdir(resolve(homePath, ".claude"), { recursive: true });
       await writeFile(
-        resolve(homePath, ".claude.json"),
+        resolve(homePath, ".claude", "settings.json"),
         JSON.stringify({
           ui: { theme: "dark" },
           mcpServers: {
@@ -242,7 +213,7 @@ describe("ClaudeAdapter", () => {
       });
       expect(writeResult.success).toBe(true);
 
-      const doc = JSON.parse(await readFile(resolve(homePath, ".claude.json"), "utf-8"));
+      const doc = JSON.parse(await readFile(resolve(homePath, ".claude", "settings.json"), "utf-8"));
       expect(doc.ui.theme).toBe("dark");
       expect(doc.mcpServers.Existing.command).toBe("old");
       expect(doc.mcpServers.New.command).toBe("npx");

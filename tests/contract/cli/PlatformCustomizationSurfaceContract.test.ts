@@ -22,7 +22,7 @@ describe("Platform customization surface contract", () => {
   it("resolves documented customization surfaces for all supported platforms", async () => {
     const expectedPathFragments: Record<string, string> = {
       opencode: "opencode/commands/appy.md",
-      claude: ".claude/commands",
+      claude: ".claude/CLAUDE.md",
       gemini: "gemini/commands/appy.toml",
       qwen: "qwen/commands/appy.toml",
       kilo: "kilo/workflows/appy.md",
