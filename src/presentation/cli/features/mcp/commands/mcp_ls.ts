@@ -15,13 +15,21 @@ import {
 function redactEnvVars(env: Record<string, string>): Record<string, string> {
   const redacted: Record<string, string> = {};
   const sensitiveKeys = [
-    "key", "token", "secret", "password", "apikey", "api_key", "auth",
-    "credential", "private", "certificate"
+    "key",
+    "token",
+    "secret",
+    "password",
+    "apikey",
+    "api_key",
+    "auth",
+    "credential",
+    "private",
+    "certificate",
   ];
 
   for (const [key, value] of Object.entries(env)) {
     const keyLower = key.toLowerCase();
-    const isSensitive = sensitiveKeys.some(sensitive => keyLower.includes(sensitive));
+    const isSensitive = sensitiveKeys.some((sensitive) => keyLower.includes(sensitive));
     redacted[key] = isSensitive ? "***REDACTED***" : value;
   }
 
@@ -86,7 +94,7 @@ export function createMcpListCommand(): Command {
 
       if (options.json) {
         // Redact sensitive environment variables for security
-        const safeServers = servers.map(server => ({
+        const safeServers = servers.map((server) => ({
           ...server,
           env: redactEnvVars(server.env),
         }));

@@ -18,7 +18,7 @@ export class InitCommand {
   private static readonly CONFIG_ROOT_DIR = ".agent-ctrl";
   private static readonly MCP_DIR = "mcps";
   private static readonly GITKEEP_FILE = ".gitkeep";
-  private static readonly CONFIG_FILE = "agent-ctrl.config.json";
+  private static readonly README_FILE = "README.md";
   private fileSystem: IFileSystem;
 
   constructor(fileSystem: IFileSystem) {
@@ -85,14 +85,13 @@ export class InitCommand {
       }
     }
 
-    const configPath = this.fileSystem.resolve(targetPath, InitCommand.CONFIG_FILE);
+    const readmePath = this.fileSystem.resolve(targetPath, InitCommand.README_FILE);
     try {
-      const configContent = await this.getConfigTemplate();
-      await this.fileSystem.writeFile(configPath, configContent, "utf-8");
-      createdFiles.push(InitCommand.CONFIG_FILE);
+      await this.fileSystem.writeFile(readmePath, this.getReadmeTemplate(), "utf-8");
+      createdFiles.push(InitCommand.README_FILE);
     } catch (error) {
       const nodeErr = error as NodeJS.ErrnoException;
-      let message = "Failed to create config file";
+      let message = "Failed to create README file";
 
       if (nodeErr.code === "EACCES") {
         message += ": Permission denied. Check file/directory permissions.";
@@ -158,25 +157,26 @@ export class InitCommand {
     return isConfigRootTarget ? InitCommand.MCP_DIR : `${InitCommand.CONFIG_ROOT_DIR}/${InitCommand.MCP_DIR}`;
   }
 
-  private async getConfigTemplate(): Promise<string> {
-    const config = {
-      _comment: "agent-ctrl configuration file - Define your AI agent project structure",
-      version: "1.0.0",
-      project: {
-        name: "my-agent-project",
-        description: "Configure AI agent behaviors, skills, and personas",
-      },
-      artifacts: {
-        rules: {
-          description: "Behavioral rules for AI agents (Markdown files)",
-        },
-        skills: {
-          description: "Reusable capabilities following SKILL.md standard",
-        },
-        agents: { description: "Agent persona definitions" },
-        commands: { description: "Command prompt templates" },
-      },
-    };
-    return JSON.stringify(config, null, 2);
+  private getReadmeTemplate(): string {
+    return `# agent-ctrl configuration
+
+This directory contains your agent-ctrl artifacts.
+agent-ctrl is a CLI tool for managing AI agent configurations using a standard directory-based structure.
+CLI tool repository: https://github.com/ahmet-cetinkaya/agent-ctrl
+
+## Structure
+
+- \`rules/\`: Behavioral rules in Markdown
+- \`skills/\`: Skills using the SKILL.md standard
+- \`agents/\`: Agent persona definitions
+- \`commands/\`: Command prompt templates
+- \`.agent-ctrl/mcps/\`: MCP server definitions
+
+## Next steps
+
+1. Add your artifacts to the directories above.
+2. Run \`agent-ctrl rule ls\`, \`agent-ctrl skill ls\`, or \`agent-ctrl agent ls\`.
+3. Apply your configuration with \`agent-ctrl apply <platform>\`.
+`;
   }
 }

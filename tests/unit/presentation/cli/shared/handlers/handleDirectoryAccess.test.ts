@@ -1,18 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdir, rm, writeFile, chmod } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { mkdtemp } from "node:fs/promises";
 import { handleDirectoryAccess } from "@/presentation/cli/shared/handlers/resultHandler";
-
-// Mock fs.access for testing error code paths
-const mockAccessError = (code: string) => {
-  return async () => {
-    const error = new Error(`Mock error: ${code}`) as NodeJS.ErrnoException;
-    error.code = code;
-    throw error;
-  };
-};
 
 describe("handleDirectoryAccess", () => {
   let testDir: string;

@@ -96,7 +96,6 @@ describe("CommandScanner", () => {
 
         // The scanner should detect the symlink cycle
         // The inode of testDir will be visited twice (once initially, once via symlink)
-        const cycleWarnings = result.warnings.filter((w) => w.includes("symlink cycle") || w.includes("cycle detected"));
         // On some systems the cycle is detected, on others symlink handling differs
         // We just verify no crash occurred
         expect(Array.isArray(result.warnings)).toBe(true);

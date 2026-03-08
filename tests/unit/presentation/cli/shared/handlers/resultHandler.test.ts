@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { validateUserPath, handleDirectoryAccess, analyzeQueryResult } from "@/presentation/cli/shared/handlers/resultHandler";
-import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
+import { validateUserPath, analyzeQueryResult } from "@/presentation/cli/shared/handlers/resultHandler";
+import { ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";

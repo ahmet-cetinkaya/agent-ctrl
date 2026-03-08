@@ -217,7 +217,9 @@ export function validateUserPath(path: string, optionName: string): string | und
     }
 
     if (!isInHome) {
-      console.warn(`Warning: ${optionName} is an absolute path outside the home directory. Ensure this is intentional.`);
+      console.warn(
+        `Warning: ${optionName} is an absolute path outside the home directory. Ensure this is intentional.`
+      );
     }
   }
 

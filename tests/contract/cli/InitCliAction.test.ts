@@ -79,7 +79,7 @@ describe("Init CLI action behavior", () => {
         success: true,
         data: {
           createdDirectories: ["rules", "skills"],
-          createdFiles: ["rules/.gitkeep", "agent-ctrl.config.json"],
+          createdFiles: ["rules/.gitkeep", "README.md"],
         },
       };
     };
@@ -88,6 +88,7 @@ describe("Init CLI action behavior", () => {
 
     expect(logs.some((line) => line.includes("✓ Created rules/"))).toBe(true);
     expect(logs.some((line) => line.includes("✓ Created rules/.gitkeep"))).toBe(true);
+    expect(logs.some((line) => line.includes("✓ Created README.md"))).toBe(true);
     expect(logs.some((line) => line.includes("Configuration root: /tmp/agent-ctrl-root"))).toBe(true);
     expect(logs.some((line) => line.includes("agent-ctrl rule ls"))).toBe(true);
   });

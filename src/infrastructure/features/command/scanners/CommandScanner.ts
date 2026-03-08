@@ -115,8 +115,7 @@ export class CommandScanner {
               const normalizedTarget = resolvedTarget.replace(/\\/g, "/");
 
               // Check if resolved target is within rootPath
-              if (!normalizedTarget.startsWith(normalizedRoot) &&
-                  !normalizedTarget.startsWith(normalizedRoot + "/")) {
+              if (!normalizedTarget.startsWith(normalizedRoot) && !normalizedTarget.startsWith(normalizedRoot + "/")) {
                 warnings.push(
                   `Skipped ${this.normalizeSeparators(relative(rootPath, entryPath))} (symlink points outside project)`
                 );
