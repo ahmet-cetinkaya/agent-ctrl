@@ -2,7 +2,6 @@ import { Command } from "commander";
 import { ListSkillsQuery } from "@/core/application/features/skill/queries/ListSkillsQuery";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { CatalogStateFileStore } from "@/infrastructure/features/catalog/caching/CatalogStateFileStore";
 import {
   handleDirectoryAccess,
   handleQueryResult,
@@ -65,23 +64,8 @@ export function createSkillListCommand(): Command {
         return;
       }
 
-      const { artifacts, warnings } = result.data;
-      const stateStore = new CatalogStateFileStore();
-      const catalogState = await stateStore.load(configRootPath);
-      const managedById = new Map(
-        catalogState.success
-          ? catalogState.data.managedIntegrations
-              .filter((entry) => entry.itemType === "skill")
-              .map((entry) => [entry.managedId, entry])
-          : []
-      );
-      const catalogById = new Map(
-        catalogState.success
-          ? catalogState.data.catalogItems
-              .filter((entry) => entry.itemType === "skill")
-              .map((entry) => [entry.sourceItemId, entry])
-          : []
-      );
+      const { artifacts, warnings, catalogState } = result.data;
+      const { managedById, catalogById } = catalogState;
 
       if (options.json) {
         console.log(

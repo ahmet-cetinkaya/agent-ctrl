@@ -2,7 +2,6 @@ import { Command } from "commander";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { ListMcpServersQuery } from "@/core/application/features/mcp/queries/ListMcpServersQuery";
-import { CatalogStateFileStore } from "@/infrastructure/features/catalog/caching/CatalogStateFileStore";
 import {
   handleDirectoryAccess,
   handleQueryResult,
@@ -93,24 +92,9 @@ export function createMcpListCommand(): Command {
         return;
       }
 
-      const { servers, report } = result.data;
+      const { servers, report, catalogState } = result.data;
       const issues = report.fileResults.flatMap((entry) => entry.issues);
-      const stateStore = new CatalogStateFileStore();
-      const catalogState = await stateStore.load(configRootPath);
-      const managedById = new Map(
-        catalogState.success
-          ? catalogState.data.managedIntegrations
-              .filter((entry) => entry.itemType === "mcp")
-              .map((entry) => [entry.managedId, entry])
-          : []
-      );
-      const catalogById = new Map(
-        catalogState.success
-          ? catalogState.data.catalogItems
-              .filter((entry) => entry.itemType === "mcp")
-              .map((entry) => [entry.sourceItemId, entry])
-          : []
-      );
+      const { managedById, catalogById } = catalogState;
 
       if (options.json) {
         // Redact sensitive environment variables for security
