@@ -40,7 +40,7 @@ describe("ClaudeApplyAdapter", () => {
     await expect(access(resolve(claudeHomePath, ".claude", "agents", "architect.md"))).resolves.toBeNull();
     await expect(access(resolve(claudeHomePath, ".claude", "commands", "dev", "fix-lint.md"))).resolves.toBeNull();
 
-    const mcpConfig = JSON.parse(await readFile(resolve(claudeHomePath, ".claude", "settings.json"), "utf-8"));
+    const mcpConfig = JSON.parse(await readFile(resolve(claudeHomePath, ".claude.json"), "utf-8"));
     expect(mcpConfig.mcpServers.context7.command).toBe("npx");
   });
 

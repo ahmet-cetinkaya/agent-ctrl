@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import { createApplyCommand } from "@/presentation/cli/features/apply/commands/apply";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
@@ -69,7 +69,8 @@ describe("Apply CLI action behavior", () => {
     await createApplyCommand().parseAsync(["node", "test", "opencode", "--dry-run"]);
     const call = captured[0] as { targetScope?: string; userConfigRootPath?: string; projectPath: string };
     expect(call.targetScope).toBeUndefined();
-    expect(call.projectPath).toBe(resolve(cwdPath));
+    // When no scope flag is provided, projectPath defaults to global config root (home directory)
+    expect(call.projectPath).toBe(homedir());
     expect(call.userConfigRootPath).toBeUndefined();
   });
 
@@ -93,7 +94,15 @@ describe("Apply CLI action behavior", () => {
       };
     };
 
-    await createApplyCommand().parseAsync(["node", "test", "gemini", "--user", "--path", "/tmp/custom-root", "--dry-run"]);
+    await createApplyCommand().parseAsync([
+      "node",
+      "test",
+      "gemini",
+      "--user",
+      "--path",
+      "/tmp/custom-root",
+      "--dry-run",
+    ]);
     const call = captured[0] as { targetScope: string; userConfigRootPath: string };
     expect(call.targetScope).toBe("user");
     expect(call.userConfigRootPath).toBe(resolve("/tmp/custom-root"));

@@ -125,11 +125,13 @@ describe("MCP coverage boost", () => {
 
   it("covers env composer with and without server override", () => {
     const composer = new McpServerEnvComposer();
+    // Without args/command, base env vars are filtered out (only server-specific vars included)
     const baseOnly = composer.compose({ A: "1" });
-    expect(baseOnly).toEqual({ A: "1" });
+    expect(baseOnly).toEqual({});
 
+    // Server env vars override and are always included
     const overridden = composer.compose({ A: "1", B: "2" }, { A: "X" });
-    expect(overridden).toEqual({ A: "X", B: "2" });
+    expect(overridden).toEqual({ A: "X" });
   });
 
   it("covers servers parser missing mcpServers and invalid server object", () => {

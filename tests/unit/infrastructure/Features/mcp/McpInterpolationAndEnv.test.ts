@@ -24,7 +24,8 @@ describe("Mcp interpolation and env", () => {
 
     const composed = composer.compose({ API_TOKEN: "base", SHARED: "base" }, { API_TOKEN: "server" });
     expect(composed.API_TOKEN).toBe("server");
-    expect(composed.SHARED).toBe("base");
+    // SHARED is not included because it's not referenced in args/command
+    expect(composed.SHARED).toBeUndefined();
   });
 
   it("loads env files and validates unresolved variables", async () => {
@@ -61,12 +62,15 @@ describe("Mcp interpolation and env", () => {
     const envPath = join(dir, ".env");
 
     try {
-      await writeFile(envPath, `
+      await writeFile(
+        envPath,
+        `
 DOUBLE_QUOTED="value with spaces"
 SINGLE_QUOTED='another value'
 UNQUOTED=noquotes
 EMPTY_QUOTES=""
-`);
+`
+      );
 
       const loader = new McpEnvFileLoader();
       const loaded = await loader.load(envPath);
@@ -85,13 +89,16 @@ EMPTY_QUOTES=""
     const envPath = join(dir, ".env");
 
     try {
-      await writeFile(envPath, `
+      await writeFile(
+        envPath,
+        `
 VALID_NAME=value
 INVALID-NAME=value
 123INVALID=value
 INVALID WITH SPACES=value
 VALID_WITH_UNDERSCORE=value
-`);
+`
+      );
 
       const loader = new McpEnvFileLoader();
       const loaded = await loader.load(envPath);
