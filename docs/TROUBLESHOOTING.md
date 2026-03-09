@@ -18,9 +18,10 @@
 
 **Resolution**:
 
-1. By default, `agent-ctrl apply <platform>` targets global user configuration.
-2. To target project configuration in current folder, add `--project`.
-3. Re-run with `--dry-run` to confirm target path without writing.
+1. By default, `agent-ctrl apply <platform>` targets documented global user configuration when the platform supports it.
+2. To target project configuration in the current folder, add `--project`.
+3. Use `--path <root>` when you want to override the platform's default user root.
+4. Re-run with `--dry-run` to confirm target path without writing.
 
 ### Permission denied while writing configuration
 
@@ -29,8 +30,8 @@
 **Resolution**:
 
 1. Verify directory permissions for the selected platform config path.
-2. For global user scope, ensure the user configuration root (default `~/.agent-ctrl`) is writable.
-3. If needed, use a custom writable root: `--path /custom/agent-ctrl`.
+2. For global user scope, ensure the platform's documented user configuration root is writable.
+3. If needed, use a custom writable root: `--path /custom/root`.
 4. Re-run command after updating permissions.
 
 ### Expected `unchanged` but got `success`
@@ -40,7 +41,7 @@
 **Resolution**:
 
 1. Ensure you run the same platform and scope for both executions.
-2. Check for external edits in managed appy config files between runs.
+2. Check for external edits in the platform's managed guidance, workflow, or settings files between runs.
 3. Re-run once more; deterministic content should settle to `unchanged` if no differences remain.
 
 ## Registry Sync

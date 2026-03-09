@@ -47,7 +47,7 @@ describe("Selected-platform apply error reporting", () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error).toBeInstanceOf(SystemError);
-      expect(result.error.message).toContain("Failed to apply 'appy' integration");
+      expect(result.error.message).toContain("Failed to apply 'gemini' platform configuration");
     }
   });
 });

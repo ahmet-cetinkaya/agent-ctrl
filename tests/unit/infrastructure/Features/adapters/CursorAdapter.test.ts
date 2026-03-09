@@ -1,46 +1,50 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { access, mkdtemp, rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { CursorAdapter } from "@/infrastructure/features/cursor/adapters/CursorAdapter";
+import { writeApplyFixtures } from "@tests/helpers/writeApplyFixtures";
 
 describe("CursorAdapter", () => {
   let projectPath: string;
+  let userRootPath: string;
   let adapter: CursorAdapter;
 
   beforeEach(async () => {
     projectPath = await mkdtemp(join(tmpdir(), "cursor-adapter-"));
-    process.env.AGENT_CTRL_HOME = projectPath;
-    delete process.env.AGENT_CTRL_CURSOR_SCOPE;
+    userRootPath = await mkdtemp(join(tmpdir(), "cursor-user-"));
+    await writeApplyFixtures(projectPath);
     adapter = new CursorAdapter();
   });
 
   afterEach(async () => {
-    delete process.env.AGENT_CTRL_HOME;
-    delete process.env.AGENT_CTRL_CURSOR_SCOPE;
     await rm(projectPath, { recursive: true, force: true });
+    await rm(userRootPath, { recursive: true, force: true });
   });
 
-  it("writes user-scope rule content by default", async () => {
-    const result = await adapter.applyAppyIntegration({ projectPath });
-    expect(result.scope).toBe("user");
-
-    const content = await readFile(result.configPath, "utf-8");
-    expect(content).toContain("agent-ctrl apply cursor");
+  it("writes project-scope artifacts when explicitly requested", async () => {
+    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    expect(result.scope).toBe("project");
+    expect(result.configPath).toBe(resolve(projectPath, ".cursor"));
+    expect(result.surface).toBe("rules-skills-commands-agents-mcp");
+    await expect(access(resolve(projectPath, ".cursor", "rules", "coding-style.mdc"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".cursor", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".cursor", "commands", "dev", "fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".cursor", "agents", "architect.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".cursor", "mcp.json"))).resolves.toBeNull();
   });
 
-  it("can use user scope when explicitly requested", async () => {
-    process.env.AGENT_CTRL_CURSOR_SCOPE = "user";
-    const result = await adapter.applyAppyIntegration({ projectPath });
-    expect(result.scope).toBe("user");
-  });
-
-  it("supports explicit project scope selection", async () => {
+  it("writes user-scope artifacts by default", async () => {
     const result = await adapter.applyAppyIntegration({
       projectPath,
-      targetScope: "project",
+      userConfigRootPath: userRootPath,
     });
-    expect(result.scope).toBe("project");
-    expect(result.configPath).toContain(".cursor/rules/appy.mdc");
+    expect(result.scope).toBe("user");
+    expect(result.configPath).toBe(resolve(userRootPath));
+    await expect(access(resolve(userRootPath, "rules", "coding-style.mdc"))).resolves.toBeNull();
+    await expect(access(resolve(userRootPath, "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
+    await expect(access(resolve(userRootPath, "commands", "dev", "fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(userRootPath, "agents", "architect.md"))).resolves.toBeNull();
+    await expect(access(resolve(userRootPath, "mcp.json"))).resolves.toBeNull();
   });
 });

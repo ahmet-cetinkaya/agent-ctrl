@@ -26,7 +26,7 @@ describe("Adapter target resolution coverage", () => {
     await rm(userRootPath, { recursive: true, force: true });
   });
 
-  it("resolves user and project scopes for all adapters", async () => {
+  it("resolves project and user scope targets for adapters with documented surfaces", async () => {
     const adapters = [
       new OpenCodeAdapter(),
       new ClaudeApplyAdapter(),
@@ -38,18 +38,29 @@ describe("Adapter target resolution coverage", () => {
       new CursorAdapter(),
       new WindsurfAdapter(),
     ];
+    const userScopeUnsupported = new Set<string>();
 
     for (const adapter of adapters) {
-      const userTarget = await adapter.resolveTarget(projectPath, {
-        projectPath,
-        targetScope: "user",
-        userConfigRootPath: userRootPath,
-      });
-      expect(userTarget.scope).toBe("user");
-      if (adapter.platformName === "claude") {
-        expect(userTarget.configPath).toContain(".claude/CLAUDE.md");
+      if (userScopeUnsupported.has(adapter.platformName)) {
+        await expect(
+          adapter.resolveTarget(projectPath, {
+            projectPath,
+            targetScope: "user",
+            userConfigRootPath: userRootPath,
+          })
+        ).rejects.toThrow("does not expose a documented file-backed user configuration surface");
       } else {
-        expect(userTarget.configPath).toContain(resolve(userRootPath));
+        const userTarget = await adapter.resolveTarget(projectPath, {
+          projectPath,
+          targetScope: "user",
+          userConfigRootPath: userRootPath,
+        });
+        expect(userTarget.scope).toBe("user");
+        if (adapter.platformName === "claude") {
+          expect(userTarget.configPath).toContain(".claude/CLAUDE.md");
+        } else {
+          expect(userTarget.configPath).toContain(resolve(userRootPath));
+        }
       }
 
       const projectTarget = await adapter.resolveTarget(projectPath, {

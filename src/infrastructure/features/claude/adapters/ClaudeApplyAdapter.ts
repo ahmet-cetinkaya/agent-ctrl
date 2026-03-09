@@ -1,28 +1,22 @@
-import { resolve } from "node:path";
 import { homedir } from "node:os";
+import { readdir } from "node:fs/promises";
+import { relative, resolve } from "node:path";
 import type {
   AppyConfigTarget,
   AppyIntegrationRequest,
   AppyIntegrationResult,
   IAppyPlatformAdapter,
-  PlatformConfig,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
-import type { Artifact } from "@/core/domain/shared/types/Artifact";
-import { RuleScanner } from "@/infrastructure/features/rule/scanners/RuleScanner";
-import { SkillScanner } from "@/infrastructure/features/skill/scanners/SkillScanner";
-import { AgentScanner } from "@/infrastructure/features/agent/scanners/AgentScanner";
-import { McpServerAggregator } from "@/infrastructure/features/mcp/loaders/McpServerAggregator";
 import { ClaudeAdapter } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
+import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
+import { resolveApplyScope } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
 export class ClaudeApplyAdapter implements IAppyPlatformAdapter {
   readonly platformName = "claude" as const;
-  private readonly ruleScanner = new RuleScanner();
-  private readonly skillScanner = new SkillScanner();
-  private readonly agentScanner = new AgentScanner();
-  private readonly mcpLoader = new McpServerAggregator();
+  private readonly sourceLoader = new ApplySourceLoader();
 
   async resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
-    const scope = request?.targetScope ?? "user";
+    const scope = resolveApplyScope(request?.targetScope, "user", true);
     const claudeRoot =
       scope === "project"
         ? resolve(projectPath, ".claude")
@@ -41,16 +35,46 @@ export class ClaudeApplyAdapter implements IAppyPlatformAdapter {
       request.projectPath,
       target.scope === "project" ? request.projectPath : process.env.AGENT_CTRL_CLAUDE_HOME || homedir()
     );
-    const desiredConfig = await this.buildDesiredConfig(request.projectPath, adapter);
+    const source = await this.sourceLoader.load(request.projectPath);
+    const desiredConfig = await adapter.generateConfig([...source.rules, ...source.skills, ...source.agents]);
+    if (!desiredConfig.success) {
+      throw desiredConfig.error;
+    }
 
     if (!request.dryRun) {
-      const writeResult = await adapter.writeConfig(desiredConfig, {
-        cleanExistingArtifacts: Boolean(request.override),
-      });
+      const writeResult = await adapter.writeConfig(
+        {
+          ...desiredConfig.data,
+          mcpServers: source.mcpServers,
+        },
+        {
+          cleanExistingArtifacts: Boolean(request.override),
+        }
+      );
       if (!writeResult.success) {
         throw writeResult.error;
       }
     }
+
+    const claudeRoot = resolve(target.configPath, "..");
+    const skillPaths = (
+      await Promise.all(
+        source.skills.map(async (skill) => {
+          const files = await collectFiles(skill.path);
+          return files.map((filePath) => resolve(claudeRoot, "skills", skill.id, relative(skill.path, filePath)));
+        })
+      )
+    ).flat();
+    const agentPaths = source.agents.map((agent) => resolve(claudeRoot, "agents", `${agent.id}.md`));
+    const commandPaths = source.commands.map((command) => resolve(claudeRoot, "commands", `${command.id}.md`));
+
+    const fileChanges = [
+      target.configPath,
+      ...skillPaths,
+      ...agentPaths,
+      ...commandPaths,
+      resolve(claudeRoot, "settings.json"),
+    ];
 
     return {
       platform: this.platformName,
@@ -59,38 +83,27 @@ export class ClaudeApplyAdapter implements IAppyPlatformAdapter {
       surface: target.surface,
       status: "success",
       message: "Applied Claude configuration, skills, agents, commands, and MCP servers.",
+      fileChanges,
+      warnings: source.warnings,
     };
   }
+}
 
-  private async buildDesiredConfig(projectPath: string, adapter: ClaudeAdapter): Promise<PlatformConfig> {
-    const artifacts: Artifact[] = [];
-    const configRoot = resolve(projectPath, ".agent-ctrl");
-    const ruleResult = await this.ruleScanner.scan(resolve(configRoot, "rules"));
-    const skillResult = await this.skillScanner.scan(resolve(configRoot, "skills"));
-    const agentResult = await this.agentScanner.scan(resolve(configRoot, "agents"));
+async function collectFiles(root: string): Promise<string[]> {
+  const entries = await readdir(root, { withFileTypes: true });
+  const files: string[] = [];
 
-    artifacts.push(...ruleResult.artifacts, ...skillResult.artifacts, ...agentResult.artifacts);
-
-    const generated = await adapter.generateConfig(artifacts);
-    if (!generated.success) {
-      throw generated.error;
+  for (const entry of entries) {
+    const filePath = resolve(root, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await collectFiles(filePath)));
+      continue;
     }
 
-    const mcpLoad = await this.mcpLoader.load(projectPath);
-    if (!mcpLoad.success) {
-      throw new Error(mcpLoad.error.message);
+    if (entry.isFile()) {
+      files.push(filePath);
     }
-
-    return {
-      ...generated.data,
-      mcpServers: mcpLoad.data.servers.map((server) => ({
-        name: server.serverId,
-        command: server.command,
-        args: server.args,
-        cwd: server.cwd,
-        env: server.env,
-        sourceFile: server.filePath,
-      })),
-    };
   }
+
+  return files;
 }

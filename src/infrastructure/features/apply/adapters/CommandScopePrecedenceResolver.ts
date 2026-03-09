@@ -1,111 +1,81 @@
-import { homedir } from "node:os";
-import { resolve } from "node:path";
 import type { ApplyPlatformScope, AppyConfigTarget } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 
 export interface CommandScopeResolutionOptions {
   platform: SupportedApplyPlatform;
-  projectPath: string;
-  projectRelativePath: string;
-  userRelativePath: string;
+  projectConfigPath: string;
+  userConfigPath?: string;
   preferredScope?: ApplyPlatformScope;
-  userConfigRootPath?: string;
+  defaultScope?: ApplyPlatformScope;
 }
 
 export class CommandScopePrecedenceResolver {
-  private readonly homePath: string;
-
-  constructor(homePath?: string) {
-    this.homePath = homePath ?? process.env.AGENT_CTRL_HOME ?? resolve(homedir(), ".agent-ctrl");
-  }
-
   resolve(options: CommandScopeResolutionOptions): AppyConfigTarget {
-    const { platform, projectPath, projectRelativePath, userRelativePath } = options;
+    const scope = this.resolveScope(options.preferredScope, options.defaultScope ?? "user");
 
-    const userRootPath = options.userConfigRootPath ?? this.homePath;
-    const userPath = resolve(userRootPath, userRelativePath);
-    const projectConfigPath = resolve(projectPath, projectRelativePath);
+    if (scope === "user") {
+      if (!options.userConfigPath) {
+        throw new Error(
+          `Platform '${options.platform}' does not expose a documented file-backed user configuration surface.`
+        );
+      }
 
-    if (this.shouldUseUserScope(platform, options.preferredScope)) {
       return {
-        configPath: userPath,
+        configPath: options.userConfigPath,
         scope: "user",
-        surface: this.getSurface(platform),
+        surface: this.getSurface(options.platform),
       };
     }
 
     return {
-      configPath: projectConfigPath,
+      configPath: options.projectConfigPath,
       scope: "project",
-      surface: this.getSurface(platform),
+      surface: this.getSurface(options.platform),
     };
   }
 
-  private shouldUseUserScope(platform: SupportedApplyPlatform, preferredScope?: ApplyPlatformScope): boolean {
+  private resolveScope(
+    preferredScope?: ApplyPlatformScope,
+    defaultScope: ApplyPlatformScope = "user"
+  ): ApplyPlatformScope {
     if (preferredScope === "user") {
-      return true;
+      return "user";
     }
     if (preferredScope === "project") {
-      return false;
+      return "project";
     }
 
     const explicitScope = (process.env.AGENT_CTRL_APPLY_SCOPE ?? "").toLowerCase();
     if (explicitScope === "user") {
-      return true;
+      return "user";
     }
     if (explicitScope === "project") {
-      return false;
+      return "project";
     }
 
-    if (platform === "codex") {
-      const trustedProject = (process.env.AGENT_CTRL_CODEX_TRUSTED_PROJECT ?? "true").toLowerCase();
-      if (trustedProject === "false") {
-        return true; // Force user scope if not trusted
-      }
-      return false; // For trusted projects, use project scope
-    }
-
-    if (platform === "cursor") {
-      const cursorScope = (process.env.AGENT_CTRL_CURSOR_SCOPE ?? "").toLowerCase();
-      if (cursorScope === "user") {
-        return true;
-      }
-      if (cursorScope === "project") {
-        return false;
-      }
-    }
-
-    if (platform === "windsurf") {
-      const windsurfScope = (process.env.AGENT_CTRL_WINDSURF_SCOPE ?? "").toLowerCase();
-      if (windsurfScope === "global") {
-        return true;
-      }
-      if (windsurfScope === "workspace") {
-        return false;
-      }
-    }
-
-    return true;
+    return defaultScope;
   }
 
   private getSurface(platform: SupportedApplyPlatform): string {
     switch (platform) {
       case "opencode":
+        return "agents-md-commands-skills-agents-mcp";
       case "claude":
-        return "commands";
+        return "memory-skills-agents-mcp";
       case "gemini":
+        return "gemini-md-commands-settings";
       case "qwen":
-        return "commands-toml";
+        return "qwen-md-commands-skills-settings";
       case "kilo":
-        return "workflow";
+        return "rules-workflows-skills-agents-mcp";
       case "antigravity":
-        return "rules-workflows-skills";
+        return "rules-workflows-skills-mcp";
       case "codex":
-        return "config-skills-agent-guidance";
+        return "agents-md-skills-config-toml";
       case "cursor":
-        return "rules";
+        return "rules-skills-commands-agents-mcp";
       case "windsurf":
-        return "rules-workflows";
+        return "global-rules-workflows-skills-mcp";
       default:
         return "configuration";
     }

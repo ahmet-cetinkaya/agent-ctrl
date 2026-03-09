@@ -5,7 +5,7 @@ import type { SystemError } from "@/core/domain/shared/errors/SystemError";
 
 /**
  * Legacy platform adapter interface for artifact synchronization.
- * @deprecated Use IAppyPlatformAdapter for new appy integration flow.
+ * @deprecated Use IAppyPlatformAdapter for the selected-platform native sync flow.
  */
 export interface IPlatformAdapter {
   readonly platformName: string;
@@ -62,7 +62,7 @@ export type ApplyPlatformScope = "project" | "user";
 export type ApplyPlatformStatus = "success" | "unchanged";
 
 /**
- * Target configuration location for appy integration.
+ * Target configuration location for selected-platform synchronization.
  */
 export interface AppyConfigTarget {
   readonly configPath: string;
@@ -71,7 +71,7 @@ export interface AppyConfigTarget {
 }
 
 /**
- * Request parameters for appy integration.
+ * Request parameters for selected-platform synchronization.
  */
 export interface AppyIntegrationRequest {
   readonly projectPath: string;
@@ -82,7 +82,7 @@ export interface AppyIntegrationRequest {
 }
 
 /**
- * Result of appy integration operation.
+ * Result of selected-platform synchronization.
  */
 export interface AppyIntegrationResult {
   readonly platform: SupportedApplyPlatform;
@@ -91,10 +91,12 @@ export interface AppyIntegrationResult {
   readonly surface: string;
   readonly status: ApplyPlatformStatus;
   readonly message: string;
+  readonly fileChanges?: readonly string[];
+  readonly warnings?: readonly string[];
 }
 
 /**
- * Appy-specific adapter contract used by the selected-platform apply flow.
+ * Platform adapter contract used by the selected-platform apply flow.
  * Uses Result<T,E> pattern for explicit error handling.
  *
  * Separated from the legacy IPlatformAdapter interface which uses a different
@@ -112,7 +114,7 @@ export interface IAppyPlatformAdapter {
   resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
 
   /**
-   * Applies appy integration to the target platform.
+   * Applies selected-platform synchronization to the target platform.
    * @param request Integration request parameters
    * @returns Result with integration outcome or error
    */

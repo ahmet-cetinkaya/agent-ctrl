@@ -34,7 +34,7 @@ agent-ctrl init bitbucket:owner/repo
 
 ### `apply [target]`
 
-Apply managed `appy` integration to one selected platform.
+Sync `.agent-ctrl` artifacts into one selected platform's native configuration.
 
 ```bash
 # Apply to OpenCode
@@ -65,9 +65,9 @@ agent-ctrl apply windsurf
 **Behavior:**
 
 - Processes exactly one platform per command run
-- Uses global user configuration target by default
-- Uses `~/.agent-ctrl` as the default user configuration root
-- Creates or replaces managed `appy` integration at the selected platform configuration surface
+- Uses global/user scope by default when the platform documents a file-backed user configuration surface
+- Uses each platform's documented default user root when no custom `--path` is provided
+- Syncs rules, commands, skills, agents, and MCP servers into the selected platform's native configuration surface
 - Preserves unrelated user-defined configuration entries
 - Reports deterministic selected-platform status (`success`, `unchanged`, `failure`)
 - Returns a successful command exit for `success` and `unchanged`
@@ -78,14 +78,17 @@ agent-ctrl apply windsurf
 # Dry run without writing files
 agent-ctrl apply gemini --dry-run
 
-# Force replacement of conflicting managed appy entry
+# Force replacement of conflicting managed content
 agent-ctrl apply cursor --override
 
 # Apply to project-based configuration in current folder
 agent-ctrl apply qwen --project
 
-# Use a custom user configuration root path instead of ~/.agent-ctrl
-agent-ctrl apply opencode --path /custom/agent-ctrl
+# Apply to documented global/user configuration
+agent-ctrl apply codex
+
+# Use a custom platform user configuration root
+agent-ctrl apply opencode --path /custom/opencode
 ```
 
 ---

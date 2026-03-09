@@ -52,18 +52,18 @@ The CLI operates on a project-local structure that defines agent behavior:
 
 ## Adapter Pattern
 
-Each target platform uses a specialized adapter to apply a managed `appy` integration artifact into platform-specific configuration surfaces:
+Each target platform uses a specialized adapter to sync `.agent-ctrl` artifacts into platform-specific native configuration surfaces:
 
-| Platform        | Adapter              | Strategy                                     | Output                        |
-| --------------- | -------------------- | -------------------------------------------- | ----------------------------- |
-| **OpenCode**    | `OpenCodeAdapter`    | Managed command file upsert                  | `.opencode/commands/appy.md`  |
-| **Gemini**      | `GeminiAdapter`      | Managed TOML command upsert                  | `.gemini/commands/appy.toml`  |
-| **Qwen**        | `QwenAdapter`        | Managed TOML command upsert                  | `.qwen/commands/appy.toml`    |
-| **Kilo**        | `KiloAdapter`        | Managed workflow content upsert              | `.kilocode/workflows/appy.md` |
-| **Antigravity** | `AntigravityAdapter` | Managed rules/workflow surface update        | `.antigravity/rules/appy.md`  |
-| **Codex**       | `CodexAdapter`       | Managed skill/config guidance surface update | `.codex/skills/appy/SKILL.md` |
-| **Cursor**      | `CursorAdapter`      | Managed rules surface update                 | `.cursor/rules/appy.mdc`      |
-| **Windsurf**    | `WindsurfAdapter`    | Managed rules/workflow surface update        | `.windsurf/rules/appy.md`     |
+| Platform        | Adapter              | Strategy                                | Output surfaces                                        |
+| --------------- | -------------------- | --------------------------------------- | ------------------------------------------------------ |
+| **OpenCode**    | `OpenCodeAdapter`    | Shared guidance plus native directories | `AGENTS.md`, `.opencode/commands`, `.opencode/*`       |
+| **Gemini**      | `GeminiAdapter`      | Guidance, TOML commands, MCP settings   | `GEMINI.md`, `.gemini/commands`, `.gemini/*`           |
+| **Qwen**        | `QwenAdapter`        | Guidance plus MCP settings              | `QWEN.md`, `.qwen/settings.json`                       |
+| **Kilo**        | `KiloAdapter`        | Rules, workflows, skills                | `.kilocode/rules`, `.kilocode/workflows`               |
+| **Antigravity** | `AntigravityAdapter` | Workspace rules/workflows or global doc | `.agent/rules`, `.agent/workflows`, `GEMINI.md`        |
+| **Codex**       | `CodexAdapter`       | Shared guidance, skills, MCP config     | `AGENTS.md`, `.agents/skills`, `.codex/config.toml`    |
+| **Cursor**      | `CursorAdapter`      | Project rules and skills                | `.cursor/rules`, `.cursor/skills`                      |
+| **Windsurf**    | `WindsurfAdapter`    | Shared guidance, workflows, skills      | `AGENTS.md`, `.windsurf/workflows`, `.windsurf/skills` |
 
 ### Adapter Interface
 
@@ -72,7 +72,7 @@ interface IAppyPlatformAdapter {
   // Resolve target path and scope (project/user) for selected platform
   resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
 
-  // Apply deterministic appy integration
+  // Apply deterministic native-platform synchronization
   applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult>;
 }
 ```

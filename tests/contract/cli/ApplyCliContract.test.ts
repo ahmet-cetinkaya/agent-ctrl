@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { createApplyCommand } from "@/presentation/cli/features/apply/commands/apply";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
+import { writeApplyFixtures } from "@tests/helpers/writeApplyFixtures";
 
 describe("Apply CLI contract", () => {
   let projectPath: string;
@@ -13,6 +14,7 @@ describe("Apply CLI contract", () => {
   beforeEach(async () => {
     projectPath = await mkdtemp(join(tmpdir(), "apply-cli-contract-"));
     process.env.AGENT_CTRL_HOME = projectPath;
+    await writeApplyFixtures(projectPath);
     command = new ApplyCommand();
   });
 
@@ -30,21 +32,26 @@ describe("Apply CLI contract", () => {
     expect(help).toContain("gemini");
     expect(help).toContain("windsurf");
     expect(help).toContain("--project");
+    expect(help).toContain("--user");
     expect(help).toContain("--path");
   });
 
   it("maps success and unchanged outcomes to successful execution", async () => {
+    const userConfigRootPath = join(projectPath, "kilo-user");
     const first = await command.execute({
       projectPath,
       platform: "kilo",
+      userConfigRootPath,
     });
     expect(first.success).toBe(true);
     if (!first.success) return;
     expect(first.data.status).toBe("success");
+    expect(first.data.scope).toBe("user");
 
     const second = await command.execute({
       projectPath,
       platform: "kilo",
+      userConfigRootPath,
     });
     expect(second.success).toBe(true);
     if (!second.success) return;

@@ -7,13 +7,13 @@ import type {
   IAppyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
-import { AppyMergePolicy } from "@/infrastructure/features/apply/adapters/AppyMergePolicy";
+import { AppyMergePolicy, type AppyMergeResult } from "@/infrastructure/features/apply/adapters/AppyMergePolicy";
 import { CommandScopePrecedenceResolver } from "@/infrastructure/features/apply/adapters/CommandScopePrecedenceResolver";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 
 /**
- * Base adapter for text-based appy platform configuration.
+ * Base adapter for text-based platform configuration.
  * Handles common file I/O operations with proper error handling.
  * Provides shared scope resolver to eliminate duplication across platform adapters.
  */
@@ -32,8 +32,18 @@ export abstract class BaseTextAppyAdapter implements IAppyPlatformAdapter {
 
   protected abstract buildDesiredContent(target: AppyConfigTarget): string;
 
+  protected mergeContent(
+    existingContent: string | null,
+    desiredContent: string,
+    target: AppyConfigTarget,
+    override: boolean
+  ): AppyMergeResult {
+    void target;
+    return AppyMergePolicy.mergeText(existingContent, desiredContent, override);
+  }
+
   /**
-   * Applies appy integration to the target platform configuration.
+   * Applies platform configuration to the target platform configuration file.
    *
    * This method:
    * 1. Resolves the target configuration path
@@ -63,7 +73,7 @@ export abstract class BaseTextAppyAdapter implements IAppyPlatformAdapter {
       }
     }
 
-    const merged = AppyMergePolicy.mergeText(existingContent, desiredContent, Boolean(request.override));
+    const merged = this.mergeContent(existingContent, desiredContent, target, Boolean(request.override));
 
     if (!request.dryRun && merged.status === "success") {
       try {
@@ -95,8 +105,8 @@ export abstract class BaseTextAppyAdapter implements IAppyPlatformAdapter {
       surface: target.surface,
       message:
         merged.status === "unchanged"
-          ? "Selected platform already contains the required appy integration."
-          : "Applied appy integration for selected platform.",
+          ? "Selected platform already contains the required managed configuration."
+          : "Applied managed configuration for selected platform.",
     };
   }
 }

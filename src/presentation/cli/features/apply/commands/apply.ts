@@ -1,30 +1,30 @@
 import { Command } from "commander";
 import { resolve } from "node:path";
-import { homedir } from "node:os";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { getSupportedApplyPlatformsDisplay } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandler";
+import { getLegacyGlobalOptions } from "@/presentation/cli/shared/utils/globalOptions";
 
 /**
- * Creates the 'apply' CLI command for managing appy platform integration.
+ * Creates the 'apply' CLI command for syncing native platform configuration.
  *
  * The apply command supports:
  * - Multiple AI platforms (opencode, gemini, cursor, windsurf, codex, qwen, kilo, antigravity)
  * - Project-scoped and user-scoped configuration
  * - Dry-run mode for previewing changes
  * - Override mode for replacing conflicting configurations
- * - Custom user configuration root path
+ * - Custom platform user-configuration root path
  *
  * @returns {Command} Configured Commander Command instance
  *
  * @example
  * ```bash
- * # Apply to user configuration (default)
- * agent-ctrl apply cursor
+ * # Apply to global/user configuration
+ * agent-ctrl apply codex
  *
- * # Apply to project configuration
+ * # Apply to project configuration instead of the default global target
  * agent-ctrl apply cursor --project
  *
  * # Preview changes without writing
@@ -33,29 +33,30 @@ import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandl
  * # Override existing configuration
  * agent-ctrl apply cursor --override
  *
- * # Use custom config root
- * agent-ctrl apply cursor --path /custom/path
+ * # Use custom user config root
+ * agent-ctrl apply codex --path /custom/path
  * ```
  */
 export function createApplyCommand(): Command {
   const supportedPlatformsDisplay = getSupportedApplyPlatformsDisplay();
 
   return new Command("apply")
-    .description("Apply managed appy integration to one selected platform")
+    .description("Sync .agent-ctrl artifacts into one selected platform's native configuration")
     .argument("<platform>", `Target platform. Supported platforms: ${supportedPlatformsDisplay}`)
     .option("-d, --dry-run", "Show selected-platform changes without writing files", false)
-    .option("-o, --override", "Replace conflicting appy configuration with managed state", false)
+    .option("-o, --override", "Replace conflicting managed configuration with agent-ctrl state", false)
+    .option("-p, --project", "Apply to project-based configuration instead of the default global user scope", false)
     .option(
-      "-p, --project",
-      "Apply to project-based configuration in the current folder (default is global user configuration)",
+      "-u, --user",
+      "Apply to global user configuration when the platform documents a file-backed user scope",
       false
     )
-    .option(
-      "--path <path>",
-      "Custom agent-ctrl configuration root path used for global user configuration (default: ~/.agent-ctrl)"
-    )
+    .option("--path <path>", "Custom platform user configuration root path")
     .action(
-      async (platform: string, options: { dryRun?: boolean; override?: boolean; project?: boolean; path?: string }) => {
+      async (
+        platform: string,
+        options: { dryRun?: boolean; override?: boolean; project?: boolean; user?: boolean; path?: string }
+      ) => {
         // Validate user-provided path for security
         if (options.path) {
           const pathError = validateUserPath(options.path, "--path");
@@ -65,9 +66,19 @@ export function createApplyCommand(): Command {
           }
         }
 
+        if (options.project && options.user) {
+          console.error("✗ Choose either --project or --user, not both.");
+          process.exit(1);
+        }
+
+        if (options.path && options.project) {
+          console.error("✗ --path cannot be used together with --project.");
+          process.exit(1);
+        }
+
         const applyCommand = new ApplyCommand();
-        const userConfigRootPath = options.path ? resolve(options.path) : resolve(homedir(), ".agent-ctrl");
-        const targetScope = options.project ? "project" : "user";
+        const userConfigRootPath = options.path ? resolve(options.path) : undefined;
+        const targetScope = options.project ? "project" : options.user ? "user" : undefined;
 
         try {
           const result = await applyCommand.execute({
@@ -88,15 +99,33 @@ export function createApplyCommand(): Command {
             process.exit(2);
           }
 
-          const { platform: selectedPlatform, status, configPath, scope, surface, warnings, durationMs } = result.data;
+          const { verbose } = getLegacyGlobalOptions();
+          const {
+            platform: selectedPlatform,
+            status,
+            configPath,
+            scope,
+            surface,
+            fileChanges,
+            warnings,
+            durationMs,
+          } = result.data;
 
           if (options.dryRun) {
             console.log(`[Dry run] Selected platform: ${selectedPlatform}`);
             console.log(`[Dry run] Result: ${status}`);
             console.log(`[Dry run] Scope: ${scope}`);
             console.log(`[Dry run] Surface: ${surface}`);
-            console.log(`[Dry run] User configuration root: ${userConfigRootPath}`);
             console.log(`[Dry run] Target path: ${configPath}`);
+            if (scope === "user" && userConfigRootPath) {
+              console.log(`[Dry run] User configuration root: ${userConfigRootPath}`);
+            }
+            if (fileChanges.length > 0) {
+              console.log("[Dry run] Files:");
+              for (const filePath of fileChanges) {
+                console.log(`  - ${filePath}`);
+              }
+            }
             console.log(`[Dry run] Estimated duration: ${durationMs}ms`);
           } else {
             if (status === "unchanged") {
@@ -106,14 +135,20 @@ export function createApplyCommand(): Command {
             }
             console.log(`Scope: ${scope}`);
             console.log(`Surface: ${surface}`);
-            if (scope === "user") {
+            if (scope === "user" && userConfigRootPath) {
               console.log(`User configuration root: ${userConfigRootPath}`);
             }
             console.log(`Configuration path: ${configPath}`);
+            if (fileChanges.length > 0) {
+              console.log("Files:");
+              for (const filePath of fileChanges) {
+                console.log(`  - ${filePath}`);
+              }
+            }
             console.log(`Duration: ${durationMs}ms`);
           }
 
-          if (warnings.length > 0) {
+          if (verbose && warnings.length > 0) {
             console.log("\nWarnings:");
             for (const warning of warnings) {
               console.log(`  - ${warning}`);
