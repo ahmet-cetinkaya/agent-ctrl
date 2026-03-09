@@ -35,4 +35,68 @@ describe("Registry security output contract", () => {
       consoleCapture.restore();
     }
   });
+
+  it("handles 429 rate limit errors gracefully", async () => {
+    process.env.SMITHERY_API_KEY = "test-key";
+    const fetchMock = installMockFetch([
+      {
+        match: (url) => url.pathname === "/servers",
+        handler: () =>
+          new Response(JSON.stringify({ error: "rate limit exceeded" }), {
+            status: 429,
+            headers: { "Content-Type": "application/json", "Retry-After": "60" },
+          }),
+      },
+    ]);
+    const consoleCapture = captureConsole();
+
+    try {
+      await createMcpCommand().parseAsync(["node", "test", "sync", "--path", configRoot]);
+      const output = [...consoleCapture.logs, ...consoleCapture.errors].join("\n");
+      expect(output).toMatch(/rate limit|quota|429/i);
+    } finally {
+      fetchMock.restore();
+      consoleCapture.restore();
+    }
+  });
+
+  it("handles 500 server errors with clear messaging", async () => {
+    process.env.SMITHERY_API_KEY = "test-key";
+    const fetchMock = installMockFetch([
+      {
+        match: (url) => url.pathname === "/servers",
+        handler: () => new Response(JSON.stringify({ error: "internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } }),
+      },
+    ]);
+    const consoleCapture = captureConsole();
+
+    try {
+      await createMcpCommand().parseAsync(["node", "test", "sync", "--path", configRoot]);
+      const output = [...consoleCapture.logs, ...consoleCapture.errors].join("\n");
+      expect(output).toMatch(/500|server error|internal error/i);
+    } finally {
+      fetchMock.restore();
+      consoleCapture.restore();
+    }
+  });
+
+  it("handles 503 service unavailable errors", async () => {
+    process.env.SMITHERY_API_KEY = "test-key";
+    const fetchMock = installMockFetch([
+      {
+        match: (url) => url.pathname === "/servers",
+        handler: () => new Response(JSON.stringify({ error: "service unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } }),
+      },
+    ]);
+    const consoleCapture = captureConsole();
+
+    try {
+      await createMcpCommand().parseAsync(["node", "test", "sync", "--path", configRoot]);
+      const output = [...consoleCapture.logs, ...consoleCapture.errors].join("\n");
+      expect(output).toMatch(/503|service unavailable|unavailable|server error/i);
+    } finally {
+      fetchMock.restore();
+      consoleCapture.restore();
+    }
+  });
 });

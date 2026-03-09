@@ -9,10 +9,11 @@ export class CatalogCredentialBootstrap {
       throw loaded.error;
     }
 
+    const values = loaded.data?.values ?? {};
     const resolved =
       explicitApiKey ??
-      loaded.data.values.SKILLSMP_API_KEY ??
-      loaded.data.values.SKILLSMP_TOKEN ??
+      values.SKILLSMP_API_KEY ??
+      values.SKILLSMP_TOKEN ??
       process.env.SKILLSMP_API_KEY ??
       process.env.SKILLSMP_TOKEN;
 
@@ -29,10 +30,11 @@ export class CatalogCredentialBootstrap {
       throw loaded.error;
     }
 
+    const values = loaded.data?.values ?? {};
     const resolved =
       explicitApiKey ??
-      loaded.data.values.SMITHERY_API_KEY ??
-      loaded.data.values.SMITHERY_TOKEN ??
+      values.SMITHERY_API_KEY ??
+      values.SMITHERY_TOKEN ??
       process.env.SMITHERY_API_KEY ??
       process.env.SMITHERY_TOKEN;
 

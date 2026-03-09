@@ -6,6 +6,7 @@ import type {
   SmitheryServerDetails,
   SmitheryServerRecord,
 } from "@/core/domain/shared/interfaces/ISmitheryRegistryClient";
+import { createMissingApiKeyError } from "../errors/CatalogErrors";
 
 interface SmitheryRegistryClientOptions {
   baseUrl?: string;
@@ -34,9 +35,7 @@ export class SmitheryRegistryClient implements ISmitheryRegistryClient {
   async listServers(params: SmitherySearchParams) {
     const apiKey = this.resolveApiKey();
     if (!apiKey) {
-      return err(
-        new Error("Smithery API key is missing. Configure SMITHERY_API_KEY in .agent-ctrl/.env or pass --api-key.")
-      );
+      return err(createMissingApiKeyError("Smithery", "SMITHERY_API_KEY"));
     }
 
     const url = new URL(`${this.baseUrl}/servers`);
@@ -74,9 +73,7 @@ export class SmitheryRegistryClient implements ISmitheryRegistryClient {
   async getServerDetails(id: string) {
     const apiKey = this.resolveApiKey();
     if (!apiKey) {
-      return err(
-        new Error("Smithery API key is missing. Configure SMITHERY_API_KEY in .agent-ctrl/.env or pass --api-key.")
-      );
+      return err(createMissingApiKeyError("Smithery", "SMITHERY_API_KEY"));
     }
 
     try {
@@ -231,6 +228,9 @@ export class SmitheryRegistryClient implements ISmitheryRegistryClient {
 
   private normalizeError(error: unknown): Error {
     if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        return new Error(`Request timed out after ${this.timeoutMs}ms`);
+      }
       return error;
     }
     return new Error(String(error));

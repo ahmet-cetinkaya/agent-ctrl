@@ -15,7 +15,10 @@ export class CatalogOperationLogStore {
       return ok(undefined);
     } catch (error) {
       const nodeErr = error as NodeJS.ErrnoException;
-      return err(new Error(`Failed to append catalog operation log: ${nodeErr.message}`));
+      const logError = new Error(`Failed to append catalog operation log to ${logFile}: ${nodeErr.message}`);
+      console.error(`Error: ${logError.message}`);
+      console.error(`Failed log entry: ${JSON.stringify(entry)}`);
+      return err(logError);
     }
   }
 }

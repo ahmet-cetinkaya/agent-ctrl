@@ -6,6 +6,7 @@ import type {
   SkillsMpSkillDetails,
   SkillsMpSkillRecord,
 } from "@/core/domain/shared/interfaces/ISkillsMpClient";
+import { createMissingApiKeyError } from "../errors/CatalogErrors";
 
 interface SkillsMpClientOptions {
   baseUrl?: string;
@@ -40,9 +41,7 @@ export class SkillsMpClient implements ISkillsMpClient {
   async search(params: SkillsMpSearchParams) {
     const apiKey = this.resolveApiKey();
     if (!apiKey) {
-      return err(
-        new Error("SkillsMP API key is missing. Configure SKILLSMP_API_KEY in .agent-ctrl/.env or pass --api-key.")
-      );
+      return err(createMissingApiKeyError("SkillsMP", "SKILLSMP_API_KEY"));
     }
 
     const endpoint = params.ai ? "/api/v1/skills/ai-search" : "/api/v1/skills/search";
@@ -92,9 +91,7 @@ export class SkillsMpClient implements ISkillsMpClient {
   async getSkillDetails(skillId: string, hint?: SkillsMpSkillRecord) {
     const apiKey = this.resolveApiKey();
     if (!apiKey) {
-      return err(
-        new Error("SkillsMP API key is missing. Configure SKILLSMP_API_KEY in .agent-ctrl/.env or pass --api-key.")
-      );
+      return err(createMissingApiKeyError("SkillsMP", "SKILLSMP_API_KEY"));
     }
 
     try {
@@ -479,12 +476,15 @@ export class SkillsMpClient implements ISkillsMpClient {
   private async fetchGitHubDirectoryFiles(location: GitHubTreeLocation): Promise<Record<string, string>> {
     const queue = [location.path];
     const files: Record<string, string> = {};
+    const errors: string[] = [];
+    const failedFiles: string[] = [];
 
     while (queue.length > 0) {
       const currentPath = queue.shift() ?? "";
       const listingResult = await this.fetchPublicJson(this.buildGitHubContentsUrl(location, currentPath));
       if (!listingResult.success) {
-        return {};
+        errors.push(`GitHub API failed for ${currentPath}: ${listingResult.error.message}`);
+        continue;
       }
 
       const entries = Array.isArray(listingResult.data) ? listingResult.data : [listingResult.data];
@@ -515,6 +515,7 @@ export class SkillsMpClient implements ISkillsMpClient {
 
         const fileResult = await this.fetchPublicText(downloadUrl);
         if (!fileResult.success) {
+          failedFiles.push(entryPath);
           continue;
         }
 
@@ -524,6 +525,20 @@ export class SkillsMpClient implements ISkillsMpClient {
             ? entryPath.slice(rootPrefix.length)
             : (entryPath.split("/").pop() ?? entryPath);
         files[relativePath] = fileResult.data;
+      }
+    }
+
+    if (errors.length > 0) {
+      console.warn(`Warning: Partial GitHub fetch failure: ${errors.join("; ")}`);
+    }
+
+    if (failedFiles.length > 0) {
+      const criticalFiles = ["SKILL.md", "skill.md", "README.md", "readme.md"];
+      const missingCritical = failedFiles.filter(f =>
+        criticalFiles.some(cf => f.toLowerCase().endsWith(cf))
+      );
+      if (missingCritical.length > 0) {
+        console.warn(`Warning: Failed to download critical files: ${missingCritical.join(", ")}`);
       }
     }
 
@@ -624,6 +639,9 @@ export class SkillsMpClient implements ISkillsMpClient {
 
   private normalizeError(error: unknown): Error {
     if (error instanceof Error) {
+      if (error.name === "AbortError") {
+        return new Error(`Request timed out after ${this.timeoutMs}ms`);
+      }
       return error;
     }
     return new Error(String(error));

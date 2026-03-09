@@ -20,7 +20,7 @@ export class CatalogStateFileStore implements ICatalogStateStore {
       if (nodeErr.code === "ENOENT") {
         return ok(this.createEmptyState());
       }
-      return err(new Error(`Failed to load catalog state: ${nodeErr.message}`));
+      return err(new Error(`Failed to load catalog state from ${stateFile}: ${nodeErr.message}`));
     }
   }
 
@@ -33,7 +33,7 @@ export class CatalogStateFileStore implements ICatalogStateStore {
       return ok(undefined);
     } catch (error) {
       const nodeErr = error as NodeJS.ErrnoException;
-      return err(new Error(`Failed to save catalog state: ${nodeErr.message}`));
+      return err(new Error(`Failed to save catalog state to ${stateFile}: ${nodeErr.message}`));
     }
   }
 
