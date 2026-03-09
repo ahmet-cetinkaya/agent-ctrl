@@ -1,4 +1,4 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { resolve } from "node:path";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
@@ -45,7 +45,12 @@ export function createApplyCommand(): Command {
     .argument("<platform>", `Target platform. Supported platforms: ${supportedPlatformsDisplay}`)
     .option("-d, --dry-run", "Show selected-platform changes without writing files", false)
     .option("-o, --override", "Replace conflicting managed configuration with agent-ctrl state", false)
-    .option("-p, --project", "Apply to project-based configuration instead of the default global user scope", false)
+    .addOption(
+      new Option("-p, --project", "Apply to project-based configuration instead of the default global user scope")
+        .default(false)
+        .conflicts("user")
+        .conflicts("path")
+    )
     .option(
       "-u, --user",
       "Apply to global user configuration when the platform documents a file-backed user scope",
@@ -64,16 +69,6 @@ export function createApplyCommand(): Command {
             console.error(`✗ ${pathError}`);
             process.exit(1);
           }
-        }
-
-        if (options.project && options.user) {
-          console.error("✗ Choose either --project or --user, not both.");
-          process.exit(1);
-        }
-
-        if (options.path && options.project) {
-          console.error("✗ --path cannot be used together with --project.");
-          process.exit(1);
         }
 
         const applyCommand = new ApplyCommand();
