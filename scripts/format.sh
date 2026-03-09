@@ -244,7 +244,7 @@ acore_format_json() {
       -not -path "*/.git/*" \
       -not -path "*/packages/*" 2> /dev/null)
 
-    local exit
+    local exit_code=0
     for file in "${json_files[@]}"; do
       if
         jq '.' "$file" > _code=0
@@ -263,7 +263,7 @@ acore_format_json() {
       fi
     done
 
-    return $exit_code
+    return "$exit_code"
   else
     acore_log_warning "No JSON formatter found"
     acore_log_info "Install: prettier or jq"
