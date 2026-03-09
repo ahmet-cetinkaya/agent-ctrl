@@ -6,6 +6,7 @@ import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { getSupportedApplyPlatformsDisplay } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandler";
 import { getLegacyGlobalOptions } from "@/presentation/cli/shared/utils/globalOptions";
+import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 /**
  * Creates the 'apply' CLI command for syncing native platform configuration.
@@ -71,13 +72,21 @@ export function createApplyCommand(): Command {
           }
         }
 
+        // Resolve source path: use --path if provided, otherwise use global config root
+        // For global config, pass the parent directory (home) since ApplySourceLoader appends ".agent-ctrl"
+        const globalConfigRoot = resolveConfigRoot();
+        const isGlobalConfig = !options.path;
+        const sourcePath = isGlobalConfig
+          ? resolve(globalConfigRoot, "..") // Parent of .agent-ctrl (i.e., home directory)
+          : resolve(options.path!);
+
         const applyCommand = new ApplyCommand();
         const userConfigRootPath = options.path ? resolve(options.path) : undefined;
         const targetScope = options.project ? "project" : options.user ? "user" : undefined;
 
         try {
           const result = await applyCommand.execute({
-            projectPath: resolve(process.cwd()),
+            projectPath: sourcePath,
             platform,
             dryRun: options.dryRun,
             override: options.override,
