@@ -2,25 +2,51 @@
   "name": "agent-ctrl",
   "version": "0.0.0",
   "description": "A centralized CLI tool for managing AI agent configurations with standard directory-based patterns.",
+  "author": "Ahmet Cetinkaya <ahmetcetinkaya@tutamail.com> (https://github.com/ahmet-cetinkaya)",
+  "license": "GPL-3.0",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ahmet-cetinkaya/agent-ctrl.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ahmet-cetinkaya/agent-ctrl/issues"
+  },
+  "homepage": "https://github.com/ahmet-cetinkaya/agent-ctrl#readme",
+  "keywords": [
+    "cli",
+    "agent",
+    "ai",
+    "configuration",
+    "mcp",
+    "skills"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
     "agent-ctrl": "./dist/index.js"
   },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "bun run src/presentation/cli/index.ts",
     "build": "bun build src/presentation/cli/index.ts --outdir dist --target node",
+    "build:npm": "npm: npm pack",
     "start": "node dist/index.js",
     "test": "bun test",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
     "format": "bash scripts/format.sh",
-    "format:check": "bash scripts/format.sh --check"
+    "lint": "eslint . && tsc --noEmit",
+    "lint:fix": "eslint . --fix",
+    "bump-version": "bash scripts/bump_version.sh",
+    "release:tag": "bash packages/acore-scripts/src/manage-git-release-tag.sh",
+    "release:npm": "npm publish --access public"
   },
-  "license": "GPL-3.0",
-  "type": "module",
-  "private": true,
+  "dependencies": {
+    "commander": "^14.0.3"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@eslint/js": "^9.23.0",
@@ -31,8 +57,5 @@
   },
   "peerDependencies": {
     "typescript": "^5"
-  },
-  "dependencies": {
-    "commander": "^14.0.3"
   }
 }

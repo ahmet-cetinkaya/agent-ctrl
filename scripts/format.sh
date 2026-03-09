@@ -15,10 +15,15 @@ ACORE_SCRIPTS_DIR="$PROJECT_ROOT/packages/acore-scripts/src"
 # shellcheck source=/dev/null
 source "$ACORE_SCRIPTS_DIR/logger.sh"
 
-# Source acore format scripts if available
+# Source acore format scripts
 # shellcheck source=/dev/null
 if [[ -f "$ACORE_SCRIPTS_DIR/format_sh.sh" ]]; then
   source "$ACORE_SCRIPTS_DIR/format_sh.sh"
+fi
+
+# shellcheck source=/dev/null
+if [[ -f "$ACORE_SCRIPTS_DIR/format_md.sh" ]]; then
+  source "$ACORE_SCRIPTS_DIR/format_md.sh"
 fi
 
 # Configuration
@@ -31,17 +36,34 @@ acore_command_exists() {
   command -v "$1" > /dev/null 2>&1
 }
 
-# Function to format shell scripts
+# Function to format shell scripts in scripts/ directory
 acore_format_shell_scripts() {
   acore_log_section "Shell Scripts"
 
   if [[ -f "$ACORE_SCRIPTS_DIR/format_sh.sh" ]]; then
-    TARGET_DIR="$TARGET_DIR" \
+    # Target the scripts directory
+    TARGET_DIR="$PROJECT_ROOT/scripts" \
       VERBOSE="$VERBOSE" \
       CHECK_ONLY="$CHECK_ONLY" \
       acore_sh_format_all
   else
     acore_log_warning "Shell script formatter not available"
+    return 1
+  fi
+}
+
+# Function to format markdown files
+acore_format_markdown() {
+  acore_log_section "Markdown"
+
+  if [[ -f "$ACORE_SCRIPTS_DIR/format_md.sh" ]]; then
+    acore_log_info "Using acore markdown formatter"
+    cd "$PROJECT_ROOT"
+    TARGET_DIR="$PROJECT_ROOT" \
+      CHECK_ONLY="$CHECK_ONLY" \
+      acore_format_md_files
+  else
+    acore_log_warning "Markdown formatter not available"
     return 1
   fi
 }
@@ -124,70 +146,6 @@ acore_format_typescript() {
   fi
 }
 
-# Function to format markdown files
-acore_format_markdown() {
-  acore_log_section "Markdown"
-
-  # Check for markdown formatters
-  if acore_command_exists prettier; then
-    acore_log_info "Using Prettier for Markdown"
-
-    local prettier_opts=(--write)
-    if [[ "$CHECK_ONLY" == "true" ]]; then
-      prettier_opts=(--check)
-    fi
-
-    local md_files
-    mapfile -t md_files < <(find "$TARGET_DIR" -type f -name "*.md" \
-      -not -path "*/node_modules/*" \
-      -not -path "*/.git/*" \
-      -not -path "*/.serena/*" \
-      -not -path "*/packages/*" 2> /dev/null)
-
-    if [[ ${#md_files[@]} -eq 0 ]]; then
-      acore_log_info "No Markdown files found"
-      return 0
-    fi
-
-    if prettier "${prettier_opts[@]}" "${md_files[@]}" 2> /dev/null; then
-      acore_log_success "Markdown files formatted"
-    else
-      local exit_code=$?
-      if [[ "$CHECK_ONLY" == "true" ]] && [[ $exit_code -ne 0 ]]; then
-        acore_log_warning "Some files need formatting"
-      fi
-      return $exit_code
-    fi
-
-  elif acore_command_exists mdformat; then
-    acore_log_info "Using mdformat"
-
-    local mdformat_opts=()
-    if [[ "$CHECK_ONLY" == "true" ]]; then
-      mdformat_opts=(--check)
-    fi
-
-    if mdformat "${mdformat_opts[@]}" "$TARGET_DIR" 2> /dev/null; then
-      acore_log_success "Markdown files formatted"
-    else
-      local exit_code=$?
-      if [[ "$CHECK_ONLY" == "true" ]] && [[ $exit_code -ne 0 ]]; then
-        acore_log_warning "Some files need formatting"
-      fi
-      return $exit_code
-    fi
-
-  elif [[ -f "$ACORE_SCRIPTS_DIR/format_md.sh" ]]; then
-    acore_log_info "Using acore markdown formatter"
-    # Source and run the acore markdown formatter
-    # shellcheck source=/dev/null
-    source "$ACORE_SCRIPTS_DIR/format_md.sh"
-  else
-    acore_log_warning "No Markdown formatter found"
-    return 1
-  fi
-}
-
 # Function to format YAML files
 acore_format_yaml() {
   acore_log_section "YAML"
@@ -217,7 +175,7 @@ acore_format_yaml() {
     else
       local exit_code=$?
       if [[ "$CHECK_ONLY" == "true" ]] && [[ $exit_code -ne 0 ]]; then
-        acore_log_warning "Some files need formatting"
+        acore_log_warning "Some YAML files have issues"
       fi
       return $exit_code
     fi
@@ -286,9 +244,12 @@ acore_format_json() {
       -not -path "*/.git/*" \
       -not -path "*/packages/*" 2> /dev/null)
 
-    local exit_code=0
+    local exit
     for file in "${json_files[@]}"; do
-      if jq '.' "$file" > /tmp/json_format_tmp.$$ 2> /dev/null; then
+      if
+        jq '.' "$file" > _code=0
+        /tmp/json_format_tmp.$$ 2> /dev/null
+      then
         if [[ "$CHECK_ONLY" == "false" ]]; then
           mv /tmp/json_format_tmp.$$ "$file"
         else
@@ -317,22 +278,20 @@ acore_format_all() {
   local overall_exit_code=0
   local formatter_failed=0
 
-  # Format shell scripts
+  # Format shell scripts (in scripts/ directory)
   if ! acore_format_shell_scripts; then
+    overall_exit_code=1
+    formatter_failed=1
+  fi
+
+  # Format Markdown files
+  if ! acore_format_markdown; then
     overall_exit_code=1
     formatter_failed=1
   fi
 
   # Format TypeScript/JavaScript
   if acore_format_typescript; then
-    : # Success
-  else
-    overall_exit_code=1
-    formatter_failed=1
-  fi
-
-  # Format Markdown
-  if acore_format_markdown; then
     : # Success
   else
     overall_exit_code=1

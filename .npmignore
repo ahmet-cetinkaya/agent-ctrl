@@ -1,0 +1,41 @@
+# Source and tests
+src/
+tests/
+specs/
+
+# Development
+.git/
+.vscode/
+.idea/
+
+# Documentation
+docs/
+
+# Scripts and packages
+scripts/
+packages/
+
+# Config files
+bunfig.toml
+eslint.config.js
+prettierignore
+prettierrc
+tsconfig.json
+
+# Runtime data
+.agent-ctrl/
+.claude/
+.codex/
+.serena/
+test/
+.opencode/
+
+# Lock files
+bun.lock
+
+# Build artifacts
+*.map
+*.tgz
+
+# GitHub workflows (not needed in package)
+.github/
