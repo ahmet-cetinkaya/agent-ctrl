@@ -12,7 +12,7 @@ import { CatalogCredentialBootstrap } from "@/infrastructure/features/catalog/ca
 import { CatalogOperationReportBuilder } from "@/infrastructure/features/catalog/reporting/CatalogOperationReportBuilder";
 import { DiscoveryScopePlanner } from "@/infrastructure/features/catalog/scopes/DiscoveryScopePlanner";
 import { SkillsMpClient } from "@/infrastructure/features/catalog/clients/SkillsMpClient";
-import { classifyCatalogError, extractRetryAfter } from "@/infrastructure/features/catalog/errors/CatalogErrorClassifier";
+import { classifyCatalogError } from "@/infrastructure/features/catalog/errors/CatalogErrorClassifier";
 
 export interface SkillCatalogSyncOptions {
   configRoot: string;
@@ -103,16 +103,15 @@ export class SkillCatalogSynchronizer {
 
         if (!response.success) {
           const classification = classifyCatalogError(response.error);
-          const retryAfter = extractRetryAfter(response.error);
 
           if (classification.type === "retryable") {
-            const throttleUntil = new Date(Date.now() + (retryAfter ?? 60) * 1000).toISOString();
+            const throttleUntil = new Date(Date.now() + classification.retryAfter * 1000).toISOString();
             this.getStateSupport().updateRegistrySyncState(state, "skillsmp", {
               throttleUntil,
               authState: registry.authState,
               lastSyncStatus: "failed",
             });
-            issues.push(`${classification.reason} - retry after ${retryAfter ?? 60}s`);
+            issues.push(`${classification.reason} - retry after ${classification.retryAfter}s`);
           } else {
             this.getStateSupport().updateRegistrySyncState(state, "skillsmp", {
               authState: classification.reason.includes("Authentication") ? "missing" : "configured",

@@ -11,7 +11,7 @@ import { CatalogStateSupport } from "@/infrastructure/features/catalog/caching/C
 import { CatalogCredentialBootstrap } from "@/infrastructure/features/catalog/caching/CatalogCredentialBootstrap";
 import { CatalogOperationReportBuilder } from "@/infrastructure/features/catalog/reporting/CatalogOperationReportBuilder";
 import { SmitheryRegistryClient } from "@/infrastructure/features/catalog/clients/SmitheryRegistryClient";
-import { classifyCatalogError, extractRetryAfter } from "@/infrastructure/features/catalog/errors/CatalogErrorClassifier";
+import { classifyCatalogError } from "@/infrastructure/features/catalog/errors/CatalogErrorClassifier";
 
 export interface McpCatalogSyncOptions {
   configRoot: string;
@@ -79,16 +79,15 @@ export class McpCatalogSynchronizer {
       const response = await this.getClient().listServers({ query: options.query, page, pageSize: 100 });
       if (!response.success) {
         const classification = classifyCatalogError(response.error);
-        const retryAfter = extractRetryAfter(response.error);
 
         if (classification.type === "retryable") {
-          const throttleUntil = new Date(Date.now() + (retryAfter ?? 60) * 1000).toISOString();
+          const throttleUntil = new Date(Date.now() + classification.retryAfter * 1000).toISOString();
           this.getStateSupport().updateRegistrySyncState(state, "smithery", {
             throttleUntil,
             authState: registry.authState,
             lastSyncStatus: "failed",
           });
-          issues.push(`${classification.reason} - retry after ${retryAfter ?? 60}s`);
+          issues.push(`${classification.reason} - retry after ${classification.retryAfter}s`);
         } else {
           this.getStateSupport().updateRegistrySyncState(state, "smithery", {
             authState: classification.reason.includes("Authentication") ? "missing" : "configured",

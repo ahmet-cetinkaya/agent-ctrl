@@ -20,8 +20,9 @@ export interface ListMcpServersQueryResult {
 }
 
 /**
- * Query to list MCP servers in the project.
- * The loader handles expected I/O errors and returns detailed results.
+ * Query to list MCP servers and load catalog integration state.
+ * The loader handles expected I/O errors and returns detailed results including
+ * catalog state for managed/server ID mapping and compatibility information.
  */
 export class ListMcpServersQuery {
   private readonly loader: McpServerAggregator;
@@ -39,6 +40,13 @@ export class ListMcpServersQuery {
     }
 
     const catalogState = await this.catalogStore.load(options.projectPath);
+    if (!catalogState.success) {
+      console.warn(`Warning: Failed to load catalog state: ${catalogState.error.message}`);
+      console.warn("Server listing will continue without catalog integration information.");
+    }
+
+    // Transform catalog state into Maps for O(1) lookup by server ID.
+    // Failed catalog loads result in empty Maps.
     const managedById = new Map(
       catalogState.success
         ? catalogState.data.managedIntegrations

@@ -2,8 +2,40 @@
  * Error classification for catalog operations.
  */
 export type ErrorClassification =
-  | { type: "retryable"; retryAfter?: number; reason: string }
+  | { type: "retryable"; retryAfter: number; reason: string }
   | { type: "fatal"; reason: string };
+
+/**
+ * Creates a retryable error classification with validation.
+ */
+export function createRetryableClassification(retryAfter: number, reason: string): ErrorClassification {
+  if (retryAfter <= 0) {
+    throw new Error("retryAfter must be a positive number");
+  }
+  if (!reason.trim()) {
+    throw new Error("reason cannot be empty");
+  }
+  return { type: "retryable", retryAfter, reason };
+}
+
+/**
+ * Creates a fatal error classification with validation.
+ */
+export function createFatalClassification(reason: string): ErrorClassification {
+  if (!reason.trim()) {
+    throw new Error("reason cannot be empty");
+  }
+  return { type: "fatal", reason };
+}
+
+/**
+ * Type guard to check if classification is retryable.
+ */
+export function isRetryable(
+  classification: ErrorClassification
+): classification is { type: "retryable"; retryAfter: number; reason: string } {
+  return classification.type === "retryable";
+}
 
 /**
  * Classifies an error for catalog synchronization operations.
@@ -13,18 +45,13 @@ export function classifyCatalogError(error: Error): ErrorClassification {
 
   // Rate limiting (429) - retryable with Retry-After header
   if (message.includes("429") || message.includes("rate limit") || message.includes("quota")) {
-    return {
-      type: "retryable",
-      reason: "Rate limited by API",
-    };
+    const retryAfter = extractRetryAfter(error);
+    return createRetryableClassification(retryAfter ?? 60, "Rate limited by API");
   }
 
   // Timeout errors - retryable
   if (message.includes("timed out") || error.name === "AbortError") {
-    return {
-      type: "retryable",
-      reason: "Request timeout",
-    };
+    return createRetryableClassification(5, "Request timeout");
   }
 
   // Network errors - retryable
@@ -35,18 +62,12 @@ export function classifyCatalogError(error: Error): ErrorClassification {
     message.includes("network") ||
     message.includes("fetch failed")
   ) {
-    return {
-      type: "retryable",
-      reason: "Network error",
-    };
+    return createRetryableClassification(10, "Network error");
   }
 
   // Server errors (5xx) - retryable
   if (message.includes("500") || message.includes("502") || message.includes("503") || message.includes("504")) {
-    return {
-      type: "retryable",
-      reason: "Server error",
-    };
+    return createRetryableClassification(30, "Server error");
   }
 
   // Authentication failures (401) - fatal
@@ -57,10 +78,7 @@ export function classifyCatalogError(error: Error): ErrorClassification {
     message.includes("api key") ||
     message.includes("invalid token")
   ) {
-    return {
-      type: "fatal",
-      reason: "Authentication failed",
-    };
+    return createFatalClassification("Authentication failed");
   }
 
   // Authorization failures (403) - fatal
@@ -70,37 +88,26 @@ export function classifyCatalogError(error: Error): ErrorClassification {
     message.includes("unauthorized") ||
     message.includes("access denied")
   ) {
-    return {
-      type: "fatal",
-      reason: "Authorization failed",
-    };
+    return createFatalClassification("Authorization failed");
   }
 
   // Not found errors (404) - fatal for critical endpoints
   if (message.includes("404") || message.includes("not found")) {
-    return {
-      type: "fatal",
-      reason: "Resource not found",
-    };
+    return createFatalClassification("Resource not found");
   }
 
   // Client errors (4xx) other than 429 - fatal
   if (message.includes("400") || message.includes("422") || message.includes("bad request") || message.includes("invalid")) {
-    return {
-      type: "fatal",
-      reason: "Invalid request",
-    };
+    return createFatalClassification("Invalid request");
   }
 
   // Default to fatal for unknown errors
-  return {
-    type: "fatal",
-    reason: "Unknown error",
-  };
+  return createFatalClassification("Unknown error");
 }
 
 /**
  * Extracts retry-after seconds from error message if present.
+ * Expected format: 'Retry-After: 42' (HTTP header or API message)
  */
 export function extractRetryAfter(error: Error): number | undefined {
   const match = error.message.match(/retry-after:\s*(\d+)/i);

@@ -105,7 +105,8 @@ export class SmitheryRegistryClient implements ISmitheryRegistryClient {
       });
 
       if (!response.ok) {
-        return err(this.toHttpError("Smithery", response.status));
+        const responseBody = await response.text().catch(() => "");
+        return err(this.toHttpError("Smithery", response.status, url, responseBody));
       }
 
       const payload = (await response.json()) as Record<string, unknown>;
@@ -216,14 +217,17 @@ export class SmitheryRegistryClient implements ISmitheryRegistryClient {
     );
   }
 
-  private toHttpError(source: string, status: number): Error {
+  private toHttpError(source: string, status: number, url?: string, responseBody?: string): Error {
+    const urlContext = url ? ` for ${url}` : "";
+    const bodyContext = responseBody ? `: ${responseBody.slice(0, 200)}` : "";
+
     if (status === 401) {
-      return new Error(`${source} authentication failed. Check the configured API key.`);
+      return new Error(`${source} authentication failed${urlContext}. Check the configured API key.`);
     }
     if (status === 429) {
-      return new Error(`${source} rate limit reached. Retry later or reduce request volume.`);
+      return new Error(`${source} rate limit reached${urlContext}. Retry later or reduce request volume.`);
     }
-    return new Error(`${source} request failed with HTTP ${status}.`);
+    return new Error(`${source} request failed with HTTP ${status}${urlContext}${bodyContext}`);
   }
 
   private normalizeError(error: unknown): Error {

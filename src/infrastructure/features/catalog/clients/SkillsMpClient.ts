@@ -193,7 +193,8 @@ export class SkillsMpClient implements ISkillsMpClient {
       });
 
       if (!response.ok) {
-        return err(this.toHttpError("SkillsMP", response.status));
+        const responseBody = await response.text().catch(() => "");
+        return err(this.toHttpError("SkillsMP", response.status, url, responseBody));
       }
 
       const payload = (await response.json()) as Record<string, unknown>;
@@ -224,7 +225,8 @@ export class SkillsMpClient implements ISkillsMpClient {
             )
           );
         }
-        return err(this.toHttpError("SkillsMP", response.status));
+        const responseBody = await response.text().catch(() => "");
+        return err(this.toHttpError("SkillsMP", response.status, url, responseBody));
       }
 
       return ok(await response.text());
@@ -240,6 +242,7 @@ export class SkillsMpClient implements ISkillsMpClient {
         return candidate.filter(this.isObject);
       }
     }
+    console.warn(`Warning: SkillsMP API response format changed. Expected skills/items/results array but got: ${Object.keys(payload).join(", ")}`);
     return [];
   }
 
@@ -627,14 +630,17 @@ export class SkillsMpClient implements ISkillsMpClient {
     );
   }
 
-  private toHttpError(source: string, status: number): Error {
+  private toHttpError(source: string, status: number, url?: string, responseBody?: string): Error {
+    const urlContext = url ? ` for ${url}` : "";
+    const bodyContext = responseBody ? `: ${responseBody.slice(0, 200)}` : "";
+
     if (status === 401 || status === 403) {
-      return new Error(`${source} authentication failed. Check the configured API key.`);
+      return new Error(`${source} authentication failed${urlContext}. Check the configured API key.`);
     }
     if (status === 429) {
-      return new Error(`${source} rate limit or quota reached. Retry later or reduce refresh scope.`);
+      return new Error(`${source} rate limit or quota reached${urlContext}. Retry later or reduce refresh scope.`);
     }
-    return new Error(`${source} request failed with HTTP ${status}.`);
+    return new Error(`${source} request failed with HTTP ${status}${urlContext}${bodyContext}`);
   }
 
   private normalizeError(error: unknown): Error {
