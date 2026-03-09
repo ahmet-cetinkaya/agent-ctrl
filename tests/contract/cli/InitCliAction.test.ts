@@ -73,6 +73,25 @@ describe("Init CLI action behavior", () => {
     expect(call.targetPath).toBe(resolve("/tmp/custom-agent-ctrl"));
   });
 
+  it("passes override into init command when provided", async () => {
+    const captured: unknown[] = [];
+    InitCommand.prototype.execute = async function mockedExecute(options) {
+      captured.push(options);
+      return {
+        success: true,
+        data: {
+          createdDirectories: [],
+          createdFiles: [],
+        },
+      };
+    };
+
+    await createInitCommand().parseAsync(["node", "test", "--override", "/tmp/custom-agent-ctrl"]);
+    const call = captured[0] as { targetPath: string; override?: boolean };
+    expect(call.targetPath).toBe(resolve("/tmp/custom-agent-ctrl"));
+    expect(call.override).toBe(true);
+  });
+
   it("renders created directories/files on success", async () => {
     InitCommand.prototype.execute = async function mockedExecute() {
       return {
@@ -90,7 +109,17 @@ describe("Init CLI action behavior", () => {
     expect(logs.some((line) => line.includes("✓ Created rules/.gitkeep"))).toBe(true);
     expect(logs.some((line) => line.includes("✓ Created README.md"))).toBe(true);
     expect(logs.some((line) => line.includes("Configuration root: /tmp/agent-ctrl-root"))).toBe(true);
+    expect(logs.some((line) => line.includes("Configuration initialized."))).toBe(true);
+    expect(logs.some((line) => line.includes("Add your files in the related folders: rules, skills, agents, commands and mcps."))).toBe(true);
+    expect(logs.some((line) => line.includes("You can add from remote registries:"))).toBe(true);
+    expect(logs.some((line) => line.includes("Add credentials to .agent-ctrl/.env"))).toBe(true);
     expect(logs.some((line) => line.includes("agent-ctrl rule ls"))).toBe(true);
+    expect(logs.some((line) => line.includes("agent-ctrl command ls"))).toBe(true);
+    expect(logs.some((line) => line.includes("agent-ctrl mcp ls"))).toBe(true);
+    expect(logs.some((line) => line.includes("agent-ctrl skill add skillsmp:code-review"))).toBe(true);
+    expect(logs.some((line) => line.includes("agent-ctrl mcp add smithery:github"))).toBe(true);
+    expect(logs.some((line) => line.includes("Apply the platforms:"))).toBe(true);
+    expect(logs.some((line) => line.includes("agent-ctrl apply claude"))).toBe(true);
   });
 
   it("handles command result user errors", async () => {

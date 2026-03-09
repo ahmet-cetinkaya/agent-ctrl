@@ -60,6 +60,9 @@ export function createCommandListCommand(): Command {
       const result = await listCommandsQuery.execute({ commandsPath });
 
       handleQueryResult(result);
+      if (!result.success) {
+        return;
+      }
 
       const { artifacts, warnings } = result.data;
 

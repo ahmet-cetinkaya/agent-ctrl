@@ -30,3 +30,7 @@ export class AppyMergePolicy {
     return content.replace(/\r\n/g, "\n").trimEnd();
   }
 }
+
+export function normalizeAppyContent(content: string): string {
+  return content.replace(/\r\n/g, "\n").trimEnd();
+}

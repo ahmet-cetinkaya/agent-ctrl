@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
-import { join } from "node:path";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { PlatformAdapterRegistry } from "@/infrastructure/features/apply/adapters/PlatformAdapterRegistry";
 
 describe("Platform customization surface contract", () => {
@@ -10,31 +10,31 @@ describe("Platform customization surface contract", () => {
 
   beforeEach(async () => {
     projectPath = await mkdtemp(join(tmpdir(), "surface-contract-"));
-    process.env.AGENT_CTRL_HOME = projectPath;
     registry = new PlatformAdapterRegistry();
   });
 
   afterEach(async () => {
-    delete process.env.AGENT_CTRL_HOME;
     await rm(projectPath, { recursive: true, force: true });
   });
 
   it("resolves documented customization surfaces for all supported platforms", async () => {
-    const expectedPathFragments: Record<string, string> = {
-      opencode: "opencode/commands/appy.md",
-      gemini: "gemini/commands/appy.toml",
-      qwen: "qwen/commands/appy.toml",
-      kilo: "kilo/workflows/appy.md",
-      antigravity: "antigravity/rules/appy.md",
-      codex: "codex/skills/appy/SKILL.md",
-      cursor: "cursor/rules/appy.mdc",
-      windsurf: "windsurf/rules/appy.md",
+    const expectedTargets: Record<string, { path: string; scope: "project" | "user" }> = {
+      opencode: { path: resolve(homedir(), ".config", "opencode", "AGENTS.md"), scope: "user" },
+      claude: { path: resolve(homedir(), ".claude", "CLAUDE.md"), scope: "user" },
+      gemini: { path: resolve(homedir(), ".gemini", "GEMINI.md"), scope: "user" },
+      qwen: { path: resolve(homedir(), ".qwen", "QWEN.md"), scope: "user" },
+      kilo: { path: resolve(homedir(), ".kilocode"), scope: "user" },
+      antigravity: { path: resolve(homedir(), ".gemini", "GEMINI.md"), scope: "user" },
+      codex: { path: resolve(homedir(), ".codex", "AGENTS.md"), scope: "user" },
+      cursor: { path: resolve(homedir(), ".cursor"), scope: "user" },
+      windsurf: { path: resolve(homedir(), ".codeium", "windsurf", "global_rules.md"), scope: "user" },
     };
 
     for (const platform of registry.listSupportedPlatforms()) {
       const adapter = registry.resolve(platform);
       const target = await adapter.resolveTarget(projectPath);
-      expect(target.configPath).toContain(expectedPathFragments[platform]);
+      expect(target.configPath).toBe(expectedTargets[platform].path);
+      expect(target.scope).toBe(expectedTargets[platform].scope);
       expect(target.surface.length).toBeGreaterThan(0);
     }
   });

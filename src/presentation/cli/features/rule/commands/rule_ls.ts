@@ -39,6 +39,9 @@ export function createRuleListCommand(): Command {
       const result = await listRulesQuery.execute({ rulesPath });
 
       handleQueryResult(result);
+      if (!result.success) {
+        return;
+      }
 
       const { artifacts, warnings } = result.data;
 

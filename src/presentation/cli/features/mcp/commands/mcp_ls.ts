@@ -88,15 +88,21 @@ export function createMcpListCommand(): Command {
       const result = await listMcpServersQuery.execute({ projectPath: configRootPath });
 
       handleQueryResult(result);
+      if (!result.success) {
+        return;
+      }
 
-      const { servers, report } = result.data;
+      const { servers, report, catalogState } = result.data;
       const issues = report.fileResults.flatMap((entry) => entry.issues);
+      const { managedById, catalogById } = catalogState;
 
       if (options.json) {
         // Redact sensitive environment variables for security
         const safeServers = servers.map((server) => ({
           ...server,
           env: redactEnvVars(server.env),
+          managed: managedById.get(server.serverId),
+          catalog: catalogById.get(server.serverId),
         }));
 
         console.log(
@@ -119,7 +125,16 @@ export function createMcpListCommand(): Command {
       } else {
         console.log(`MCP servers (${servers.length}):`);
         for (const server of servers) {
-          console.log(`  ${server.serverId}`);
+          const managed = managedById.get(server.serverId);
+          const catalog = catalogById.get(server.serverId);
+          const details = [
+            managed?.state,
+            catalog?.compatibilityState,
+            catalog?.sourceVersion ? `v${catalog.sourceVersion}` : undefined,
+          ]
+            .filter(Boolean)
+            .join(" | ");
+          console.log(`  ${server.serverId}${details ? ` (${details})` : ""}`);
         }
       }
 

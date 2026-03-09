@@ -1,0 +1,11 @@
+export type RegistryId = "skillsmp" | "smithery";
+export type ItemType = "skill" | "mcp";
+export type CompatibilityState = "compatible" | "incompatible" | "unknown";
+export type ActivationState = "inactive" | "active" | "update-available" | "activation-blocked";
+export type AvailabilityState = "available" | "unavailable" | "removed";
+export type ManagedIntegrationState = "active" | "inactive" | "update-available" | "unavailable" | "failed";
+export type AuthState = "unknown" | "not-required" | "configured" | "missing" | "invalid" | "expired";
+export type RegistrySyncStatus = "idle" | "success" | "partial" | "failed" | "throttled" | "cached";
+export type DiscoveryScopeType = "global" | "query" | "category" | "tracked-items";
+export type OperationType = "sync" | "search" | "activate" | "deactivate" | "update";
+export type OperationStatus = "success" | "partial" | "failed" | "skipped" | "throttled" | "unchanged";

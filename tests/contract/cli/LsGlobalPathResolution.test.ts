@@ -81,6 +81,10 @@ describe("LS command path resolution", () => {
         data: {
           artifacts: [],
           warnings: [],
+          catalogState: {
+            managedById: new Map(),
+            catalogById: new Map(),
+          },
         },
       };
     };
@@ -121,6 +125,10 @@ describe("LS command path resolution", () => {
             totalSkipped: 0,
             totalFailed: 0,
             fileResults: [],
+          },
+          catalogState: {
+            managedById: new Map(),
+            catalogById: new Map(),
           },
         },
       };

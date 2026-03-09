@@ -40,6 +40,9 @@ export function createAgentListCommand(): Command {
       const result = await listAgentsQuery.execute({ agentsPath });
 
       handleQueryResult(result);
+      if (!result.success) {
+        return;
+      }
 
       const { artifacts, warnings } = result.data;
 

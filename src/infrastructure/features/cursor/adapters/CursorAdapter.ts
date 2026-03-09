@@ -1,34 +1,93 @@
-import { BaseTextAppyAdapter } from "@/infrastructure/features/apply/adapters/BaseTextAppyAdapter";
-import type { AppyConfigTarget, AppyIntegrationRequest } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import { homedir } from "node:os";
+import { resolve } from "node:path";
+import type {
+  AppyConfigTarget,
+  AppyIntegrationRequest,
+  AppyIntegrationResult,
+  IAppyPlatformAdapter,
+} from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
+import {
+  mergeJsonObjectFile,
+  renderSettingsMcpConfig,
+  resolveApplyScope,
+  syncAgentsAsMarkdown,
+  syncCommandsAsMarkdown,
+  syncRulesAsFiles,
+  syncSkills,
+  toStatus,
+} from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
-export class CursorAdapter extends BaseTextAppyAdapter {
+export class CursorAdapter implements IAppyPlatformAdapter {
   readonly platformName = "cursor" as const;
+  private readonly sourceLoader = new ApplySourceLoader();
 
   async resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
-    return this.scopeResolver.resolve({
-      platform: this.platformName,
-      projectPath,
-      projectRelativePath: ".cursor/rules/appy.mdc",
-      userRelativePath: "cursor/rules/appy.mdc",
-      preferredScope: request?.targetScope,
-      userConfigRootPath: request?.userConfigRootPath,
-    });
+    const scope = resolveApplyScope(request?.targetScope, "user", true);
+    const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".cursor");
+    return {
+      configPath: scope === "project" ? resolve(projectPath, ".cursor") : userRoot,
+      scope,
+      surface: "rules-skills-commands-agents-mcp",
+    };
   }
 
-  protected buildDesiredContent(target: AppyConfigTarget): string {
-    return [
-      "---",
-      "description: Managed appy rule",
-      "alwaysApply: true",
-      "---",
-      "",
-      "Use appy integration for this workspace:",
-      "```bash",
-      "agent-ctrl apply cursor",
-      "```",
-      "",
-      `Scope: ${target.scope}`,
-      "Surface: rules",
-    ].join("\n");
+  async applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult> {
+    const target = await this.resolveTarget(request.projectPath, request);
+    const source = await this.sourceLoader.load(request.projectPath);
+    let changed = false;
+    const fileChanges: string[] = [];
+
+    const rulesResult = await syncRulesAsFiles(
+      source.rules,
+      resolve(target.configPath, "rules"),
+      (rule, content) => ({
+        relativePath: `${rule.id}.mdc`,
+        content: ["---", `description: ${rule.id}`, "---", "", content.trimEnd()].join("\n"),
+      }),
+      Boolean(request.dryRun)
+    );
+    changed = rulesResult.changed || changed;
+    fileChanges.push(...rulesResult.paths);
+
+    const skillsResult = await syncSkills(source.skills, resolve(target.configPath, "skills"), Boolean(request.dryRun));
+    changed = skillsResult.changed || changed;
+    fileChanges.push(...skillsResult.paths);
+
+    const commandsResult = await syncCommandsAsMarkdown(
+      source.commands,
+      resolve(target.configPath, "commands"),
+      Boolean(request.dryRun)
+    );
+    changed = commandsResult.changed || changed;
+    fileChanges.push(...commandsResult.paths);
+
+    const agentsResult = await syncAgentsAsMarkdown(
+      source.agents,
+      resolve(target.configPath, "agents"),
+      Boolean(request.dryRun),
+      true
+    );
+    changed = agentsResult.changed || changed;
+    fileChanges.push(...agentsResult.paths);
+
+    const mcpResult = await mergeJsonObjectFile(
+      resolve(target.configPath, "mcp.json"),
+      (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
+      Boolean(request.dryRun)
+    );
+    changed = mcpResult.changed || changed;
+    fileChanges.push(...mcpResult.paths);
+
+    return {
+      platform: this.platformName,
+      configPath: target.configPath,
+      scope: target.scope,
+      surface: target.surface,
+      status: toStatus(changed),
+      message: "Applied Cursor rules, skills, commands, agents, and MCP servers.",
+      fileChanges,
+      warnings: source.warnings,
+    };
   }
 }

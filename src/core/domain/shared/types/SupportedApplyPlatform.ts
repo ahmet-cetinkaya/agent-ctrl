@@ -1,11 +1,12 @@
 export const SUPPORTED_APPLY_PLATFORMS = [
-  "opencode",
-  "gemini",
-  "qwen",
-  "kilo",
   "antigravity",
+  "claude",
   "codex",
   "cursor",
+  "gemini",
+  "kilo",
+  "opencode",
+  "qwen",
   "windsurf",
 ] as const;
 

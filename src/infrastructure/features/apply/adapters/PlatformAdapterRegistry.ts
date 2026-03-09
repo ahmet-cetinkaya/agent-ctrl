@@ -1,6 +1,7 @@
 import type { IAppyPlatformAdapter } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { OpenCodeAdapter } from "@/infrastructure/features/opencode/adapters/OpenCodeAdapter";
+import { ClaudeApplyAdapter } from "@/infrastructure/features/claude/adapters/ClaudeApplyAdapter";
 import { GeminiAdapter } from "@/infrastructure/features/gemini/adapters/GeminiAdapter";
 import { QwenAdapter } from "@/infrastructure/features/qwen/adapters/QwenAdapter";
 import { KiloAdapter } from "@/infrastructure/features/kilo/adapters/KiloAdapter";
@@ -17,25 +18,22 @@ import { SUPPORTED_APPLY_PLATFORMS } from "@/core/domain/shared/types/SupportedA
  * Ensures all supported platforms have registered adapters.
  */
 export class PlatformAdapterRegistry {
-  private readonly registry: Map<SupportedApplyPlatform, IAppyPlatformAdapter>;
+  private readonly registry = new Map<SupportedApplyPlatform, IAppyPlatformAdapter>();
+  private readonly factories: Record<SupportedApplyPlatform, () => IAppyPlatformAdapter> = {
+    antigravity: () => new AntigravityAdapter(),
+    claude: () => new ClaudeApplyAdapter(),
+    codex: () => new CodexAdapter(),
+    cursor: () => new CursorAdapter(),
+    gemini: () => new GeminiAdapter(),
+    kilo: () => new KiloAdapter(),
+    opencode: () => new OpenCodeAdapter(),
+    qwen: () => new QwenAdapter(),
+    windsurf: () => new WindsurfAdapter(),
+  };
 
   constructor() {
-    const adapters: IAppyPlatformAdapter[] = [
-      new OpenCodeAdapter(),
-      new GeminiAdapter(),
-      new QwenAdapter(),
-      new KiloAdapter(),
-      new AntigravityAdapter(),
-      new CodexAdapter(),
-      new CursorAdapter(),
-      new WindsurfAdapter(),
-    ];
-
-    this.registry = new Map(adapters.map((adapter) => [adapter.platformName, adapter]));
-
-    // Validate that all supported platforms have adapters
-    const registeredPlatforms = new Set(adapters.map((a) => a.platformName));
-    const missing = SUPPORTED_APPLY_PLATFORMS.filter((p) => !registeredPlatforms.has(p));
+    const registeredPlatforms = new Set(Object.keys(this.factories) as SupportedApplyPlatform[]);
+    const missing = SUPPORTED_APPLY_PLATFORMS.filter((platform) => !registeredPlatforms.has(platform));
     if (missing.length > 0) {
       throw new SystemError(
         `Missing adapters for platforms: ${missing.join(", ")}. This is a programming error.`,
@@ -49,13 +47,21 @@ export class PlatformAdapterRegistry {
    * @throws {SystemError} If the adapter is not registered (should never happen with validation)
    */
   resolve(platform: SupportedApplyPlatform): IAppyPlatformAdapter {
-    const adapter = this.registry.get(platform);
-    if (!adapter) {
+    const existing = this.registry.get(platform);
+    if (existing) {
+      return existing;
+    }
+
+    const factory = this.factories[platform];
+    if (!factory) {
       throw new SystemError(
         `Adapter is not registered for platform '${platform}'. This is a programming error - platform validation should have occurred before calling resolve().`,
         ERROR_IDS.ADAPTER_RESOLUTION_FAILED
       );
     }
+
+    const adapter = factory();
+    this.registry.set(platform, adapter);
     return adapter;
   }
 
@@ -63,10 +69,10 @@ export class PlatformAdapterRegistry {
    * Checks if a platform has a registered adapter.
    */
   has(platform: SupportedApplyPlatform): boolean {
-    return this.registry.has(platform);
+    return platform in this.factories;
   }
 
   listSupportedPlatforms(): SupportedApplyPlatform[] {
-    return Array.from(this.registry.keys());
+    return [...SUPPORTED_APPLY_PLATFORMS];
   }
 }

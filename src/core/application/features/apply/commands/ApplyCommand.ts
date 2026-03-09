@@ -26,6 +26,7 @@ export interface ApplyCommandResult {
   surface: string;
   message: string;
   durationMs: number;
+  fileChanges: string[];
   warnings: string[];
 }
 
@@ -62,7 +63,7 @@ export class ApplyCommand {
       });
 
       const durationMs = Date.now() - startedAt;
-      const warnings: string[] = [];
+      const warnings: string[] = [...(applyResult.warnings ?? [])];
       if (dryRun) {
         warnings.push("Dry run mode: no file system changes were written.");
       }
@@ -75,11 +76,12 @@ export class ApplyCommand {
         surface: applyResult.surface,
         message: applyResult.message,
         durationMs,
+        fileChanges: [...(applyResult.fileChanges ?? [])],
         warnings,
       });
     } catch (error) {
       const nodeErr = error as NodeJS.ErrnoException;
-      let message = `Failed to apply 'appy' integration for '${selectedPlatform}'`;
+      let message = `Failed to apply '${selectedPlatform}' platform configuration`;
 
       if (nodeErr.code === "EACCES") {
         message += ": Permission denied writing platform configuration. Check file/directory permissions.";

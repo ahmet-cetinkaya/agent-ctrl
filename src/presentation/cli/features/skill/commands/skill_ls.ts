@@ -60,11 +60,29 @@ export function createSkillListCommand(): Command {
       const result = await listSkillsQuery.execute({ skillsPath });
 
       handleQueryResult(result);
+      if (!result.success) {
+        return;
+      }
 
-      const { artifacts, warnings } = result.data;
+      const { artifacts, warnings, catalogState } = result.data;
+      const { managedById, catalogById } = catalogState;
 
       if (options.json) {
-        console.log(JSON.stringify({ artifacts, warnings }, null, 2));
+        console.log(
+          JSON.stringify(
+            {
+              artifacts,
+              warnings,
+              managed: artifacts.map((artifact) => ({
+                artifact,
+                managed: managedById.get(artifact.id),
+                catalog: catalogById.get(artifact.id),
+              })),
+            },
+            null,
+            2
+          )
+        );
         return;
       }
 
@@ -73,7 +91,16 @@ export function createSkillListCommand(): Command {
       } else {
         console.log(`Skills (${artifacts.length}):`);
         for (const artifact of artifacts) {
-          console.log(`  ${artifact.id}`);
+          const managed = managedById.get(artifact.id);
+          const catalog = catalogById.get(artifact.id);
+          const details = [
+            managed?.state,
+            catalog?.compatibilityState,
+            catalog?.sourceVersion ? `v${catalog.sourceVersion}` : undefined,
+          ]
+            .filter(Boolean)
+            .join(" | ");
+          console.log(`  ${artifact.id}${details ? ` (${details})` : ""}`);
         }
       }
 

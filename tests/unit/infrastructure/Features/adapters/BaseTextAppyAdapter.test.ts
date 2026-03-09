@@ -34,7 +34,7 @@ describe("BaseTextAppyAdapter", () => {
 
   beforeEach(async () => {
     workspace = await mkdtemp(join(tmpdir(), "base-text-adapter-"));
-    targetPath = resolve(workspace, "nested", "appy.txt");
+    targetPath = resolve(workspace, "nested", "platform.txt");
     adapter = new TestTextAdapter(targetPath);
   });
 
@@ -49,7 +49,7 @@ describe("BaseTextAppyAdapter", () => {
     });
 
     expect(result.status).toBe("success");
-    expect(result.message).toContain("Applied appy integration");
+    expect(result.message).toContain("Applied managed configuration");
     const content = await readFile(targetPath, "utf-8");
     expect(content).toContain("content:user");
   });

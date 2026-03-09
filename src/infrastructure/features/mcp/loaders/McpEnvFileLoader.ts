@@ -50,7 +50,7 @@ export class McpEnvFileLoader {
     } catch (error) {
       // Log unexpected errors for debugging while still allowing graceful degradation
       const err = error as NodeJS.ErrnoException;
-      if (err.code !== "ENOENT") {
+      if (err.code !== "ENOENT" && err.code !== "ENOTDIR") {
         console.error(`[MCP] Unexpected error reading .env file at ${envPath}:`, error);
       }
       return {

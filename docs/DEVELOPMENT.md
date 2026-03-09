@@ -67,7 +67,7 @@ agent-ctrl/
 │   ├── core/
 │   │   ├── domain/          # Domain models
 │   │   └── application/     # Use cases
-│   ├── infrastructure/      # External integrations
+│   ├── infrastructure/      # External integrations and remote catalog adapters
 │   └── presentation/
 │       └── cli/             # CLI interface
 ├── tests/                   # Test files
@@ -85,6 +85,12 @@ agent-ctrl/
 - Prefer interfaces over types for object shapes
 - Use `readonly` for immutable properties
 - Avoid `any` - use `unknown` when type is truly unknown
+
+### Remote Catalog Credentials
+
+- `agent-ctrl init` should leave `.agent-ctrl/.env`, `.agent-ctrl/.env.example`, and `.agent-ctrl/.gitignore` ready for local registry credentials.
+- Remote catalog commands read registry keys from the configuration-root `.env` file.
+- CLI `--api-key` flags override `.env` values for the current process only.
 
 ### Error Handling
 
@@ -110,6 +116,14 @@ try {
   throw error; // Always rethrow unless specifically handled
 }
 ```
+
+### Remote Catalog Development
+
+- Keep source-specific HTTP behavior in `src/infrastructure/features/catalog/clients/`.
+- Keep cache/state persistence in `src/infrastructure/features/catalog/caching/`.
+- Keep lifecycle orchestration in `src/core/application/features/skill/*` and `src/core/application/features/mcp/*`.
+- Do not persist raw credentials. Only persist sanitized auth state, cache metadata, and operation summaries.
+- Preserve the existing local `skill ls` and `mcp ls` flows when extending catalog behavior.
 
 ### Validation
 

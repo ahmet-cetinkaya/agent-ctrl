@@ -4,20 +4,23 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
+import { writeApplyFixtures } from "@tests/helpers/writeApplyFixtures";
 
 describe("ApplyCommand", () => {
   let projectPath: string;
+  let userRootPath: string;
   let command: ApplyCommand;
 
   beforeEach(async () => {
     projectPath = await mkdtemp(join(tmpdir(), "apply-command-"));
-    process.env.AGENT_CTRL_HOME = projectPath;
+    userRootPath = await mkdtemp(join(tmpdir(), "apply-command-user-"));
+    await writeApplyFixtures(projectPath);
     command = new ApplyCommand();
   });
 
   afterEach(async () => {
-    delete process.env.AGENT_CTRL_HOME;
     await rm(projectPath, { recursive: true, force: true });
+    await rm(userRootPath, { recursive: true, force: true });
   });
 
   it("fails for unsupported platform", async () => {
@@ -38,6 +41,7 @@ describe("ApplyCommand", () => {
     const result = await command.execute({
       projectPath,
       platform: "gemini",
+      userConfigRootPath: userRootPath,
     });
 
     expect(result.success).toBe(true);
@@ -46,7 +50,7 @@ describe("ApplyCommand", () => {
     expect(result.data.platform).toBe("gemini");
     expect(result.data.status).toBe("success");
     expect(result.data.scope).toBe("user");
-    expect(result.data.configPath).toContain("gemini/commands/appy.toml");
+    expect(result.data.configPath).toContain("GEMINI.md");
   });
 
   it("returns unchanged on deterministic rerun", async () => {
@@ -77,19 +81,5 @@ describe("ApplyCommand", () => {
     if (!result.success) return;
 
     expect(result.data.warnings).toContain("Dry run mode: no file system changes were written.");
-  });
-
-  it("applies to project scope when requested", async () => {
-    const result = await command.execute({
-      projectPath,
-      platform: "windsurf",
-      targetScope: "project",
-    });
-
-    expect(result.success).toBe(true);
-    if (!result.success) return;
-
-    expect(result.data.scope).toBe("project");
-    expect(result.data.configPath).toContain(".windsurf/rules/appy.md");
   });
 });

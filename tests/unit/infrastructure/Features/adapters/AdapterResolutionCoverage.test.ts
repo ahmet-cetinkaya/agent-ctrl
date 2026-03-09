@@ -10,6 +10,7 @@ import { AntigravityAdapter } from "@/infrastructure/features/antigravity/adapte
 import { CodexAdapter } from "@/infrastructure/features/codex/adapters/CodexAdapter";
 import { CursorAdapter } from "@/infrastructure/features/cursor/adapters/CursorAdapter";
 import { WindsurfAdapter } from "@/infrastructure/features/windsurf/adapters/WindsurfAdapter";
+import { ClaudeApplyAdapter } from "@/infrastructure/features/claude/adapters/ClaudeApplyAdapter";
 
 describe("Adapter target resolution coverage", () => {
   let projectPath: string;
@@ -25,9 +26,10 @@ describe("Adapter target resolution coverage", () => {
     await rm(userRootPath, { recursive: true, force: true });
   });
 
-  it("resolves user and project scopes for all adapters", async () => {
+  it("resolves project and user scope targets for adapters with documented surfaces", async () => {
     const adapters = [
       new OpenCodeAdapter(),
+      new ClaudeApplyAdapter(),
       new GeminiAdapter(),
       new QwenAdapter(),
       new KiloAdapter(),
@@ -36,15 +38,30 @@ describe("Adapter target resolution coverage", () => {
       new CursorAdapter(),
       new WindsurfAdapter(),
     ];
+    const userScopeUnsupported = new Set<string>();
 
     for (const adapter of adapters) {
-      const userTarget = await adapter.resolveTarget(projectPath, {
-        projectPath,
-        targetScope: "user",
-        userConfigRootPath: userRootPath,
-      });
-      expect(userTarget.scope).toBe("user");
-      expect(userTarget.configPath).toContain(resolve(userRootPath));
+      if (userScopeUnsupported.has(adapter.platformName)) {
+        await expect(
+          adapter.resolveTarget(projectPath, {
+            projectPath,
+            targetScope: "user",
+            userConfigRootPath: userRootPath,
+          })
+        ).rejects.toThrow("does not expose a documented file-backed user configuration surface");
+      } else {
+        const userTarget = await adapter.resolveTarget(projectPath, {
+          projectPath,
+          targetScope: "user",
+          userConfigRootPath: userRootPath,
+        });
+        expect(userTarget.scope).toBe("user");
+        if (adapter.platformName === "claude") {
+          expect(userTarget.configPath).toContain(".claude/CLAUDE.md");
+        } else {
+          expect(userTarget.configPath).toContain(resolve(userRootPath));
+        }
+      }
 
       const projectTarget = await adapter.resolveTarget(projectPath, {
         projectPath,
@@ -52,7 +69,11 @@ describe("Adapter target resolution coverage", () => {
         userConfigRootPath: userRootPath,
       });
       expect(projectTarget.scope).toBe("project");
-      expect(projectTarget.configPath).toContain(resolve(projectPath));
+      if (adapter.platformName === "claude") {
+        expect(projectTarget.configPath).toContain(resolve(projectPath, ".claude", "CLAUDE.md"));
+      } else {
+        expect(projectTarget.configPath).toContain(resolve(projectPath));
+      }
     }
   });
 });

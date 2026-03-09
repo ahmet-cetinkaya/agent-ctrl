@@ -19,6 +19,21 @@ export type {
   McpLoadReport,
   McpLoadResult,
 } from "./IMcpConfigLoader";
+export type { ICatalogStateStore, CatalogState } from "./ICatalogStateStore";
+export type {
+  ISkillsMpClient,
+  SkillsMpSearchParams,
+  SkillsMpSearchResponse,
+  SkillsMpSkillRecord,
+  SkillsMpSkillDetails,
+} from "./ISkillsMpClient";
+export type {
+  ISmitheryRegistryClient,
+  SmitherySearchParams,
+  SmitherySearchResponse,
+  SmitheryServerRecord,
+  SmitheryServerDetails,
+} from "./ISmitheryRegistryClient";
 export type { BaseError } from "@/core/domain/shared/errors/BaseError";
 export type { UserError } from "@/core/domain/shared/errors/UserError";
 export type { SystemError } from "@/core/domain/shared/errors/SystemError";

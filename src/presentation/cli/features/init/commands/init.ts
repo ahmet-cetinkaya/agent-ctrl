@@ -11,7 +11,8 @@ export function createInitCommand(): Command {
   const command = new Command("init")
     .description("Initialize the agent-ctrl global configuration structure")
     .argument("[path]", "Target configuration root path (default: ~/.agent-ctrl)")
-    .action(async (targetPath?: string) => {
+    .option("-o, --override", "Initialize even when the target directory already contains files", false)
+    .action(async (targetPath: string | undefined, options: { override?: boolean }) => {
       // Validate user-provided path for security
       if (targetPath) {
         const pathError = validateUserPath(targetPath, "[path]");
@@ -27,6 +28,7 @@ export function createInitCommand(): Command {
       try {
         const result = await initCommand.execute({
           targetPath: resolvedTargetPath,
+          override: options.override,
         });
 
         if (result.success) {
@@ -38,10 +40,21 @@ export function createInitCommand(): Command {
             console.log(`✓ Created ${file}`);
           }
           console.log(`\nConfiguration root: ${resolvedTargetPath}`);
-          console.log("Configuration initialized successfully! Add artifacts to your directories, then run:");
-          console.log("  agent-ctrl rule ls");
-          console.log("  agent-ctrl skill ls");
-          console.log("  agent-ctrl agent ls");
+          console.log("Configuration initialized.");
+          console.log("Next steps:");
+          console.log("  1. Add your files in the related folders: rules, skills, agents, commands and mcps.");
+          console.log("     - You can add from remote registries:");
+          console.log("          agent-ctrl skill add skillsmp:code-review");
+          console.log("          agent-ctrl mcp add smithery:github");
+          console.log("          (Add credentials to .agent-ctrl/.env if you plan to use SkillsMP or Smithery.)");
+          console.log("  2. Inspect your configuration:");
+          console.log("     agent-ctrl rule ls");
+          console.log("     agent-ctrl skill ls");
+          console.log("     agent-ctrl agent ls");
+          console.log("     agent-ctrl command ls");
+          console.log("     agent-ctrl mcp ls");
+          console.log("  3. Apply the platforms:");
+          console.log("     agent-ctrl apply claude");
         } else {
           // Error handling (T031, T032)
           handleInitError(result.error);

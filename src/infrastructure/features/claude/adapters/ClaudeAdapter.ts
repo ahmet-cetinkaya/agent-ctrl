@@ -19,20 +19,18 @@ export class ClaudeAdapter implements IPlatformAdapter {
   readonly platformName = "claude";
   readonly configPath: string;
   readonly claudeMcpConfigPath: string;
-  private readonly statePath: string;
   private readonly projectPath: string;
   private readonly claudeRoot: string;
 
   private static readonly MANAGED_START_MARKER = "<!-- agent-ctrl:start -->";
   private static readonly MANAGED_END_MARKER = "<!-- agent-ctrl:end -->";
 
-  constructor(projectPath: string) {
-    const claudeHome = process.env.AGENT_CTRL_CLAUDE_HOME || homedir();
+  constructor(projectPath: string, claudeHomeOverride?: string) {
+    const claudeHome = claudeHomeOverride ?? process.env.AGENT_CTRL_CLAUDE_HOME ?? homedir();
     this.projectPath = projectPath;
     this.claudeRoot = resolve(claudeHome, ".claude");
     this.configPath = resolve(this.claudeRoot, "CLAUDE.md");
-    this.statePath = resolve(this.claudeRoot, ".agent-ctrl.json");
-    this.claudeMcpConfigPath = resolve(claudeHome, ".claude.json");
+    this.claudeMcpConfigPath = resolve(this.claudeRoot, "settings.json");
   }
 
   async generateConfig(artifacts: Artifact[]): Promise<Result<PlatformConfig, SystemError>> {
@@ -83,27 +81,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
   }
 
   async readExistingConfig(): Promise<Result<PlatformConfig | null, SystemError>> {
-    try {
-      const state = await readFile(this.statePath, "utf-8");
-      const parsed = JSON.parse(state);
-      return ok({
-        rules: Array.isArray(parsed.rules) ? parsed.rules : [],
-        skills: Array.isArray(parsed.skills) ? parsed.skills : [],
-        agents: Array.isArray(parsed.agents) ? parsed.agents : [],
-        mcpServers: Array.isArray(parsed.mcpServers) ? parsed.mcpServers : [],
-      });
-    } catch (error) {
-      const nodeErr = error as NodeJS.ErrnoException;
-      if (nodeErr.code === "ENOENT") {
-        return ok(null);
-      }
-      return err(
-        new SystemError(
-          `Failed to read existing Claude config: ${error instanceof Error ? error.message : String(error)}`,
-          ERROR_IDS.FILE_READ_FAILED
-        )
-      );
-    }
+    return ok(null);
   }
 
   async writeConfig(config: PlatformConfig, options?: WriteConfigOptions): Promise<Result<void, SystemError>> {
@@ -121,7 +99,6 @@ export class ClaudeAdapter implements IPlatformAdapter {
       const existingContent = await readFile(this.configPath, "utf-8").catch(() => "");
       const mergedContent = this.upsertManagedSection(existingContent, config, await this.loadRuleContents(config));
       await writeFile(this.configPath, mergedContent, "utf-8");
-      await writeFile(this.statePath, JSON.stringify(config, null, 2), "utf-8");
       await this.writeClaudeMcpConfig(config);
 
       await this.syncSkills(config);
@@ -154,7 +131,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
       return newConfig;
     }
 
-    const mergeByName = <T extends { name: string }>(existing: T[], incoming: T[]): T[] => {
+    const mergeByName = <T extends { name: string }>(existing: readonly T[], incoming: readonly T[]): T[] => {
       const map = new Map<string, T>();
       existing.forEach((item) => map.set(item.name, item));
       incoming.forEach((item) => map.set(item.name, item));
@@ -267,8 +244,8 @@ export class ClaudeAdapter implements IPlatformAdapter {
   }
 
   private async syncCommands(): Promise<void> {
-    const projectCommandsRoot = resolve(this.projectPath, "commands");
-    const commandsExist = await access(projectCommandsRoot)
+    const commandsRoot = resolve(this.projectPath, ".agent-ctrl", "commands");
+    const commandsExist = await access(commandsRoot)
       .then(() => true)
       .catch(() => false);
     if (!commandsExist) {
@@ -277,10 +254,10 @@ export class ClaudeAdapter implements IPlatformAdapter {
 
     const targetRoot = resolve(this.claudeRoot, "commands");
     await mkdir(targetRoot, { recursive: true });
-    const markdownFiles = await this.collectMarkdownFiles(projectCommandsRoot);
+    const markdownFiles = await this.collectMarkdownFiles(commandsRoot);
 
     for (const filePath of markdownFiles) {
-      const rel = relative(projectCommandsRoot, filePath);
+      const rel = relative(commandsRoot, filePath);
       const dest = resolve(targetRoot, rel);
       await mkdir(dirname(dest), { recursive: true });
       await cp(filePath, dest, { force: true });
@@ -323,6 +300,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
       },
     };
 
+    await mkdir(dirname(this.claudeMcpConfigPath), { recursive: true });
     await writeFile(this.claudeMcpConfigPath, `${JSON.stringify(mergedDocument, null, 2)}\n`, "utf-8");
   }
 

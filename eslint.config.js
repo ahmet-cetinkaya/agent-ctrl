@@ -4,7 +4,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "node_modules/**", "packages/acore-scripts/**"],
+    ignores: ["dist/**", "coverage/**", "node_modules/**", "packages/acore-scripts/**"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

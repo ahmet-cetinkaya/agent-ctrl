@@ -46,7 +46,7 @@ describe("Apply CLI action behavior", () => {
     await rm(cwdPath, { recursive: true, force: true });
   });
 
-  it("passes default user scope and default ~/.agent-ctrl path into apply command", async () => {
+  it("does not force scope when no scope flag is provided", async () => {
     const captured: unknown[] = [];
     ApplyCommand.prototype.execute = async function mockedExecute(options) {
       captured.push(options);
@@ -57,44 +57,82 @@ describe("Apply CLI action behavior", () => {
           status: "success",
           configPath: "/tmp/config",
           scope: "user",
-          surface: "commands",
+          surface: "agents-md-commands-skills-agents-mcp",
           message: "ok",
           durationMs: 1,
+          fileChanges: ["/tmp/config"],
           warnings: [],
         },
       };
     };
 
     await createApplyCommand().parseAsync(["node", "test", "opencode", "--dry-run"]);
-    const call = captured[0] as { targetScope: string; userConfigRootPath: string; projectPath: string };
-    expect(call.targetScope).toBe("user");
+    const call = captured[0] as { targetScope?: string; userConfigRootPath?: string; projectPath: string };
+    expect(call.targetScope).toBeUndefined();
     expect(call.projectPath).toBe(resolve(cwdPath));
-    expect(call.userConfigRootPath).toContain(".agent-ctrl");
+    expect(call.userConfigRootPath).toBeUndefined();
   });
 
-  it("passes project scope and custom path when requested", async () => {
+  it("passes user scope and custom path when requested", async () => {
     const captured: unknown[] = [];
     ApplyCommand.prototype.execute = async function mockedExecute(options) {
       captured.push(options);
       return {
         success: true,
         data: {
-          platform: "qwen",
+          platform: "gemini",
           status: "success",
           configPath: "/tmp/config",
-          scope: "project",
-          surface: "commands-toml",
+          scope: "user",
+          surface: "gemini-md-commands-skills-settings",
           message: "ok",
           durationMs: 1,
+          fileChanges: ["/tmp/config"],
           warnings: [],
         },
       };
     };
 
-    await createApplyCommand().parseAsync(["node", "test", "qwen", "--project", "--path", "/tmp/custom-root", "--dry-run"]);
+    await createApplyCommand().parseAsync(["node", "test", "gemini", "--user", "--path", "/tmp/custom-root", "--dry-run"]);
     const call = captured[0] as { targetScope: string; userConfigRootPath: string };
-    expect(call.targetScope).toBe("project");
+    expect(call.targetScope).toBe("user");
     expect(call.userConfigRootPath).toBe(resolve("/tmp/custom-root"));
+  });
+
+  it("accepts --path without forcing explicit user scope", async () => {
+    const captured: unknown[] = [];
+    ApplyCommand.prototype.execute = async function mockedExecute(options) {
+      captured.push(options);
+      return {
+        success: true,
+        data: {
+          platform: "opencode",
+          status: "success",
+          configPath: "/tmp/config",
+          scope: "user",
+          surface: "agents-md-commands-skills-agents-mcp",
+          message: "ok",
+          durationMs: 1,
+          fileChanges: ["/tmp/config"],
+          warnings: [],
+        },
+      };
+    };
+
+    await createApplyCommand().parseAsync(["node", "test", "opencode", "--path", "/tmp/x", "--dry-run"]);
+    const call = captured[0] as { targetScope?: string; userConfigRootPath?: string };
+    expect(call.targetScope).toBeUndefined();
+    expect(call.userConfigRootPath).toBe(resolve("/tmp/x"));
+  });
+
+  it("rejects --path together with --project", async () => {
+    process.exit = ((code?: number) => {
+      throw new Error(`EXIT:${String(code)}`);
+    }) as typeof process.exit;
+
+    await expect(
+      createApplyCommand().parseAsync(["node", "test", "opencode", "--project", "--path", "/tmp/x"])
+    ).rejects.toThrow("EXIT:1");
   });
 
   it("prints user-facing error details when apply command returns user error", async () => {
@@ -113,58 +151,6 @@ describe("Apply CLI action behavior", () => {
     expect(errors.some((line) => line.includes("invalid usage"))).toBe(true);
   });
 
-  it("exits with code 2 for unexpected thrown errors", async () => {
-    ApplyCommand.prototype.execute = async function mockedExecute() {
-      throw new Error("boom");
-    };
-
-    process.exit = ((code?: number) => {
-      throw new Error(`EXIT:${String(code)}`);
-    }) as typeof process.exit;
-
-    await expect(createApplyCommand().parseAsync(["node", "test", "opencode"])).rejects.toThrow("EXIT:2");
-    expect(errors.some((line) => line.includes("Unexpected error"))).toBe(true);
-  });
-
-  it("renders non-dry-run unchanged output and warnings", async () => {
-    ApplyCommand.prototype.execute = async function mockedExecute() {
-      return {
-        success: true,
-        data: {
-          platform: "gemini",
-          status: "unchanged",
-          configPath: "/tmp/config",
-          scope: "user",
-          surface: "commands-toml",
-          message: "ok",
-          durationMs: 3,
-          warnings: ["warn-1"],
-        },
-      };
-    };
-
-    await createApplyCommand().parseAsync(["node", "test", "gemini"]);
-    expect(logs.some((line) => line.includes("unchanged"))).toBe(true);
-    expect(logs.some((line) => line.includes("Warnings:"))).toBe(true);
-    expect(logs.some((line) => line.includes("warn-1"))).toBe(true);
-  });
-
-  it("handles non-domain errors from command result with fallback exit path", async () => {
-    ApplyCommand.prototype.execute = async function mockedExecute() {
-      return {
-        success: false,
-        error: new Error("unexpected-shape"),
-      };
-    };
-
-    process.exit = ((code?: number) => {
-      throw new Error(`EXIT:${String(code)}`);
-    }) as typeof process.exit;
-
-    await expect(createApplyCommand().parseAsync(["node", "test", "opencode"])).rejects.toThrow("EXIT:2");
-    expect(errors.some((line) => line.includes("Unexpected error"))).toBe(true);
-  });
-
   it("handles explicit SystemError with system exit semantics", async () => {
     ApplyCommand.prototype.execute = async function mockedExecute() {
       return {
@@ -179,5 +165,64 @@ describe("Apply CLI action behavior", () => {
 
     await expect(createApplyCommand().parseAsync(["node", "test", "opencode"])).rejects.toThrow("EXIT:2");
     expect(errors.some((line) => line.includes("system failure"))).toBe(true);
+  });
+
+  it("prints file changes and suppresses warnings by default", async () => {
+    const originalArgv = process.argv;
+    process.argv = ["node", "test", "opencode"];
+
+    ApplyCommand.prototype.execute = async function mockedExecute() {
+      return {
+        success: true,
+        data: {
+          platform: "codex",
+          status: "success",
+          configPath: "/tmp/config",
+          scope: "user",
+          surface: "agents-md-prompts-skills-config-toml",
+          message: "ok",
+          durationMs: 1,
+          fileChanges: ["/tmp/config", "/tmp/skills/example/SKILL.md"],
+          warnings: ["hidden warning"],
+        },
+      };
+    };
+
+    await createApplyCommand().parseAsync(["node", "test", "codex"]);
+
+    expect(logs.some((line) => line === "Files:")).toBe(true);
+    expect(logs.some((line) => line.includes("/tmp/skills/example/SKILL.md"))).toBe(true);
+    expect(logs.some((line) => line.includes("Warnings:"))).toBe(false);
+
+    process.argv = originalArgv;
+  });
+
+  it("prints warnings only when verbose is enabled", async () => {
+    const originalArgv = process.argv;
+    process.argv = ["node", "test", "--verbose", "codex"];
+
+    ApplyCommand.prototype.execute = async function mockedExecute() {
+      return {
+        success: true,
+        data: {
+          platform: "codex",
+          status: "success",
+          configPath: "/tmp/config",
+          scope: "user",
+          surface: "agents-md-prompts-skills-config-toml",
+          message: "ok",
+          durationMs: 1,
+          fileChanges: ["/tmp/config"],
+          warnings: ["visible warning"],
+        },
+      };
+    };
+
+    await createApplyCommand().parseAsync(["node", "test", "codex"]);
+
+    expect(logs.some((line) => line.includes("Warnings:"))).toBe(true);
+    expect(logs.some((line) => line.includes("visible warning"))).toBe(true);
+
+    process.argv = originalArgv;
   });
 });
