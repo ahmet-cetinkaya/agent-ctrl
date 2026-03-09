@@ -41,7 +41,7 @@ describe("MCP contracts", () => {
       expect(result.data.servers[0].serverId).toBe("Bright Data");
       expect(result.data.servers[0].command).toBe("npx");
       expect(result.data.servers[0].args).toEqual(["@brightdata/mcp"]);
-      expect(result.data.servers[0].env.API_TOKEN).toBe("token-value");
+      expect(result.data.servers[0].env?.API_TOKEN).toBe("token-value");
 
       const report = result.data.report;
       expect(typeof report.startedAt).toBe("string");
@@ -103,20 +103,28 @@ describe("MCP contracts", () => {
       // Create two files with duplicate server ID
       await writeFile(
         join(mcpDir, "file1.json"),
-        JSON.stringify({
-          mcpServers: {
-            "duplicate-server": { command: "npx", args: ["server1"] }
-          }
-        }, null, 2)
+        JSON.stringify(
+          {
+            mcpServers: {
+              "duplicate-server": { command: "npx", args: ["server1"] },
+            },
+          },
+          null,
+          2
+        )
       );
 
       await writeFile(
         join(mcpDir, "file2.json"),
-        JSON.stringify({
-          mcpServers: {
-            "duplicate-server": { command: "npx", args: ["server2"] }
-          }
-        }, null, 2)
+        JSON.stringify(
+          {
+            mcpServers: {
+              "duplicate-server": { command: "npx", args: ["server2"] },
+            },
+          },
+          null,
+          2
+        )
       );
 
       const aggregator = new McpServerAggregator();
@@ -129,8 +137,8 @@ describe("MCP contracts", () => {
       expect(result.data.report.totalFailed).toBe(2);
 
       const conflictIssues = result.data.report.fileResults
-        .flatMap(f => f.issues)
-        .filter(i => i.code === "MCP_SERVER_CONFLICT");
+        .flatMap((f) => f.issues)
+        .filter((i) => i.code === "MCP_SERVER_CONFLICT");
 
       expect(conflictIssues.length).toBeGreaterThanOrEqual(2);
       expect(conflictIssues[0].message).toContain("duplicate-server");
@@ -148,20 +156,24 @@ describe("MCP contracts", () => {
 
       await writeFile(
         join(mcpDir, "invalid-env.json"),
-        JSON.stringify({
-          mcpServers: {
-            test: {
-              command: "npx",
-              args: ["test"],
-              env: {
-                VALID: "string",
-                INVALID_NUMBER: 123,
-                INVALID_BOOL: true,
-                INVALID_OBJECT: { key: "value" }
-              }
-            }
-          }
-        }, null, 2)
+        JSON.stringify(
+          {
+            mcpServers: {
+              test: {
+                command: "npx",
+                args: ["test"],
+                env: {
+                  VALID: "string",
+                  INVALID_NUMBER: 123,
+                  INVALID_BOOL: true,
+                  INVALID_OBJECT: { key: "value" },
+                },
+              },
+            },
+          },
+          null,
+          2
+        )
       );
 
       const aggregator = new McpServerAggregator();
@@ -171,8 +183,8 @@ describe("MCP contracts", () => {
       if (!result.success) return;
 
       const envIssues = result.data.report.fileResults
-        .flatMap(f => f.issues)
-        .filter(i => i.code === "MCP_ENV_VALUE_INVALID");
+        .flatMap((f) => f.issues)
+        .filter((i) => i.code === "MCP_ENV_VALUE_INVALID");
 
       expect(envIssues.length).toBeGreaterThanOrEqual(3);
     } finally {

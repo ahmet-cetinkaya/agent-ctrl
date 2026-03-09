@@ -5,6 +5,7 @@ import type {
   McpIssue,
   McpLoadedServer,
   McpLoadResult,
+  McpTransportType,
 } from "@/core/domain/shared/interfaces/IMcpConfigLoader";
 import { McpPathResolver } from "@/infrastructure/features/mcp/loaders/McpPathResolver";
 import { McpFileDiscovery } from "@/infrastructure/features/mcp/loaders/McpFileDiscovery";
@@ -23,10 +24,14 @@ import { McpErrorFormatter } from "@/infrastructure/features/mcp/reporting/McpEr
 interface AggregatedCandidate {
   serverId: string;
   filePath: string;
-  command: string;
-  args: string[];
+  transport: McpTransportType;
+  // Stdio transport fields
+  command?: string;
+  args?: string[];
   cwd?: string;
   resolvedEnv: Record<string, string>;
+  // HTTP transport fields
+  url?: string;
   issues: McpIssue[];
 }
 
@@ -174,18 +179,45 @@ export class McpServerAggregator implements IMcpConfigLoader {
             string,
             unknown
           >;
-          const serverEnvRaw = this.extractEnvObject(resolvedRaw.env);
-          const resolvedEnv = this.envComposer.compose(envResult.variables, serverEnvRaw);
 
-          candidates.push({
-            serverId: validated.serverId,
-            filePath: validated.filePath,
-            command: validated.command,
-            args: validated.args,
-            cwd: typeof resolvedRaw.cwd === "string" ? resolvedRaw.cwd : validated.cwd,
-            resolvedEnv,
-            issues: candidateIssues,
-          });
+          // Build candidate based on transport type
+          if (validated.transport === "http") {
+            // HTTP transport
+            const resolvedUrl = typeof resolvedRaw.url === "string" ? resolvedRaw.url : validated.url;
+            candidates.push({
+              serverId: validated.serverId,
+              filePath: validated.filePath,
+              transport: "http",
+              url: resolvedUrl,
+              resolvedEnv: {},
+              issues: candidateIssues,
+            });
+          } else {
+            // Stdio transport
+            // Use resolved command and args (with placeholders replaced)
+            const resolvedCommand = typeof resolvedRaw.command === "string" ? resolvedRaw.command : validated.command;
+            const resolvedArgs = Array.isArray(resolvedRaw.args) ? resolvedRaw.args : validated.args;
+
+            // Extract server-specific env and compose final env
+            const serverEnvRaw = this.extractEnvObject(resolvedRaw.env);
+            const resolvedEnv = this.envComposer.compose(
+              envResult.variables,
+              serverEnvRaw,
+              resolvedArgs,
+              resolvedCommand
+            );
+
+            candidates.push({
+              serverId: validated.serverId,
+              filePath: validated.filePath,
+              transport: "stdio",
+              command: resolvedCommand,
+              args: resolvedArgs,
+              cwd: typeof resolvedRaw.cwd === "string" ? resolvedRaw.cwd : validated.cwd,
+              resolvedEnv,
+              issues: candidateIssues,
+            });
+          }
         }
       }
 
@@ -218,14 +250,24 @@ export class McpServerAggregator implements IMcpConfigLoader {
         }
 
         fileResult.loadedServerCount += 1;
-        loadedServers.push({
-          serverId: candidate.serverId,
-          filePath: candidate.filePath,
-          command: candidate.command,
-          args: candidate.args,
-          cwd: candidate.cwd,
-          env: candidate.resolvedEnv,
-        });
+        if (candidate.transport === "http") {
+          loadedServers.push({
+            serverId: candidate.serverId,
+            filePath: candidate.filePath,
+            transport: "http",
+            url: candidate.url,
+          });
+        } else {
+          loadedServers.push({
+            serverId: candidate.serverId,
+            filePath: candidate.filePath,
+            transport: "stdio",
+            command: candidate.command,
+            args: candidate.args,
+            cwd: candidate.cwd,
+            env: candidate.resolvedEnv,
+          });
+        }
       }
 
       const finalizedFileResults = Array.from(fileResults.values()).map((entry) =>

@@ -46,10 +46,14 @@ export interface PlatformConfig {
   readonly agents: readonly { name: string; path: string }[];
   readonly mcpServers?: readonly {
     name: string;
-    command: string;
-    args: string[];
+    transport: "stdio" | "http";
+    // Stdio transport fields
+    command?: string;
+    args?: string[];
     cwd?: string;
-    env: Record<string, string>;
+    env?: Record<string, string>;
+    // HTTP transport fields
+    url?: string;
     sourceFile: string;
   }[];
 }

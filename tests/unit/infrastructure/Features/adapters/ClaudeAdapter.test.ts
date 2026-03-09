@@ -79,13 +79,17 @@ describe("ClaudeAdapter", () => {
         rules: [{ name: "same", path: "/old" }],
         skills: [{ name: "same", path: "/old-skill" }],
         agents: [{ name: "same", path: "/old-agent" }],
-        mcpServers: [{ name: "same", command: "old", args: [], env: {}, sourceFile: "old" }],
+        mcpServers: [
+          { name: "same", transport: "stdio" as const, command: "old", args: [], env: {}, sourceFile: "old" },
+        ],
       };
       const incoming: PlatformConfig = {
         rules: [{ name: "same", path: "/new" }],
         skills: [{ name: "same", path: "/new-skill" }],
         agents: [{ name: "same", path: "/new-agent" }],
-        mcpServers: [{ name: "same", command: "new", args: [], env: {}, sourceFile: "new" }],
+        mcpServers: [
+          { name: "same", transport: "stdio" as const, command: "new", args: [], env: {}, sourceFile: "new" },
+        ],
       };
 
       const merged = adapter.mergeConfigs(existing, incoming);
@@ -119,7 +123,16 @@ describe("ClaudeAdapter", () => {
         rules: [{ name: "rule-a", path: rulePath }],
         skills: [{ name: "skill-a", path: skillPath }],
         agents: [{ name: "Agent A", path: agentPath }],
-        mcpServers: [{ name: "Bright", command: "npx", args: ["x"], env: { TOKEN: "1" }, sourceFile: "mcp.json" }],
+        mcpServers: [
+          {
+            name: "Bright",
+            transport: "stdio" as const,
+            command: "npx",
+            args: ["x"],
+            env: { TOKEN: "1" },
+            sourceFile: "mcp.json",
+          },
+        ],
       };
 
       const writeResult = await adapter.writeConfig(config);
@@ -209,7 +222,9 @@ describe("ClaudeAdapter", () => {
         rules: [],
         skills: [],
         agents: [],
-        mcpServers: [{ name: "New", command: "npx", args: ["x"], env: {}, sourceFile: "mcp.json" }],
+        mcpServers: [
+          { name: "New", transport: "stdio" as const, command: "npx", args: ["x"], env: {}, sourceFile: "mcp.json" },
+        ],
       });
       expect(writeResult.success).toBe(true);
 

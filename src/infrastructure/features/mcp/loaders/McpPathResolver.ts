@@ -27,7 +27,11 @@ export class McpPathResolver {
         : configuredConfigRoot;
 
     const mcpDir = resolve(configRoot, "mcps");
-    const envPath = resolve(mcpDir, ".env");
+
+    // Check for .env in mcps/ first, then fall back to config root
+    const mcpsEnvPath = resolve(mcpDir, ".env");
+    const configEnvPath = resolve(configRoot, ".env");
+    const envPath = existsSync(mcpsEnvPath) ? mcpsEnvPath : configEnvPath;
 
     return {
       configRoot,

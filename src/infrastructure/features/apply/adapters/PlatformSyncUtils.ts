@@ -221,18 +221,20 @@ export function renderOpencodeMcpConfig(
   existing: Record<string, unknown>,
   servers: ApplyMcpServer[]
 ): Record<string, unknown> {
+  // Only include stdio-based servers for opencode config
+  const stdioServers = servers.filter((s): s is ApplyMcpServer & { transport: "stdio" } => s.transport === "stdio");
   const currentMcp = isObject(existing.mcp) ? existing.mcp : {};
   const nextMcp = {
     ...currentMcp,
     ...Object.fromEntries(
-      servers.map((server) => [
+      stdioServers.map((server) => [
         server.name,
         {
           type: "local",
-          command: [server.command, ...server.args],
+          command: [server.command!, ...server.args!],
           enabled: true,
           ...(server.cwd ? { cwd: server.cwd } : {}),
-          ...(Object.keys(server.env).length > 0 ? { environment: server.env } : {}),
+          ...(server.env && Object.keys(server.env).length > 0 ? { environment: server.env } : {}),
         },
       ])
     ),
@@ -249,19 +251,21 @@ export function renderSettingsMcpConfig(
   existing: Record<string, unknown>,
   servers: ApplyMcpServer[]
 ): Record<string, unknown> {
+  // Only include stdio-based servers for settings config
+  const stdioServers = servers.filter((s): s is ApplyMcpServer & { transport: "stdio" } => s.transport === "stdio");
   const current = isObject(existing.mcpServers) ? existing.mcpServers : {};
   return {
     ...existing,
     mcpServers: {
       ...current,
       ...Object.fromEntries(
-        servers.map((server) => [
+        stdioServers.map((server) => [
           server.name,
           {
             command: server.command,
             args: server.args,
             ...(server.cwd ? { cwd: server.cwd } : {}),
-            ...(Object.keys(server.env).length > 0 ? { env: server.env } : {}),
+            ...(server.env && Object.keys(server.env).length > 0 ? { env: server.env } : {}),
           },
         ])
       ),
@@ -270,16 +274,18 @@ export function renderSettingsMcpConfig(
 }
 
 export function renderCodexMcpServers(servers: ApplyMcpServer[]): string {
-  return servers
+  // Only include stdio-based servers for codex config
+  const stdioServers = servers.filter((s): s is ApplyMcpServer & { transport: "stdio" } => s.transport === "stdio");
+  return stdioServers
     .map((server) => {
-      const lines = [`[mcp_servers.${server.name}]`, `command = ${toTomlString(server.command)}`];
-      if (server.args.length > 0) {
+      const lines = [`[mcp_servers.${server.name}]`, `command = ${toTomlString(server.command!)}`];
+      if (server.args && server.args.length > 0) {
         lines.push(`args = ${toTomlArray(server.args)}`);
       }
       if (server.cwd) {
         lines.push(`cwd = ${toTomlString(server.cwd)}`);
       }
-      if (Object.keys(server.env).length > 0) {
+      if (server.env && Object.keys(server.env).length > 0) {
         lines.push(`env = ${toTomlInlineTable(server.env)}`);
       }
       return lines.join("\n");

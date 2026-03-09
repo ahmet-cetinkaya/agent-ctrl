@@ -11,10 +11,14 @@ import { McpServerAggregator } from "@/infrastructure/features/mcp/loaders/McpSe
 
 export interface ApplyMcpServer {
   name: string;
-  command: string;
-  args: string[];
+  transport: "stdio" | "http";
+  // Stdio transport fields
+  command?: string;
+  args?: string[];
   cwd?: string;
-  env: Record<string, string>;
+  env?: Record<string, string>;
+  // HTTP transport fields
+  url?: string;
   sourceFile: string;
 }
 
@@ -70,14 +74,25 @@ export class ApplySourceLoader {
       skills: skillResult.artifacts,
       agents: agentResult.artifacts,
       commands: commandResult.artifacts,
-      mcpServers: mcpResult.data.servers.map((server) => ({
-        name: server.serverId,
-        command: server.command,
-        args: server.args,
-        cwd: server.cwd,
-        env: server.env,
-        sourceFile: server.filePath,
-      })),
+      mcpServers: mcpResult.data.servers.map((server) => {
+        if (server.transport === "http") {
+          return {
+            name: server.serverId,
+            transport: "http" as const,
+            url: server.url,
+            sourceFile: server.filePath,
+          };
+        }
+        return {
+          name: server.serverId,
+          transport: "stdio" as const,
+          command: server.command,
+          args: server.args,
+          cwd: server.cwd,
+          env: server.env,
+          sourceFile: server.filePath,
+        };
+      }),
       warnings,
     };
   }

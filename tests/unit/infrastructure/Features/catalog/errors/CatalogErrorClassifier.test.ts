@@ -14,7 +14,9 @@ describe("CatalogErrorClassifier", () => {
       const result = classifyCatalogError(error);
       expect(result.type).toBe("retryable");
       expect(result.reason).toBe("Rate limited by API");
-      expect(result.retryAfter).toBe(60);
+      if (isRetryable(result)) {
+        expect(result.retryAfter).toBe(60);
+      }
     });
 
     it("classifies 401 unauthorized as fatal", () => {
@@ -37,7 +39,9 @@ describe("CatalogErrorClassifier", () => {
       const result = classifyCatalogError(error);
       expect(result.type).toBe("retryable");
       expect(result.reason).toBe("Request timeout");
-      expect(result.retryAfter).toBe(5);
+      if (isRetryable(result)) {
+        expect(result.retryAfter).toBe(5);
+      }
     });
 
     it("classifies network errors (ECONNREFUSED) as retryable", () => {
@@ -45,7 +49,9 @@ describe("CatalogErrorClassifier", () => {
       const result = classifyCatalogError(error);
       expect(result.type).toBe("retryable");
       expect(result.reason).toBe("Network error");
-      expect(result.retryAfter).toBe(10);
+      if (isRetryable(result)) {
+        expect(result.retryAfter).toBe(10);
+      }
     });
 
     it("classifies 500 server errors as retryable", () => {
@@ -53,7 +59,9 @@ describe("CatalogErrorClassifier", () => {
       const result = classifyCatalogError(error);
       expect(result.type).toBe("retryable");
       expect(result.reason).toBe("Server error");
-      expect(result.retryAfter).toBe(30);
+      if (isRetryable(result)) {
+        expect(result.retryAfter).toBe(30);
+      }
     });
 
     it("classifies 502 bad gateway as retryable", () => {
@@ -61,7 +69,9 @@ describe("CatalogErrorClassifier", () => {
       const result = classifyCatalogError(error);
       expect(result.type).toBe("retryable");
       expect(result.reason).toBe("Server error");
-      expect(result.retryAfter).toBe(30);
+      if (isRetryable(result)) {
+        expect(result.retryAfter).toBe(30);
+      }
     });
 
     it("classifies 503 service unavailable as retryable", () => {
@@ -69,7 +79,9 @@ describe("CatalogErrorClassifier", () => {
       const result = classifyCatalogError(error);
       expect(result.type).toBe("retryable");
       expect(result.reason).toBe("Server error");
-      expect(result.retryAfter).toBe(30);
+      if (isRetryable(result)) {
+        expect(result.retryAfter).toBe(30);
+      }
     });
 
     it("classifies 504 gateway timeout as retryable", () => {
@@ -77,7 +89,9 @@ describe("CatalogErrorClassifier", () => {
       const result = classifyCatalogError(error);
       expect(result.type).toBe("retryable");
       expect(result.reason).toBe("Server error");
-      expect(result.retryAfter).toBe(30);
+      if (isRetryable(result)) {
+        expect(result.retryAfter).toBe(30);
+      }
     });
 
     it("classifies 404 as fatal", () => {
@@ -118,7 +132,9 @@ describe("CatalogErrorClassifier", () => {
       const error = new Error("429 rate limit, retry-after: 120");
       const result = classifyCatalogError(error);
       expect(result.type).toBe("retryable");
-      expect(result.retryAfter).toBe(120);
+      if (isRetryable(result)) {
+        expect(result.retryAfter).toBe(120);
+      }
     });
   });
 
@@ -164,7 +180,9 @@ describe("CatalogErrorClassifier", () => {
     it("creates valid retryable classification", () => {
       const result = createRetryableClassification(60, "Rate limited");
       expect(result.type).toBe("retryable");
-      expect(result.retryAfter).toBe(60);
+      if (isRetryable(result)) {
+        expect(result.retryAfter).toBe(60);
+      }
       expect(result.reason).toBe("Rate limited");
     });
 

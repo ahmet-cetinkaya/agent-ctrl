@@ -153,9 +153,15 @@ export function createApplyCommand(): Command {
           }
 
           if (verbose && warnings.length > 0) {
-            console.log("\nWarnings:");
-            for (const warning of warnings) {
-              console.log(`  - ${warning}`);
+            // Filter out common noise warnings like .gitkeep
+            const filteredWarnings = warnings.filter(
+              (w) => !w.includes("Skipped .gitkeep") && !w.includes("invalid extension")
+            );
+            if (filteredWarnings.length > 0) {
+              console.log("\nWarnings:");
+              for (const warning of filteredWarnings) {
+                console.log(`  - ${warning}`);
+              }
             }
           }
         } catch (error) {

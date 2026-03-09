@@ -21,7 +21,9 @@ describe("PlatformSyncUtils", () => {
     });
 
     it("throws when user scope requested but not supported", () => {
-      expect(() => resolveApplyScope("user" as const, "project", false)).toThrow("does not expose a documented file-backed user configuration");
+      expect(() => resolveApplyScope("user" as const, "project", false)).toThrow(
+        "does not expose a documented file-backed user configuration"
+      );
     });
 
     it("falls back to default scope when no preference provided", () => {
@@ -79,13 +81,16 @@ describe("PlatformSyncUtils", () => {
       const servers: ApplyMcpServer[] = [
         {
           name: "Test Server",
+          transport: "stdio" as const,
           command: "node",
           args: ["server.js"],
           env: { TEST: "value" },
           sourceFile: "test.json",
         },
       ];
-      const result = renderOpencodeMcpConfig({}, servers);
+      const result = renderOpencodeMcpConfig({}, servers) as {
+        mcp: Record<string, { command: string[]; environment: Record<string, string> }>;
+      };
       expect(result.mcp).toHaveProperty("Test Server");
       expect(result.mcp["Test Server"].command).toEqual(["node", "server.js"]);
       expect(result.mcp["Test Server"].environment).toEqual({ TEST: "value" });
@@ -94,9 +99,9 @@ describe("PlatformSyncUtils", () => {
     it("merges with existing config", () => {
       const existing = { mcp: { "Existing Server": { type: "local", command: ["existing"] } } };
       const servers: ApplyMcpServer[] = [
-        { name: "New Server", command: "new", args: [], env: {}, sourceFile: "new.json" },
+        { name: "New Server", transport: "stdio" as const, command: "new", args: [], env: {}, sourceFile: "new.json" },
       ];
-      const result = renderOpencodeMcpConfig(existing, servers);
+      const result = renderOpencodeMcpConfig(existing, servers) as { mcp: Record<string, unknown> };
       expect(result.mcp).toHaveProperty("Existing Server");
       expect(result.mcp).toHaveProperty("New Server");
     });
@@ -111,9 +116,9 @@ describe("PlatformSyncUtils", () => {
 
     it("renders single server as merged config", () => {
       const servers: ApplyMcpServer[] = [
-        { name: "Test", command: "test", args: [], env: {}, sourceFile: "test.json" },
+        { name: "Test", transport: "stdio" as const, command: "test", args: [], env: {}, sourceFile: "test.json" },
       ];
-      const result = renderSettingsMcpConfig({}, servers);
+      const result = renderSettingsMcpConfig({}, servers) as { mcpServers: Record<string, { command: string }> };
       expect(result.mcpServers).toHaveProperty("Test");
       expect(result.mcpServers.Test.command).toBe("test");
     });
@@ -122,21 +127,24 @@ describe("PlatformSyncUtils", () => {
       const servers: ApplyMcpServer[] = [
         {
           name: "Test",
+          transport: "stdio" as const,
           command: "node",
           args: ["server.js", "--port", "8080"],
           env: {},
           sourceFile: "test.json",
         },
       ];
-      const result = renderSettingsMcpConfig({}, servers);
+      const result = renderSettingsMcpConfig({}, servers) as {
+        mcpServers: Record<string, { command: string; args: string[] }>;
+      };
       expect(result.mcpServers.Test.command).toBe("node");
       expect(result.mcpServers.Test.args).toEqual(["server.js", "--port", "8080"]);
     });
 
     it("merges with existing config", () => {
-      const existing = { mcpServers: { "Existing": { command: "existing", args: [] } } };
+      const existing = { mcpServers: { Existing: { command: "existing", args: [] } } };
       const servers: ApplyMcpServer[] = [
-        { name: "New", command: "new", args: [], env: {}, sourceFile: "new.json" },
+        { name: "New", transport: "stdio" as const, command: "new", args: [], env: {}, sourceFile: "new.json" },
       ];
       const result = renderSettingsMcpConfig(existing, servers);
       expect(result.mcpServers).toHaveProperty("Existing");
@@ -152,20 +160,21 @@ describe("PlatformSyncUtils", () => {
 
     it("renders server list as TOML", () => {
       const servers: ApplyMcpServer[] = [
-        { name: "Server 1", command: "cmd1", args: [], env: {}, sourceFile: "test1.json" },
-        { name: "Server 2", command: "cmd2", args: [], env: {}, sourceFile: "test2.json" },
+        { name: "Server 1", transport: "stdio" as const, command: "cmd1", args: [], env: {}, sourceFile: "test1.json" },
+        { name: "Server 2", transport: "stdio" as const, command: "cmd2", args: [], env: {}, sourceFile: "test2.json" },
       ];
       const result = renderCodexMcpServers(servers);
       expect(result).toContain("[mcp_servers.Server 1]");
       expect(result).toContain("[mcp_servers.Server 2]");
-      expect(result).toContain("command = \"cmd1\"");
-      expect(result).toContain("command = \"cmd2\"");
+      expect(result).toContain('command = "cmd1"');
+      expect(result).toContain('command = "cmd2"');
     });
 
     it("includes all required server properties in TOML format", () => {
       const servers: ApplyMcpServer[] = [
         {
           name: "Test",
+          transport: "stdio" as const,
           command: "test",
           args: ["--arg"],
           env: { KEY: "value" },
@@ -174,9 +183,9 @@ describe("PlatformSyncUtils", () => {
       ];
       const result = renderCodexMcpServers(servers);
       expect(result).toContain("[mcp_servers.Test]");
-      expect(result).toContain("command = \"test\"");
-      expect(result).toContain("args = [\"--arg\"]");
-      expect(result).toContain("env = { KEY = \"value\" }");
+      expect(result).toContain('command = "test"');
+      expect(result).toContain('args = ["--arg"]');
+      expect(result).toContain('env = { KEY = "value" }');
     });
   });
 

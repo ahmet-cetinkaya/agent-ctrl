@@ -2,6 +2,7 @@ import type { Result } from "@/core/domain/shared/value-objects/Result";
 
 export type McpIssueSeverity = "warning" | "error";
 export type McpFileStatus = "loaded" | "skipped" | "failed";
+export type McpTransportType = "stdio" | "http";
 
 export interface McpIssue {
   severity: McpIssueSeverity;
@@ -14,10 +15,14 @@ export interface McpIssue {
 export interface McpLoadedServer {
   serverId: string;
   filePath: string;
-  command: string;
-  args: string[];
+  transport: McpTransportType;
+  // Stdio transport fields
+  command?: string;
+  args?: string[];
   cwd?: string;
-  env: Record<string, string>;
+  env?: Record<string, string>;
+  // HTTP transport fields
+  url?: string;
 }
 
 export interface McpFileResult {

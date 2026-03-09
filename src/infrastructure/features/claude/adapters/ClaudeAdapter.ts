@@ -14,6 +14,7 @@ import type { Skill } from "@/core/domain/shared/entities/Skill";
 import type { Agent } from "@/core/domain/shared/entities/Agent";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
+import { McpPlaceholderResolver } from "@/infrastructure/features/mcp/interpolation/McpPlaceholderResolver";
 
 export class ClaudeAdapter implements IPlatformAdapter {
   readonly platformName = "claude";
@@ -21,6 +22,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
   readonly claudeMcpConfigPath: string;
   private readonly projectPath: string;
   private readonly claudeRoot: string;
+  private readonly placeholderResolver = new McpPlaceholderResolver();
 
   private static readonly MANAGED_START_MARKER = "<!-- agent-ctrl:start -->";
   private static readonly MANAGED_END_MARKER = "<!-- agent-ctrl:end -->";
@@ -30,7 +32,8 @@ export class ClaudeAdapter implements IPlatformAdapter {
     this.projectPath = projectPath;
     this.claudeRoot = resolve(claudeHome, ".claude");
     this.configPath = resolve(this.claudeRoot, "CLAUDE.md");
-    this.claudeMcpConfigPath = resolve(this.claudeRoot, "settings.json");
+    // MCP local-scoped servers are stored in ~/.claude.json (home directory)
+    this.claudeMcpConfigPath = resolve(claudeHome, ".claude.json");
   }
 
   async generateConfig(artifacts: Artifact[]): Promise<Result<PlatformConfig, SystemError>> {
@@ -40,10 +43,12 @@ export class ClaudeAdapter implements IPlatformAdapter {
     const agents: { name: string; path: string }[] = [];
     const mcpServers: {
       name: string;
-      command: string;
-      args: string[];
+      transport: "stdio" | "http";
+      command?: string;
+      args?: string[];
       cwd?: string;
-      env: Record<string, string>;
+      env?: Record<string, string>;
+      url?: string;
       sourceFile: string;
     }[] = [];
 
@@ -92,14 +97,10 @@ export class ClaudeAdapter implements IPlatformAdapter {
         await mkdir(this.claudeRoot, { recursive: true });
       }
 
-      if (options?.cleanExistingArtifacts) {
-        await this.cleanManagedArtifacts();
-      }
-
       const existingContent = await readFile(this.configPath, "utf-8").catch(() => "");
       const mergedContent = this.upsertManagedSection(existingContent, config, await this.loadRuleContents(config));
       await writeFile(this.configPath, mergedContent, "utf-8");
-      await this.writeClaudeMcpConfig(config);
+      await this.writeClaudeMcpConfig(config, options?.cleanExistingArtifacts);
 
       await this.syncSkills(config);
       await this.syncAgents(config);
@@ -272,32 +273,57 @@ export class ClaudeAdapter implements IPlatformAdapter {
     ]);
   }
 
-  private async writeClaudeMcpConfig(config: PlatformConfig): Promise<void> {
+  private async writeClaudeMcpConfig(config: PlatformConfig, cleanExistingMcp?: boolean): Promise<void> {
     const mcpServers = config.mcpServers ?? [];
+    // Build incoming MCP servers for both transport types
     const incomingMcpServers = Object.fromEntries(
-      mcpServers.map((server) => [
-        server.name,
-        {
-          command: server.command,
-          args: server.args,
-          ...(server.cwd ? { cwd: server.cwd } : {}),
-          ...(Object.keys(server.env).length > 0 ? { env: server.env } : {}),
-        },
-      ])
+      mcpServers.map((server) => {
+        if (server.transport === "http") {
+          return [
+            server.name,
+            {
+              type: "http",
+              url: server.url,
+            },
+          ];
+        }
+        return [
+          server.name,
+          {
+            command: server.command,
+            args: server.args,
+            ...(server.cwd ? { cwd: server.cwd } : {}),
+            ...(server.env && Object.keys(server.env).length > 0 ? { env: server.env } : {}),
+          },
+        ];
+      })
     );
 
+    let mergedMcpServers: Record<string, unknown>;
     const existingDocument = await readFile(this.claudeMcpConfigPath, "utf-8")
       .then((content) => JSON.parse(content) as unknown)
       .catch(() => ({}));
     const normalizedExisting = this.isObject(existingDocument) ? existingDocument : {};
-    const existingMcpServers = this.isObject(normalizedExisting.mcpServers) ? normalizedExisting.mcpServers : {};
 
-    const mergedDocument = {
-      ...normalizedExisting,
-      mcpServers: {
+    if (cleanExistingMcp) {
+      // When override is enabled, completely replace existing MCP servers with incoming ones
+      // But preserve all other properties in the document
+      mergedMcpServers = incomingMcpServers;
+    } else {
+      // Normal merge: incoming MCP servers override existing ones with the same name
+      const existingMcpServers = this.isObject(normalizedExisting.mcpServers) ? normalizedExisting.mcpServers : {};
+
+      mergedMcpServers = {
         ...existingMcpServers,
         ...incomingMcpServers,
-      },
+      };
+    }
+
+    // Preserve all other properties in the document
+    const { mcpServers: _existingMcpServers, ...otherProperties } = normalizedExisting;
+    const mergedDocument = {
+      ...otherProperties,
+      mcpServers: mergedMcpServers,
     };
 
     await mkdir(dirname(this.claudeMcpConfigPath), { recursive: true });
@@ -340,14 +366,77 @@ export class ClaudeAdapter implements IPlatformAdapter {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  /**
+   * Loads environment variables from .env file for interpolation.
+   * Checks both project-level and user-level config directories.
+   */
+  private async loadEnvVariables(): Promise<Record<string, string>> {
+    // Try project-level .env first, then user-level
+    const projectEnvPath = resolve(this.projectPath, ".agent-ctrl", ".env");
+    const userEnvPath = resolve(homedir(), ".agent-ctrl", ".env");
+
+    const envPath = await access(projectEnvPath)
+      .then(() => projectEnvPath)
+      .catch(() => userEnvPath);
+
+    try {
+      const content = await readFile(envPath, "utf-8");
+      const variables: Record<string, string> = {};
+
+      for (const rawLine of content.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith("#")) {
+          continue;
+        }
+
+        const sepIndex = line.indexOf("=");
+        if (sepIndex <= 0) {
+          continue;
+        }
+
+        const key = line.slice(0, sepIndex).trim();
+        const rawValue = line.slice(sepIndex + 1).trim();
+
+        if (!key) {
+          continue;
+        }
+
+        // Unquote values if quoted
+        let value = rawValue;
+        if (
+          (rawValue.startsWith('"') && rawValue.endsWith('"') && rawValue.length >= 2) ||
+          (rawValue.startsWith("'") && rawValue.endsWith("'") && rawValue.length >= 2)
+        ) {
+          value = rawValue.slice(1, -1);
+        }
+
+        variables[key] = value;
+      }
+
+      return variables;
+    } catch {
+      // No .env file found, return empty variables
+      return {};
+    }
+  }
+
   private async loadRuleContents(
     config: PlatformConfig
   ): Promise<Array<{ name: string; path: string; content: string }>> {
+    // Load env variables for interpolation
+    const envVariables = await this.loadEnvVariables();
+
     return Promise.all(
       config.rules.map(async (rule) => {
-        const content = await readFile(rule.path, "utf-8").catch(
+        let content = await readFile(rule.path, "utf-8").catch(
           (error) => `Rule content unavailable (${String(error)})`
         );
+
+        // Apply ${VAR} placeholder resolution from .env
+        if (Object.keys(envVariables).length > 0) {
+          content = this.placeholderResolver.resolve(content, envVariables) as string;
+        }
+
         return {
           name: rule.name,
           path: rule.path,

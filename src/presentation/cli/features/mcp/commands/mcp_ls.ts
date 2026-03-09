@@ -100,7 +100,7 @@ export function createMcpListCommand(): Command {
         // Redact sensitive environment variables for security
         const safeServers = servers.map((server) => ({
           ...server,
-          env: redactEnvVars(server.env),
+          env: server.env ? redactEnvVars(server.env) : undefined,
           managed: managedById.get(server.serverId),
           catalog: catalogById.get(server.serverId),
         }));

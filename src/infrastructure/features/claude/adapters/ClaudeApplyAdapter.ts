@@ -73,7 +73,7 @@ export class ClaudeApplyAdapter implements IAppyPlatformAdapter {
       ...skillPaths,
       ...agentPaths,
       ...commandPaths,
-      resolve(claudeRoot, "settings.json"),
+      resolve(claudeRoot, "..", ".claude.json"),
     ];
 
     return {
