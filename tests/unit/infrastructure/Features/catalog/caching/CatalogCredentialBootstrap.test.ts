@@ -4,7 +4,7 @@ import { CatalogEnvFileLoader } from '@/infrastructure/features/catalog/caching/
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { Result, err, ok } from '@/core/domain/shared/value-objects/Result';
+import { err, ok } from '@/core/domain/shared/value-objects/Result';
 
 describe('CatalogCredentialBootstrap', () => {
   let testDir: string;
