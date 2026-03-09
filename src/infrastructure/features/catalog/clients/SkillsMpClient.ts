@@ -242,7 +242,9 @@ export class SkillsMpClient implements ISkillsMpClient {
         return candidate.filter(this.isObject);
       }
     }
-    console.warn(`Warning: SkillsMP API response format changed. Expected skills/items/results array but got: ${Object.keys(payload).join(", ")}`);
+    console.warn(
+      `Warning: SkillsMP API response format changed. Expected skills/items/results array but got: ${Object.keys(payload).join(", ")}`
+    );
     return [];
   }
 
@@ -537,9 +539,7 @@ export class SkillsMpClient implements ISkillsMpClient {
 
     if (failedFiles.length > 0) {
       const criticalFiles = ["SKILL.md", "skill.md", "README.md", "readme.md"];
-      const missingCritical = failedFiles.filter(f =>
-        criticalFiles.some(cf => f.toLowerCase().endsWith(cf))
-      );
+      const missingCritical = failedFiles.filter((f) => criticalFiles.some((cf) => f.toLowerCase().endsWith(cf)));
       if (missingCritical.length > 0) {
         console.warn(`Warning: Failed to download critical files: ${missingCritical.join(", ")}`);
       }

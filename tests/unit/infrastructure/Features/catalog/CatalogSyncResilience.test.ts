@@ -159,12 +159,12 @@ describe("Catalog sync resilience", () => {
 
   it("preserves partial results when pagination fails mid-stream", async () => {
     process.env.SMITHERY_API_KEY = "smithery-test-key";
-    let callCount = 0;
+    let _callCount = 0;
     const fetchMock = installMockFetch([
       {
         match: (url) => url.pathname === "/servers" && url.searchParams.get("page") === "1",
         handler: () => {
-          callCount++;
+          _callCount++;
           return new Response(
             JSON.stringify({
               servers: [{ qualifiedName: "server-1", displayName: "Server 1", description: "First server" }],
@@ -177,7 +177,7 @@ describe("Catalog sync resilience", () => {
       {
         match: (url) => url.pathname === "/servers" && url.searchParams.get("page") === "2",
         handler: () => {
-          callCount++;
+          _callCount++;
           return new Response(JSON.stringify({ error: "internal error" }), { status: 500, headers: { "Content-Type": "application/json" } });
         },
       },

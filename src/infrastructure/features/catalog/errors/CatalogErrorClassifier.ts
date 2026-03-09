@@ -97,7 +97,12 @@ export function classifyCatalogError(error: Error): ErrorClassification {
   }
 
   // Client errors (4xx) other than 429 - fatal
-  if (message.includes("400") || message.includes("422") || message.includes("bad request") || message.includes("invalid")) {
+  if (
+    message.includes("400") ||
+    message.includes("422") ||
+    message.includes("bad request") ||
+    message.includes("invalid")
+  ) {
     return createFatalClassification("Invalid request");
   }
 

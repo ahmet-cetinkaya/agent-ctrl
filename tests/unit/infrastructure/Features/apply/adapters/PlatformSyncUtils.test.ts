@@ -5,7 +5,6 @@ import {
   renderOpencodeMcpConfig,
   renderSettingsMcpConfig,
   renderCodexMcpServers,
-  countUnsupportedArtifacts,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 import type { ApplyMcpServer } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 
