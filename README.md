@@ -1,3 +1,5 @@
+![agent-ctrl header image](docs/assets/agent-ctrl-header.webp)
+
 # agent-ctrl
 
 [![Bun](https://img.shields.io/badge/Bun-000000?style=flat&logo=bun&logoColor=white)](https://bun.sh)
