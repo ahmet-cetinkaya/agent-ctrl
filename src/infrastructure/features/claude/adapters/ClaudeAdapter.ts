@@ -15,6 +15,7 @@ import type { Agent } from "@/core/domain/shared/entities/Agent";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 import { McpPlaceholderResolver } from "@/infrastructure/features/mcp/interpolation/McpPlaceholderResolver";
+import { OpenCodeCommandRenderer } from "@/infrastructure/features/apply/adapters/OpenCodeCommandRenderer";
 
 export class ClaudeAdapter implements IPlatformAdapter {
   readonly platformName = "claude";
@@ -257,11 +258,19 @@ export class ClaudeAdapter implements IPlatformAdapter {
     await mkdir(targetRoot, { recursive: true });
     const markdownFiles = await this.collectMarkdownFiles(commandsRoot);
 
+    const renderer = new OpenCodeCommandRenderer();
+
     for (const filePath of markdownFiles) {
       const rel = relative(commandsRoot, filePath);
       const dest = resolve(targetRoot, rel);
       await mkdir(dirname(dest), { recursive: true });
-      await cp(filePath, dest, { force: true });
+
+      // Read the source file, render it with the command renderer, then write
+      const source = await readFile(filePath, "utf-8");
+      // Convert file path to command id: remove .md extension and use forward slashes
+      const id = rel.replace(extname(rel), "").replace(/\\/g, "/");
+      const rendered = renderer.renderCommand(source, id);
+      await writeFile(dest, `${rendered}\n`, "utf-8");
     }
   }
 

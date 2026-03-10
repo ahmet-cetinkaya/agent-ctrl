@@ -8,8 +8,11 @@ import type { CommandArtifact } from "@/infrastructure/features/command/scanners
 import {
   mergeManagedTextSection,
   type ManagedTextSectionMarkers,
-} from "@/infrastructure/features/apply/adapters/ManagedTextSection";
-import type { ApplyMcpServer } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
+} from "./ManagedTextSection";
+import type { ApplyMcpServer } from "./ApplySourceLoader";
+import { CommandRendererFactory } from "./CommandRendererFactory";
+import type { ICommandRenderer, ParsedMarkdownPrompt } from "./ICommandRenderer";
+import { McpConfigRendererFactory } from "./McpConfigRendererFactory";
 
 export interface FileSyncResult {
   changed: boolean;
@@ -20,12 +23,6 @@ export interface PlatformTarget {
   configPath: string;
   scope: ApplyPlatformScope;
   surface: string;
-}
-
-interface ParsedMarkdownPrompt {
-  title: string;
-  description: string;
-  body: string;
 }
 
 export function resolveApplyScope(
@@ -94,14 +91,16 @@ export async function syncRulesAsFiles(
 export async function syncCommandsAsMarkdown(
   commands: CommandArtifact[],
   targetRoot: string,
-  dryRun: boolean
+  dryRun: boolean,
+  renderer?: ICommandRenderer
 ): Promise<FileSyncResult> {
+  const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("opencode");
   const rendered = await Promise.all(
     commands.map(async (command) => {
       const source = await readFile(command.path, "utf-8");
       return {
-        relativePath: `${command.id}.md`,
-        content: renderOpenCodeCommand(source, command.id),
+        relativePath: `${command.id}${commandRenderer.fileExtension}`,
+        content: commandRenderer.renderCommand(source, command.id),
       };
     })
   );
@@ -111,14 +110,16 @@ export async function syncCommandsAsMarkdown(
 export async function syncCommandsAsToml(
   commands: CommandArtifact[],
   targetRoot: string,
-  dryRun: boolean
+  dryRun: boolean,
+  renderer?: ICommandRenderer
 ): Promise<FileSyncResult> {
+  const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("gemini");
   const rendered = await Promise.all(
     commands.map(async (command) => {
       const source = await readFile(command.path, "utf-8");
       return {
-        relativePath: `${command.id}.toml`,
-        content: renderGeminiCommand(source, command.id),
+        relativePath: `${command.id}${commandRenderer.fileExtension}`,
+        content: commandRenderer.renderCommand(source, command.id),
       };
     })
   );
@@ -128,14 +129,16 @@ export async function syncCommandsAsToml(
 export async function syncCommandsAsWorkflows(
   commands: CommandArtifact[],
   targetRoot: string,
-  dryRun: boolean
+  dryRun: boolean,
+  renderer?: ICommandRenderer
 ): Promise<FileSyncResult> {
+  const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("workflow");
   const rendered = await Promise.all(
     commands.map(async (command) => {
       const source = await readFile(command.path, "utf-8");
       return {
-        relativePath: `${command.id}.md`,
-        content: source.trimEnd(),
+        relativePath: `${command.id}${commandRenderer.fileExtension}`,
+        content: commandRenderer.renderCommand(source, command.id),
       };
     })
   );
@@ -146,12 +149,13 @@ export async function syncSkills(
   skills: Skill[],
   targetRoot: string,
   dryRun: boolean,
-  compatibility?: string
+  compatibility?: string,
+  renderer?: ICommandRenderer
 ): Promise<FileSyncResult> {
   let changed = false;
   const paths: string[] = [];
   for (const skill of skills) {
-    const transformedFiles = await buildSkillFiles(skill, compatibility);
+    const transformedFiles = await buildSkillFiles(skill, compatibility, renderer);
     const result = await syncRenderedFiles(resolve(targetRoot, skill.id), transformedFiles, dryRun, true);
     changed = result.changed || changed;
     paths.push(...result.paths);
@@ -163,14 +167,16 @@ export async function syncAgentsAsMarkdown(
   agents: Agent[],
   targetRoot: string,
   dryRun: boolean,
-  withFrontmatter: boolean
+  withFrontmatter: boolean,
+  renderer?: ICommandRenderer
 ): Promise<FileSyncResult> {
+  const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("opencode");
   const rendered = await Promise.all(
     agents.map(async (agent) => {
       const source = await readFile(agent.path, "utf-8");
       return {
-        relativePath: `${agent.id}.md`,
-        content: withFrontmatter ? renderAgentMarkdown(source, agent.id) : source.trimEnd(),
+        relativePath: `${agent.id}${commandRenderer.fileExtension}`,
+        content: withFrontmatter ? commandRenderer.renderCommand(source, agent.id) : source.trimEnd(),
       };
     })
   );
@@ -221,76 +227,24 @@ export function renderOpencodeMcpConfig(
   existing: Record<string, unknown>,
   servers: ApplyMcpServer[]
 ): Record<string, unknown> {
-  // Only include stdio-based servers for opencode config
-  const stdioServers = servers.filter((s): s is ApplyMcpServer & { transport: "stdio" } => s.transport === "stdio");
-  const currentMcp = isObject(existing.mcp) ? existing.mcp : {};
-  const nextMcp = {
-    ...currentMcp,
-    ...Object.fromEntries(
-      stdioServers.map((server) => [
-        server.name,
-        {
-          type: "local",
-          command: [server.command!, ...server.args!],
-          enabled: true,
-          ...(server.cwd ? { cwd: server.cwd } : {}),
-          ...(server.env && Object.keys(server.env).length > 0 ? { environment: server.env } : {}),
-        },
-      ])
-    ),
-  };
-
-  return {
-    ...existing,
-    $schema: typeof existing.$schema === "string" ? existing.$schema : "https://opencode.ai/config.json",
-    mcp: nextMcp,
-  };
+  const renderer = McpConfigRendererFactory.getRenderer("opencode");
+  return renderer.renderConfig(existing, servers);
 }
 
 export function renderSettingsMcpConfig(
   existing: Record<string, unknown>,
   servers: ApplyMcpServer[]
 ): Record<string, unknown> {
-  // Only include stdio-based servers for settings config
-  const stdioServers = servers.filter((s): s is ApplyMcpServer & { transport: "stdio" } => s.transport === "stdio");
-  const current = isObject(existing.mcpServers) ? existing.mcpServers : {};
-  return {
-    ...existing,
-    mcpServers: {
-      ...current,
-      ...Object.fromEntries(
-        stdioServers.map((server) => [
-          server.name,
-          {
-            command: server.command,
-            args: server.args,
-            ...(server.cwd ? { cwd: server.cwd } : {}),
-            ...(server.env && Object.keys(server.env).length > 0 ? { env: server.env } : {}),
-          },
-        ])
-      ),
-    },
-  };
+  const renderer = McpConfigRendererFactory.getRenderer("settings");
+  return renderer.renderConfig(existing, servers);
 }
 
 export function renderCodexMcpServers(servers: ApplyMcpServer[]): string {
-  // Only include stdio-based servers for codex config
-  const stdioServers = servers.filter((s): s is ApplyMcpServer & { transport: "stdio" } => s.transport === "stdio");
-  return stdioServers
-    .map((server) => {
-      const lines = [`[mcp_servers.${server.name}]`, `command = ${toTomlString(server.command!)}`];
-      if (server.args && server.args.length > 0) {
-        lines.push(`args = ${toTomlArray(server.args)}`);
-      }
-      if (server.cwd) {
-        lines.push(`cwd = ${toTomlString(server.cwd)}`);
-      }
-      if (server.env && Object.keys(server.env).length > 0) {
-        lines.push(`env = ${toTomlInlineTable(server.env)}`);
-      }
-      return lines.join("\n");
-    })
-    .join("\n\n");
+  const renderer = McpConfigRendererFactory.getRenderer("codex");
+  if (!renderer.renderToString) {
+    throw new Error("Codex MCP config renderer does not support renderToString()");
+  }
+  return renderer.renderToString(servers);
 }
 
 export function countUnsupportedArtifacts(
@@ -316,7 +270,8 @@ export function countUnsupportedArtifacts(
 
 async function buildSkillFiles(
   skill: Skill,
-  compatibility?: string
+  compatibility?: string,
+  renderer?: ICommandRenderer
 ): Promise<Array<{ relativePath: string; content: string }>> {
   const files = await collectFiles(skill.path);
   const out: Array<{ relativePath: string; content: string }> = [];
@@ -326,7 +281,7 @@ async function buildSkillFiles(
     const source = await readFile(filePath, "utf-8");
     out.push({
       relativePath: rel,
-      content: rel === "SKILL.md" ? renderSkillMarkdown(source, skill.id, compatibility) : source,
+      content: rel === "SKILL.md" ? renderSkillMarkdown(source, skill.id, compatibility, renderer) : source,
     });
   }
 
@@ -394,30 +349,12 @@ async function writeTextFile(filePath: string, content: string): Promise<void> {
   await writeFile(filePath, content, "utf-8");
 }
 
-function renderOpenCodeCommand(source: string, id: string): string {
+function renderSkillMarkdown(source: string, skillName: string, compatibility?: string, renderer?: ICommandRenderer): string {
   if (source.trimStart().startsWith("---")) {
     return source.trimEnd();
   }
 
-  const parsed = parseMarkdownPrompt(source, id);
-  return ["---", `description: ${parsed.description}`, "---", "", parsed.body].join("\n");
-}
-
-function renderGeminiCommand(source: string, id: string): string {
-  const parsed = parseMarkdownPrompt(source, id);
-  return [
-    `description = ${JSON.stringify(parsed.description)}`,
-    'prompt = """',
-    parsed.body.replace(/"""/g, '\\"\\"\\"'),
-    '"""',
-  ].join("\n");
-}
-
-function renderSkillMarkdown(source: string, skillName: string, compatibility?: string): string {
-  if (source.trimStart().startsWith("---")) {
-    return source.trimEnd();
-  }
-
+  void renderer; // Reserved for future platform-specific skill rendering
   const parsed = parseMarkdownPrompt(source, skillName);
   const lines = ["---", `name: ${skillName}`, `description: ${parsed.description}`];
   if (compatibility) {
@@ -425,15 +362,6 @@ function renderSkillMarkdown(source: string, skillName: string, compatibility?: 
   }
   lines.push("---", "", source.trim());
   return lines.join("\n");
-}
-
-function renderAgentMarkdown(source: string, agentName: string): string {
-  if (source.trimStart().startsWith("---")) {
-    return source.trimEnd();
-  }
-
-  const parsed = parseMarkdownPrompt(source, agentName);
-  return ["---", `name: ${agentName}`, `description: ${parsed.description}`, "---", "", parsed.body].join("\n");
 }
 
 function parseMarkdownPrompt(source: string, id: string): ParsedMarkdownPrompt {
@@ -484,18 +412,4 @@ function normalizeText(value: string): string {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function toTomlString(value: string): string {
-  return JSON.stringify(value);
-}
-
-function toTomlArray(values: string[]): string {
-  return `[${values.map((value) => toTomlString(value)).join(", ")}]`;
-}
-
-function toTomlInlineTable(values: Record<string, string>): string {
-  return `{ ${Object.entries(values)
-    .map(([key, value]) => `${key} = ${toTomlString(value)}`)
-    .join(", ")} }`;
 }
