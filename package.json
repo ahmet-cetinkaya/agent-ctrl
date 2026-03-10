@@ -40,7 +40,7 @@
     "format": "bash scripts/format.sh",
     "lint": "bash scripts/lint.sh",
     "lint:fix": "bash scripts/lint.sh --fix",
-    "bump-version": "bash scripts/bump_version.sh",
+    "release:version": "bash scripts/bump_version.sh",
     "release:tag": "bash packages/acore-scripts/src/manage-git-release-tag.sh",
     "release:npm": "npm publish --access public"
   },

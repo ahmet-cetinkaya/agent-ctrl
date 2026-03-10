@@ -98,10 +98,6 @@ esac
 
 NEW_VERSION="$MAJOR.$MINOR.$PATCH"
 
-# Show what will happen and ask for confirmation
-echo "Version bump: $CURRENT_VERSION -> $NEW_VERSION"
-ask_confirmation "Create git commit and tag?"
-
 # Generate changelog before updating version
 generate_changelog "$NEW_VERSION"
 
@@ -113,6 +109,11 @@ echo "Bumped version: $CURRENT_VERSION -> $NEW_VERSION"
 # Commit the change
 git add "$PACKAGE_JSON"
 git add CHANGELOG.md 2> /dev/null || true
+
+# Show what will happen and ask for confirmation
+echo "Version bump: $CURRENT_VERSION -> $NEW_VERSION"
+ask_confirmation "Create git commit and tag?"
+
 git commit -m "chore: bump version to $NEW_VERSION"
 
 # Create git tag
