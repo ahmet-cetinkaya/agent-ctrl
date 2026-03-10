@@ -1,0 +1,50 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [0.1.0] - 2026-03-10
+
+### Added
+- Implement SkillsMP and Smithery catalog sync with CLI integration
+- Add command and mcp ls subcommands with global path support
+- Add default global config path support using ~/.agent-ctrl
+- Add project scope and custom user config root support
+- Implement multi-platform appy integration across 8 targets
+- Implement dynamic MCP configuration management
+- Rename force to override and add artifact cleaning capability
+- Implement core application architecture and CLI foundation
+
+### Changed
+- Add IAgentScanner interface for dependency injection
+
+### Fixed
+- Add env variable placeholder resolution and filtering for MCP servers
+- Use config root as default path for apply command
+- Address all PR review issues from comprehensive review
+- Use Commander.js Option API for option conflict handling
+- Improve error handling and add resilience tests
+- Implement platform-native configuration sync with multi-artifact support
+- Consolidate Claude config to CLAUDE.md format and remove internal state
+- Add claude platform support for apply feature
+- Redact sensitive env vars in mcp ls --json
+- Validate symlinks stay within project root
+- Add path validation to init command
+- Prevent path traversal with trailing dot patterns
+- Correct codex scope resolution for trusted projects
+- Address PR review issues - error handling, types, and tests
+- Address all PR review issues
+- Address PR review comments - security, architecture, and style
+- Address code review findings for error handling and documentation
+- Align apply output with global Claude layout
+- Add missing imports to CLI index
+- Add getGlobalOptions import and fix commander usage
+- Correct import paths in presentation layer
+- Patch path traversal and command injection vulnerabilities
+
+[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.0
