@@ -5,6 +5,7 @@ Complete documentation for agent-ctrl.
 ## User Documentation
 
 - **[Commands](COMMANDS.md)** - Complete CLI command reference with examples
+- **[Configuration](CONFIGURATION.md)** - Directory structure, environment variables, and artifact types
 - **[Integrations](INTEGRATIONS.md)** - Platform-specific adapter details and configuration
 - **[Troubleshooting](TROUBLESHOOTING.md)** - Common issues and solutions
 

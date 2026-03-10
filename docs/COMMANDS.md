@@ -2,33 +2,26 @@
 
 ## Global Workflow Commands
 
-### `init [template]`
+### `init [path]`
 
-Scaffold a new project, optionally from a remote Git template.
+Initialize the agent-ctrl global configuration structure.
 
 ```bash
-# Create empty project
+# Create default config in ~/.agent-ctrl
 agent-ctrl init
 
-# Re-initialize an existing config root
+# Create config in custom location
+agent-ctrl init /path/to/config
+
+# Re-initialize an existing config root (overwrites if exists)
 agent-ctrl init --override
-
-# Clone from GitHub template
-agent-ctrl init owner/repo
-
-# Clone from GitLab
-agent-ctrl init gitlab:owner/repo
-
-# Clone from Bitbucket
-agent-ctrl init bitbucket:owner/repo
 ```
 
 **Behavior:**
 
-- Creates standard directory structure (`rules/`, `skills/`, `commands/`, `agents/`)
-- Fetches remote template using `giget`
-- Removes `.git` history from templates
-- Prompts for variable substitution (e.g., `{{ PROJECT_NAME }}`)
+- Creates standard directory structure (`rules/`, `skills/`, `commands/`, `agents/`, `mcps/`)
+- Creates `.env`, `.env.example`, and `.gitignore` for credentials
+- Fails if directory exists unless `--override` is specified
 
 ---
 
@@ -90,26 +83,6 @@ agent-ctrl apply codex
 # Use a custom platform user configuration root
 agent-ctrl apply opencode --path /custom/opencode
 ```
-
----
-
-### `build [target]`
-
-Generate static configuration files without applying.
-
-```bash
-# Build for Claude Code
-agent-ctrl build claude --output dist/claude-config.json
-
-# Build for Cursor
-agent-ctrl build cursor --output dist/.cursorrules
-```
-
-**Behavior:**
-
-- Same transformation as `apply`
-- Outputs to specified file instead of platform location
-- Useful for CI/CD pipelines and review
 
 ---
 
@@ -176,34 +149,17 @@ agent-ctrl skill update --all --refresh
 ```bash
 # List all commands
 agent-ctrl command ls
-
-# Add a command
-agent-ctrl command add explain
-
-# Add to subdirectory
-agent-ctrl command add dev/fix-lint
-
-# Remove a command
-agent-ctrl command rm explain
 ```
 
 **Location:** `commands/`
-
-**Note:** Supports recursive subdirectories for organization
 
 ---
 
 ### Agent Management
 
 ```bash
-# Add an agent persona
-agent-ctrl agent add architect
-
 # List agents
 agent-ctrl agent ls
-
-# Remove an agent
-agent-ctrl agent rm senior-dev
 ```
 
 **Location:** `agents/`
@@ -239,21 +195,6 @@ agent-ctrl mcp update --all --refresh
 **Credentials:** Loaded from `.agent-ctrl/.env` by default. `--api-key` overrides the configured key for a single command.
 
 ---
-
-## Utility Commands
-
-### `validate`
-
-Validate all artifacts and configuration.
-
-```bash
-# Validate all
-agent-ctrl validate
-
-# Validate specific artifact type
-agent-ctrl validate rules
-agent-ctrl validate skills
-```
 
 ### `version`
 
@@ -299,11 +240,11 @@ agent-ctrl rule ls --json
 
 ## Exit Codes
 
-| Code | Meaning                       |
-| ---- | ----------------------------- |
-| 0    | Success                       |
-| 1    | General error                 |
-| 2    | Validation error              |
-| 3    | Network error (SkillsMP, Git) |
-| 4    | File system error             |
-| 5    | Configuration error           |
+| Code | Meaning                                 |
+| ---- | --------------------------------------- |
+| 0    | Success                                 |
+| 1    | General error                           |
+| 2    | Validation error                        |
+| 3    | Network error (SkillsMP, Smithery, Git) |
+| 4    | File system error                       |
+| 5    | Configuration error                     |

@@ -71,8 +71,7 @@ agent-ctrl/
 │   └── presentation/
 │       └── cli/             # CLI interface
 ├── tests/                   # Test files
-├── docs/                    # Documentation
-└── CLAUDE.md                # This file
+└── docs/                    # Documentation
 ```
 
 ---

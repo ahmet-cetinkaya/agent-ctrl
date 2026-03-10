@@ -4,26 +4,28 @@
 
 ### Overview
 
-SkillsMP is a marketplace for discovering and sharing AI agent skills. agent-ctrl integrates with SkillsMP to enable seamless skill installation and updates.
+SkillsMP is a marketplace for discovering and sharing AI agent skills. agent-ctrl integrates with SkillsMP to enable seamless skill discovery, installation, and updates.
 
 ### Discovery
 
-Refresh and search scoped SkillsMP discovery windows:
-
 ```bash
-# Refresh a query scope
+# Refresh a query-based discovery scope
 agent-ctrl skill sync --query "testing"
 
-# Override the SkillsMP credential for one command
+# Refresh a category-based discovery scope
+agent-ctrl skill sync --category "productivity"
+
+# Use AI-powered search when supported
+agent-ctrl skill sync --query "code review" --ai
+
+# Override the SkillsMP API key for one command
 agent-ctrl skill sync --query "testing" --api-key "$SKILLSMP_API_KEY"
 
-# Search the synchronized cache
-agent-ctrl skill search "web" --capability development
+# Force refresh even if cache is fresh
+agent-ctrl skill sync --query "testing" --refresh
 ```
 
 ### Installation
-
-Install skills directly from SkillsMP:
 
 ```bash
 # Install by ID
@@ -41,15 +43,7 @@ agent-ctrl skill add skillsmp:git-workflow@1.2.0
 4. Tracks source for updates
 5. Validates SKILL.md standard
 
-**Credentials:**
-
-- `agent-ctrl init` creates `.agent-ctrl/.env`, `.agent-ctrl/.env.example`, and `.agent-ctrl/.gitignore`.
-- SkillsMP commands load `SKILLSMP_API_KEY` or `SKILLSMP_TOKEN` from `.agent-ctrl/.env`.
-- `--api-key` overrides the configured value for the current command only.
-
 ### Updates
-
-Keep skills up-to-date:
 
 ```bash
 # Update specific skill
@@ -61,6 +55,19 @@ agent-ctrl skill update --all
 # Refresh before checking updates
 agent-ctrl skill update --all --refresh
 ```
+
+### Search
+
+```bash
+# Search the synchronized cache
+agent-ctrl skill search "web" --capability development
+```
+
+### Credentials
+
+- `agent-ctrl init` creates `.agent-ctrl/.env`, `.agent-ctrl/.env.example`, and `.agent-ctrl/.gitignore`.
+- SkillsMP commands load `SKILLSMP_API_KEY` or `SKILLSMP_TOKEN` from `.agent-ctrl/.env`.
+- `--api-key` overrides the configured value for the current command only.
 
 ### Skill Metadata
 
@@ -89,9 +96,19 @@ Smithery provides the MCP registry used for discovery and managed MCP activation
 # Refresh the cached Smithery registry
 agent-ctrl mcp sync
 
+# Refresh with a scoped query
+agent-ctrl mcp sync --query "github"
+
 # Override the Smithery credential for one command
 agent-ctrl mcp sync --api-key "$SMITHERY_API_KEY"
 
+# Force refresh even if cache is fresh
+agent-ctrl mcp sync --refresh
+```
+
+### Search
+
+```bash
 # Search the synchronized registry
 agent-ctrl mcp search github --status unknown
 ```
@@ -177,11 +194,7 @@ npm install
 ```
 ````
 
-## Configuration
-
-Edit `config/{{ ENV }}.json` with your settings.
-
-```
+````
 
 The CLI will prompt for:
 - `PROJECT_NAME`: Display name
@@ -191,24 +204,22 @@ The CLI will prompt for:
 
 Create your own templates by following the standard directory structure:
 
-```
-
+```text
 my-agent-template/
 ├── rules/
-│ └── coding-style.md
+│   └── coding-style.md
 ├── skills/
-│ └── SKILL.md
+│   └── SKILL.md
 ├── agents/
-│ └── senior-dev.md
+│   └── senior-dev.md
 └── README.md
-
 ````
 
 Push to GitHub and share:
 
 ```bash
 agent-ctrl init yourusername/my-agent-template
-````
+```
 
 ---
 
@@ -257,15 +268,42 @@ const McpConfigSchema = z.object({
 
 ---
 
-## Future Integrations
+## Apply Platform Integration
 
-### Planned
+### Overview
 
-- [ ] **npm Registry:** Skill packages as npm modules
-- [ ] **Custom Registries:** Private skill marketplaces
-- [ ] **GitHub Actions:** CI/CD integration for artifact validation
-- [ ] **Webhook Support:** Automatic updates from remote templates
+Sync `.agent-ctrl` artifacts into native platform configurations.
 
-### Community
+### Supported Platforms
 
-Want to add integration support? See [DEVELOPMENT.md](DEVELOPMENT.md) for contribution guidelines.
+| Platform    | Command                        |
+| ----------- | ------------------------------ |
+| OpenCode    | `agent-ctrl apply opencode`    |
+| Gemini CLI  | `agent-ctrl apply gemini`      |
+| Qwen Code   | `agent-ctrl apply qwen`        |
+| Kilo        | `agent-ctrl apply kilo`        |
+| Antigravity | `agent-ctrl apply antigravity` |
+| Codex CLI   | `agent-ctrl apply codex`       |
+| Cursor      | `agent-ctrl apply cursor`      |
+| Windsurf    | `agent-ctrl apply windsurf`    |
+
+### Usage
+
+```bash
+# Apply to a platform (global/user scope by default)
+agent-ctrl apply cursor
+
+# Apply to project-based configuration
+agent-ctrl apply qwen --project
+
+# Dry run to preview changes
+agent-ctrl apply cursor --dry-run
+
+# Force override of conflicting managed content
+agent-ctrl apply cursor --override
+
+# Use custom platform configuration root
+agent-ctrl apply opencode --path /custom/opencode
+```
+
+---
