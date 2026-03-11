@@ -1,0 +1,92 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish from (defaults to latest release)"
+        required: false
+        type: string
+  repository_dispatch:
+    types: [publish]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Setup Node for npm publish
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Resolve release tag
+        id: resolve_tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_TAG: ${{ inputs.tag }}
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
+        run: |
+          set -euo pipefail
+
+          release_tag="${INPUT_TAG:-}"
+          if [ -z "$release_tag" ]; then
+            release_tag="${DISPATCH_TAG:-}"
+          fi
+          if [ -z "$release_tag" ]; then
+            release_tag="$(gh release list --limit 1 --json tagName --jq '.[0].tagName')"
+          fi
+
+          if [ -z "$release_tag" ]; then
+            echo "No release tag found to publish."
+            exit 1
+          fi
+
+          echo "tag=$release_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Download npm package asset from release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.resolve_tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release download "$RELEASE_TAG" --pattern "*.tgz" --dir .
+          ls -1 *.tgz
+
+      - name: Validate npm token
+        run: |
+          set -euo pipefail
+          if [ -z "${NPM_AUTH_TOKEN:-}" ]; then
+            echo "::error::Missing repository secret NPM_AUTH_TOKEN (or NPM_TOKEN)."
+            echo "::error::Create an npm automation token and add it as NPM_AUTH_TOKEN or NPM_TOKEN in repo secrets."
+            exit 1
+          fi
+
+      - name: Verify npm auth
+        env:
+          NODE_AUTH_TOKEN: ${{ env.NPM_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          npm whoami
+
+      - name: Publish package asset to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ env.NPM_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          package_file="$(ls -1 *.tgz | head -n 1)"
+          npm publish "$package_file" --access public
