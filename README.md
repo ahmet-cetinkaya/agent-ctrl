@@ -18,21 +18,11 @@ A centralized CLI tool for managing AI agent configurations using a **standard d
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/ahmet-cetinkaya/agent-ctrl.git
-cd agent-ctrl
+# Install from npm (global)
+npm install -g agent-ctrl-cli
 
-# Install dependencies
-bun install
-
-# Build the CLI
-bun run build
-
-# Run directly (development)
-bun run dev --help
-
-# Or run the built version
-node dist/index.js --help
+# Run CLI
+agent-ctrl --help
 ```
 
 ### Basic Usage

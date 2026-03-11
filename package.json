@@ -1,5 +1,5 @@
 {
-  "name": "agent-ctrl",
+  "name": "agent-ctrl-cli",
   "version": "0.1.0",
   "description": "A centralized CLI tool for managing AI agent configurations with standard directory-based patterns.",
   "author": "Ahmet Cetinkaya <ahmetcetinkaya@tutamail.com> (https://github.com/ahmet-cetinkaya)",
@@ -23,9 +23,7 @@
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "bin": {
-    "agent-ctrl": "./dist/index.js"
-  },
+  "bin": "./dist/index.js",
   "files": [
     "dist/",
     "README.md",
