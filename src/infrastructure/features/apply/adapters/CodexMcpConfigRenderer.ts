@@ -6,7 +6,7 @@ import { BaseMcpConfigRenderer } from "./BaseMcpConfigRenderer";
  * Renders MCP servers as TOML configuration.
  */
 export class CodexMcpConfigRenderer extends BaseMcpConfigRenderer {
-  renderConfig(): Record<string, unknown> {
+  renderConfig(_existing: Record<string, unknown>, _servers: ApplyMcpServer[]): Record<string, unknown> {
     throw new Error("Codex uses renderToString() instead of renderConfig()");
   }
 

@@ -5,10 +5,7 @@ import type { Rule } from "@/core/domain/shared/entities/Rule";
 import type { Skill } from "@/core/domain/shared/entities/Skill";
 import type { Agent } from "@/core/domain/shared/entities/Agent";
 import type { CommandArtifact } from "@/infrastructure/features/command/scanners/CommandScanner";
-import {
-  mergeManagedTextSection,
-  type ManagedTextSectionMarkers,
-} from "./ManagedTextSection";
+import { mergeManagedTextSection, type ManagedTextSectionMarkers } from "./ManagedTextSection";
 import type { ApplyMcpServer } from "./ApplySourceLoader";
 import { CommandRendererFactory } from "./CommandRendererFactory";
 import type { ICommandRenderer, ParsedMarkdownPrompt } from "./ICommandRenderer";
@@ -349,7 +346,12 @@ async function writeTextFile(filePath: string, content: string): Promise<void> {
   await writeFile(filePath, content, "utf-8");
 }
 
-function renderSkillMarkdown(source: string, skillName: string, compatibility?: string, renderer?: ICommandRenderer): string {
+function renderSkillMarkdown(
+  source: string,
+  skillName: string,
+  compatibility?: string,
+  renderer?: ICommandRenderer
+): string {
   if (source.trimStart().startsWith("---")) {
     return source.trimEnd();
   }

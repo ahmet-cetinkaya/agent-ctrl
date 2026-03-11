@@ -7,6 +7,8 @@ import { CatalogPathResolver } from "./CatalogPathResolver";
 export class CatalogOperationLogStore {
   private readonly pathResolver = new CatalogPathResolver();
 
+  constructor() {}
+
   async append(configRoot: string, entry: OperationLogEntry) {
     const { logFile } = this.pathResolver.resolveFromConfigRoot(configRoot);
     try {

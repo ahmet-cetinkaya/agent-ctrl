@@ -11,6 +11,8 @@ export interface CatalogPaths {
 }
 
 export class CatalogPathResolver {
+  constructor() {}
+
   resolveFromHomeBase(homeBase?: string): CatalogPaths {
     const configRoot = resolve(homeBase ?? process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
     return this.resolveFromConfigRoot(configRoot);

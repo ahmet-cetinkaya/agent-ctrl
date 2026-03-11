@@ -7,6 +7,10 @@ import { BaseCommandRenderer } from "./BaseCommandRenderer";
 export class GeminiCommandRenderer extends BaseCommandRenderer {
   readonly fileExtension = ".toml";
 
+  constructor() {
+    super();
+  }
+
   renderCommand(source: string, id: string): string {
     const parsed = this.parseMarkdownPrompt(source, id);
     return [

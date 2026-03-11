@@ -6,6 +6,10 @@ import { BaseMcpConfigRenderer } from "./BaseMcpConfigRenderer";
  * Renders MCP servers as JSON configuration with mcpServers key.
  */
 export class SettingsMcpConfigRenderer extends BaseMcpConfigRenderer {
+  constructor() {
+    super();
+  }
+
   renderConfig(existing: Record<string, unknown>, servers: ApplyMcpServer[]): Record<string, unknown> {
     const stdioServers = this.filterStdioServers(servers);
     const current = this.isObject(existing.mcpServers) ? existing.mcpServers : {};

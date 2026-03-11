@@ -7,11 +7,19 @@ import { CodexMcpConfigRenderer } from "./CodexMcpConfigRenderer";
  * Factory for creating platform-specific MCP config renderers.
  */
 export class McpConfigRendererFactory {
-  private static renderers = new Map<string, IMcpConfigRenderer>([
-    ["opencode", new OpenCodeMcpConfigRenderer()],
-    ["settings", new SettingsMcpConfigRenderer()],
-    ["codex", new CodexMcpConfigRenderer()],
-  ]);
+  private static renderers = McpConfigRendererFactory.createDefaultRenderers();
+
+  private static createDefaultRenderers(): Map<string, IMcpConfigRenderer> {
+    return new Map<string, IMcpConfigRenderer>([
+      ["opencode", new OpenCodeMcpConfigRenderer()],
+      ["settings", new SettingsMcpConfigRenderer()],
+      ["codex", new CodexMcpConfigRenderer()],
+    ]);
+  }
+
+  static reset(): void {
+    this.renderers = McpConfigRendererFactory.createDefaultRenderers();
+  }
 
   static getRenderer(platform: string): IMcpConfigRenderer {
     const renderer = this.renderers.get(platform);
