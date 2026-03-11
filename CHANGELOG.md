@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-03-11
+
+### Changed
+- Internal improvements and maintenance
+
 ## [0.1.0] - 2026-03-10
 
 ### Added
@@ -49,5 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct import paths in presentation layer
 - Patch path traversal and command injection vulnerabilities
 
-[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.0
