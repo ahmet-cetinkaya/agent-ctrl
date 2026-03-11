@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2026-03-10
 
 ### Added
+
 - Implement SkillsMP and Smithery catalog sync with CLI integration
 - Add command and mcp ls subcommands with global path support
 - Add default global config path support using ~/.agent-ctrl
@@ -20,9 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implement core application architecture and CLI foundation
 
 ### Changed
+
 - Add IAgentScanner interface for dependency injection
 
 ### Fixed
+
 - Add env variable placeholder resolution and filtering for MCP servers
 - Use config root as default path for apply command
 - Address all PR review issues from comprehensive review
