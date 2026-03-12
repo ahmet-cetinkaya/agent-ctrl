@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN || secrets.NPM_TOKEN }}
@@ -89,4 +90,4 @@ jobs:
         run: |
           set -euo pipefail
           package_file="$(ls -1 *.tgz | head -n 1)"
-          npm publish "$package_file" --access public
+          npm publish "$package_file" --access public --provenance
