@@ -70,7 +70,13 @@ export class CodexAdapter implements IAppyPlatformAdapter {
     fileChanges.push(...skillsResult.paths);
 
     if (target.scope === "user") {
-      const promptsResult = await syncCommandsAsMarkdown(source.commands, promptRoot, Boolean(request.dryRun));
+      const promptsResult = await syncCommandsAsMarkdown(
+        source.commands,
+        promptRoot,
+        Boolean(request.dryRun),
+        undefined,
+        ":"
+      );
       changed = promptsResult.changed || changed;
       fileChanges.push(...promptsResult.paths);
     }

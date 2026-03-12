@@ -89,14 +89,19 @@ export async function syncCommandsAsMarkdown(
   commands: CommandArtifact[],
   targetRoot: string,
   dryRun: boolean,
-  renderer?: ICommandRenderer
+  renderer?: ICommandRenderer,
+  flattenSeparator?: string
 ): Promise<FileSyncResult> {
   const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("opencode");
   const rendered = await Promise.all(
     commands.map(async (command) => {
       const source = await readFile(command.path, "utf-8");
+      const relativePath = flattenSeparator
+        ? `${command.id.replaceAll("/", flattenSeparator)}${commandRenderer.fileExtension}`
+        : `${command.id}${commandRenderer.fileExtension}`;
+
       return {
-        relativePath: `${command.id}${commandRenderer.fileExtension}`,
+        relativePath,
         content: commandRenderer.renderCommand(source, command.id),
       };
     })

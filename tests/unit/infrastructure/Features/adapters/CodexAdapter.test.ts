@@ -43,7 +43,7 @@ describe("CodexAdapter", () => {
     expect(result.scope).toBe("user");
     expect(result.configPath).toBe(resolve(userRootPath, "AGENTS.md"));
     expect(result.surface).toBe("agents-md-prompts-skills-config-toml");
-    await expect(access(resolve(userRootPath, "prompts", "dev", "fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(userRootPath, "prompts", "dev:fix-lint.md"))).resolves.toBeNull();
     expect(result.warnings).not.toContain("Codex does not have a documented apply target for commands.");
   });
 
@@ -59,6 +59,6 @@ describe("CodexAdapter", () => {
     const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
 
     expect(result.warnings).toContain("Codex does not have a documented apply target for commands.");
-    await expect(access(resolve(projectPath, ".codex", "prompts", "dev", "fix-lint.md"))).rejects.toBeDefined();
+    await expect(access(resolve(projectPath, ".codex", "prompts", "dev:fix-lint.md"))).rejects.toBeDefined();
   });
 });
