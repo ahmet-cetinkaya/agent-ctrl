@@ -6,7 +6,12 @@ import type {
   SkillsMpSkillDetails,
   SkillsMpSkillRecord,
 } from "@/core/domain/shared/interfaces/ISkillsMpClient";
-import { createMissingApiKeyError } from "../errors/CatalogErrors";
+import {
+  createMissingApiKeyError,
+  createSkillNotFoundError,
+  createSkillAccessBlockedError,
+  createSkillRepositoryNotAccessibleError,
+} from "../errors/CatalogErrors";
 
 interface SkillsMpClientOptions {
   baseUrl?: string;
@@ -157,15 +162,24 @@ export class SkillsMpClient implements ISkillsMpClient {
             },
           });
         }
+        // Slug fallback record was created but repository fetch failed
+        const repositoryUrl = slugFallbackRecord.metadata?.repository;
+        if (typeof repositoryUrl === "string") {
+          return err(createSkillRepositoryNotAccessibleError(skillId, repositoryUrl));
+        }
       }
 
       const detailUrl = exact?.sourceUrl ?? `${this.baseUrl}/skills/${skillId}`;
       const detailResponse = await this.fetchText(detailUrl, apiKey);
       if (!detailResponse.success) {
+        // Check if error is due to access blocking (403)
+        if (detailResponse.error.message.includes("403") || detailResponse.error.message.includes("blocked")) {
+          return err(createSkillAccessBlockedError(skillId));
+        }
         if (exact) {
           return ok({ ...exact, installation: exact.metadata?.installation });
         }
-        return detailResponse;
+        return err(createSkillNotFoundError(skillId, detailResponse.error.message));
       }
 
       if (this.isCloudflareBlockPage(detailResponse.data) && exact) {
@@ -442,6 +456,7 @@ export class SkillsMpClient implements ISkillsMpClient {
         raw: {
           resolver: "slug-repository-fallback",
           sourceSkillId: skillId,
+          warning: `This skill was resolved from a GitHub path format. Verify the repository exists at: ${guessedUrl}`,
         },
       },
     };
