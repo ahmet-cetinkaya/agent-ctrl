@@ -9,6 +9,18 @@
 
 A centralized CLI tool for managing AI agent configurations using a **standard directory-based configuration pattern**. Define agent behavior through rules, skills, agents, commands, and MCP servers in a structured, shareable way that works across multiple AI platforms.
 
+**Supported platforms:**
+
+![Antigravity](https://img.shields.io/badge/Antigravity-black)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-D49A5A)
+![Codex](https://img.shields.io/badge/Codex-black)
+![Cursor](https://img.shields.io/badge/Cursor-black)
+![Gemini](https://img.shields.io/badge/Gemini-4285F4)
+![KiloCode](https://img.shields.io/badge/KiloCode-F8F674)
+![OpenCode](https://img.shields.io/badge/OpenCode-black)
+![QwenCode](https://img.shields.io/badge/QwenCode-6C63F5)
+![Windsurf](https://img.shields.io/badge/Windsurf-007ACC)
+
 **Status:** 🚧 Early Development phase.
 
 ---
@@ -49,18 +61,6 @@ agent-ctrl apply claude
 
 - `init [path]` - Initialize the global configuration structure (default: `~/.agent-ctrl`).
 - `apply <platform>` - Sync local artifacts to a platform's native configuration.
-
-**Supported platforms:**
-
-![Antigravity](https://img.shields.io/badge/Antigravity-black)
-![Claude Code](https://img.shields.io/badge/Claude%20Code-D49A5A)
-![Codex](https://img.shields.io/badge/Codex-black)
-![Cursor](https://img.shields.io/badge/Cursor-black)
-![Gemini](https://img.shields.io/badge/Gemini-4285F4)
-![KiloCode](https://img.shields.io/badge/KiloCode-F8F674)
-![OpenCode](https://img.shields.io/badge/OpenCode-black)
-![QwenCode](https://img.shields.io/badge/QwenCode-6C63F5)
-![Windsurf](https://img.shields.io/badge/Windsurf-007ACC)
 
 ### Artifact Management
 
