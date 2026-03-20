@@ -152,14 +152,32 @@ export function createApplyCommand(): Command {
             console.log(`Duration: ${durationMs}ms`);
           }
 
-          if (verbose && warnings.length > 0) {
-            // Filter out common noise warnings like .gitkeep
-            const filteredWarnings = warnings.filter(
+          // Separate critical warnings (unsupported features) from noise warnings
+          const criticalWarnings = warnings.filter(
+            (w) => w.includes("does not have a documented apply target for")
+          );
+          const noiseWarnings = warnings.filter(
+            (w) => !w.includes("does not have a documented apply target for")
+          );
+
+          // Always show critical warnings about unsupported features
+          if (criticalWarnings.length > 0) {
+            console.log("\nWarnings:");
+            for (const warning of criticalWarnings) {
+              console.log(`  - ${warning}`);
+            }
+          }
+
+          // Show noise warnings only in verbose mode
+          if (verbose && noiseWarnings.length > 0) {
+            const filteredNoiseWarnings = noiseWarnings.filter(
               (w) => !w.includes("Skipped .gitkeep") && !w.includes("invalid extension")
             );
-            if (filteredWarnings.length > 0) {
-              console.log("\nWarnings:");
-              for (const warning of filteredWarnings) {
+            if (filteredNoiseWarnings.length > 0) {
+              if (criticalWarnings.length === 0) {
+                console.log("\nWarnings:");
+              }
+              for (const warning of filteredNoiseWarnings) {
                 console.log(`  - ${warning}`);
               }
             }
