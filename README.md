@@ -3,12 +3,20 @@
 # agent-ctrl
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE)
+[![NPM Downloads](https://img.shields.io/npm/dm/agent-ctrl-cli)](https://www.npmjs.com/package/agent-ctrl-cli)
 [![GitHub stars](https://img.shields.io/github/stars/ahmet-cetinkaya/agent-ctrl?style=social)](https://github.com/ahmet-cetinkaya/agent-ctrl/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/ahmet-cetinkaya/agent-ctrl?style=social)](https://github.com/ahmet-cetinkaya/agent-ctrl/network/members)
+[![GitHub contributors](https://img.shields.io/github/contributors/ahmet-cetinkaya/agent-ctrl)](https://github.com/ahmet-cetinkaya/agent-ctrl/graphs/contributors)
+[![GitHub issues](https://img.shields.io/github/issues/ahmet-cetinkaya/agent-ctrl)](https://github.com/ahmet-cetinkaya/agent-ctrl/issues)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?logo=buy-me-a-coffee&logoColor=black&style=flat)](https://ahmetcetinkaya.me/donate)
 
 A centralized CLI tool for managing AI agent configurations using a **standard directory-based configuration pattern**. Define agent behavior through rules, skills, agents, commands, and MCP servers in a structured, shareable way that works across multiple AI platforms.
 
-**Supported platforms:**
+**Download:** 
+[![NPM Release](https://img.shields.io/npm/v/agent-ctrl-cli?color=cb3837)](https://www.npmjs.com/package/agent-ctrl-cli)
+[![GitHub release](https://img.shields.io/github/v/release/ahmet-cetinkaya/agent-ctrl)](https://github.com/ahmet-cetinkaya/agent-ctrl/releases)
 
+**Supported platforms:**
 ![Antigravity](https://img.shields.io/badge/Antigravity-black)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code-D49A5A)
 ![Codex](https://img.shields.io/badge/Codex-black)
@@ -19,9 +27,8 @@ A centralized CLI tool for managing AI agent configurations using a **standard d
 ![QwenCode](https://img.shields.io/badge/QwenCode-6C63F5)
 ![Windsurf](https://img.shields.io/badge/Windsurf-007ACC)
 
-**Status:** 🚧 Early Development phase.
-
-**Core Techs:** [![Bun](https://img.shields.io/badge/Bun-000000?style=flat&logo=bun&logoColor=white)](https://bun.sh)
+**Core Techs:** 
+[![Bun](https://img.shields.io/badge/Bun-000000?style=flat&logo=bun&logoColor=white)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 
 ---
