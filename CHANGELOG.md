@@ -7,15 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-03-27
+
+### Fixed
+
+- Use markdown for command sync and rename MCP config on kilo platform
+
 ## [0.1.4] - 2026-03-20
 
 ### Fixed
+
 - Add specific error handling for skill resolution failures
 - Add detailed skill resolution errors
 
 ## [0.1.3] - 2026-03-12
 
 ### Changed
+
 - Internal improvements and maintenance
 
 ## [0.1.2] - 2026-03-12
@@ -72,7 +80,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct import paths in presentation layer
 - Patch path traversal and command injection vulnerabilities
 
-[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.1.4...HEAD
+[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.5
 [0.1.4]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.4
 [0.1.3]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.3
 [0.1.2]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.2
