@@ -12,11 +12,12 @@ import {
   renderOpencodeMcpConfig,
   resolveApplyScope,
   syncAgentsAsMarkdown,
-  syncCommandsAsWorkflows,
+  syncCommandsAsMarkdown,
   syncRulesAsFiles,
   syncSkills,
   toStatus,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
+import { CommandRendererFactory } from "@/infrastructure/features/apply/adapters/CommandRendererFactory";
 
 export class KiloAdapter implements IAppyPlatformAdapter {
   readonly platformName = "kilo" as const;
@@ -50,10 +51,12 @@ export class KiloAdapter implements IAppyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
-    const workflowsResult = await syncCommandsAsWorkflows(
+    const workflowsResult = await syncCommandsAsMarkdown(
       source.commands,
       resolve(target.configPath, "workflows"),
-      Boolean(request.dryRun)
+      Boolean(request.dryRun),
+      CommandRendererFactory.getRenderer("workflow"),
+      "-"
     );
     changed = workflowsResult.changed || changed;
     fileChanges.push(...workflowsResult.paths);
@@ -72,7 +75,7 @@ export class KiloAdapter implements IAppyPlatformAdapter {
     fileChanges.push(...agentsResult.paths);
 
     const mcpResult = await mergeJsonObjectFile(
-      resolve(target.configPath, "opencode.json"),
+      resolve(target.configPath, "kilo.json"),
       (existing) => renderOpencodeMcpConfig(existing, source.mcpServers),
       Boolean(request.dryRun)
     );

@@ -26,10 +26,10 @@ describe("KiloAdapter", () => {
     expect(result.configPath).toBe(resolve(projectPath, ".kilocode"));
     expect(result.surface).toBe("rules-workflows-skills-agents-mcp");
     await expect(access(resolve(projectPath, ".kilocode", "rules", "coding-style.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".kilocode", "workflows", "dev", "fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".kilocode", "workflows", "dev-fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "agents", "architect.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".kilocode", "opencode.json"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".kilocode", "kilo.json"))).resolves.toBeNull();
     expect(result.warnings).not.toContain("Kilo does not have a documented apply target for agents.");
     expect(result.warnings).not.toContain("Kilo does not have a documented apply target for MCP servers.");
   });
