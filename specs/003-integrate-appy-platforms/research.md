@@ -182,9 +182,8 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - Verified sources:
 - https://developers.openai.com/codex/config-basic/
 - https://developers.openai.com/codex/config-reference/
-- https://developers.openai.com/codex/custom-prompts/
 - https://developers.openai.com/codex/skills/
-- Confirmed: Codex supports layered configuration (`~/.codex/config.toml` and project `.codex/config.toml` for trusted projects), and reusable capability surfaces through skills. Custom prompts/slash-prompt files are explicitly deprecated in favor of skills.
+- Confirmed: Codex supports layered configuration (`~/.codex/config.toml` and project `.codex/config.toml` for trusted projects), and reusable capability surfaces through skills. Custom prompts are explicitly deprecated in favor of skills; commands are mapped to skill format for Codex.
 - Planning impact: Codex `appy` integration should use documented Codex config and skill-oriented customization surfaces, with deterministic precedence and trusted-project behavior.
 
 ### Cursor
@@ -283,7 +282,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 ### Codex CLI
 
 - Agents: multi-agent workflows are documented, including specialized agent orchestration behavior.
-- Commands: rich built-in slash command surface is documented; deprecated custom prompt commands remain documented for backward compatibility only.
+- Commands: deprecated custom prompt mechanism replaced by skills; commands are mapped to skill format (`SKILL.md`) for Codex apply.
 - MCPs: first-class MCP server integration with `codex mcp` commands and config-based server definitions.
 - Rules: first-class project/user rule guidance through `AGENTS.md` discovery and precedence model.
 - Skills: first-class skill system with `SKILL.md`, discovery scopes, and explicit invocation (`/skills`, `$` mention).
@@ -293,7 +292,6 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - https://developers.openai.com/codex/mcp/
 - https://developers.openai.com/codex/guides/agents-md/
 - https://developers.openai.com/codex/skills/
-- https://developers.openai.com/codex/custom-prompts/
 
 ### Cursor
 

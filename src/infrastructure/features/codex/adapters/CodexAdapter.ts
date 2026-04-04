@@ -12,7 +12,7 @@ import {
   mergeManagedTomlSection,
   renderCodexMcpServers,
   resolveApplyScope,
-  syncCommandsAsMarkdown,
+  syncCommandsAsSkills,
   syncSkills,
   toStatus,
   upsertManagedRuleDocument,
@@ -37,7 +37,7 @@ export class CodexAdapter implements IAppyPlatformAdapter {
     return {
       configPath: scope === "project" ? resolve(projectPath, "AGENTS.md") : resolve(userRoot, "AGENTS.md"),
       scope,
-      surface: "agents-md-prompts-skills-config-toml",
+      surface: "agents-md-skills-config-toml",
     };
   }
 
@@ -46,7 +46,6 @@ export class CodexAdapter implements IAppyPlatformAdapter {
     const userRoot = request.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".codex");
     const skillRoot =
       target.scope === "project" ? resolve(request.projectPath, ".agents", "skills") : resolve(userRoot, "skills");
-    const promptRoot = resolve(userRoot, "prompts");
     const configPath =
       target.scope === "project"
         ? resolve(request.projectPath, ".codex", "config.toml")
@@ -70,15 +69,9 @@ export class CodexAdapter implements IAppyPlatformAdapter {
     fileChanges.push(...skillsResult.paths);
 
     if (target.scope === "user") {
-      const promptsResult = await syncCommandsAsMarkdown(
-        source.commands,
-        promptRoot,
-        Boolean(request.dryRun),
-        undefined,
-        ":"
-      );
-      changed = promptsResult.changed || changed;
-      fileChanges.push(...promptsResult.paths);
+      const commandsAsSkillsResult = await syncCommandsAsSkills(source.commands, skillRoot, Boolean(request.dryRun));
+      changed = commandsAsSkillsResult.changed || changed;
+      fileChanges.push(...commandsAsSkillsResult.paths);
     }
 
     if (source.mcpServers.length > 0) {
@@ -98,7 +91,7 @@ export class CodexAdapter implements IAppyPlatformAdapter {
       scope: target.scope,
       surface: target.surface,
       status: toStatus(changed),
-      message: "Applied Codex guidance, prompts, skills, and MCP servers.",
+      message: "Applied Codex guidance, skills, and MCP servers.",
       fileChanges,
       warnings: [
         ...source.warnings,

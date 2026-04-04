@@ -128,6 +128,41 @@ export async function syncCommandsAsToml(
   return syncRenderedFiles(targetRoot, rendered, dryRun);
 }
 
+export async function syncCommandsAsSkills(
+  commands: CommandArtifact[],
+  targetRoot: string,
+  dryRun: boolean
+): Promise<FileSyncResult> {
+  let changed = false;
+  const paths: string[] = [];
+
+  for (const command of commands) {
+    const source = await readFile(command.path, "utf-8");
+    const skillName = command.id.replaceAll("/", "-");
+    const parsed = parseMarkdownPrompt(source, command.id);
+
+    const skillMd = ["---", `name: ${skillName}`, `description: ${parsed.description}`, "---", "", source.trim()].join(
+      "\n"
+    );
+
+    const skillDir = resolve(targetRoot, skillName);
+    const targetPath = resolve(skillDir, "SKILL.md");
+    const existing = await readTextFileOrNull(targetPath);
+
+    if (normalizeText(existing ?? "") === normalizeText(skillMd)) {
+      continue;
+    }
+
+    changed = true;
+    paths.push(targetPath);
+    if (!dryRun) {
+      await writeTextFile(targetPath, skillMd);
+    }
+  }
+
+  return { changed, paths };
+}
+
 export async function syncCommandsAsWorkflows(
   commands: CommandArtifact[],
   targetRoot: string,

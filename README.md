@@ -12,7 +12,7 @@
 
 A centralized CLI tool for managing AI agent configurations using a **standard directory-based configuration pattern**. Define agent behavior through rules, skills, agents, commands, and MCP servers in a structured, shareable way that works across multiple AI platforms.
 
-**Download:** 
+**Download:**
 [![NPM Release](https://img.shields.io/npm/v/agent-ctrl-cli?color=cb3837)](https://www.npmjs.com/package/agent-ctrl-cli)
 [![GitHub release](https://img.shields.io/github/v/release/ahmet-cetinkaya/agent-ctrl)](https://github.com/ahmet-cetinkaya/agent-ctrl/releases)
 
@@ -27,7 +27,7 @@ A centralized CLI tool for managing AI agent configurations using a **standard d
 ![QwenCode](https://img.shields.io/badge/QwenCode-6C63F5)
 ![Windsurf](https://img.shields.io/badge/Windsurf-007ACC)
 
-**Core Techs:** 
+**Core Techs:**
 [![Bun](https://img.shields.io/badge/Bun-000000?style=flat&logo=bun&logoColor=white)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 
@@ -91,7 +91,7 @@ Capabilities following the `SKILL.md` standard.
 
 #### Commands (`commands/`)
 
-Grouped command prompts or scripts.
+Grouped command prompts or scripts (mapped to skills for Codex).
 
 - `agent-ctrl command ls` - List available commands.
 

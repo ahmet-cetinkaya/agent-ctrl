@@ -42,9 +42,26 @@ describe("CodexAdapter", () => {
 
     expect(result.scope).toBe("user");
     expect(result.configPath).toBe(resolve(userRootPath, "AGENTS.md"));
-    expect(result.surface).toBe("agents-md-prompts-skills-config-toml");
-    await expect(access(resolve(userRootPath, "prompts", "dev:fix-lint.md"))).resolves.toBeNull();
+    expect(result.surface).toBe("agents-md-skills-config-toml");
+    await expect(access(resolve(userRootPath, "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
+    await expect(access(resolve(userRootPath, "skills", "dev-fix-lint", "SKILL.md"))).resolves.toBeNull();
     expect(result.warnings).not.toContain("Codex does not have a documented apply target for commands.");
+  });
+
+  it("maps commands to skills in user scope", async () => {
+    await adapter.applyAppyIntegration({
+      projectPath,
+      targetScope: "user",
+      userConfigRootPath: userRootPath,
+    });
+
+    const skillPath = resolve(userRootPath, "skills", "dev-fix-lint", "SKILL.md");
+    await expect(access(skillPath)).resolves.toBeNull();
+
+    const content = await readFile(skillPath, "utf-8");
+    expect(content).toContain("name: dev-fix-lint");
+    expect(content).toContain("description: Fix Lint");
+    expect(content).toContain("# Fix Lint");
   });
 
   it("updates only the managed block when AGENTS.md already exists", async () => {
@@ -55,10 +72,9 @@ describe("CodexAdapter", () => {
     expect(second.status).toBe("unchanged");
   });
 
-  it("keeps project-scope commands unsupported because Codex docs only define global prompts", async () => {
+  it("keeps project-scope commands unsupported", async () => {
     const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
 
     expect(result.warnings).toContain("Codex does not have a documented apply target for commands.");
-    await expect(access(resolve(projectPath, ".codex", "prompts", "dev:fix-lint.md"))).rejects.toBeDefined();
   });
 });

@@ -54,16 +54,16 @@ The CLI operates on a project-local structure that defines agent behavior:
 
 Each target platform uses a specialized adapter to sync `.agent-ctrl` artifacts into platform-specific native configuration surfaces:
 
-| Platform        | Adapter              | Strategy                                | Output surfaces                                        |
-| --------------- | -------------------- | --------------------------------------- | ------------------------------------------------------ |
-| **OpenCode**    | `OpenCodeAdapter`    | Shared guidance plus native directories | `AGENTS.md`, `.opencode/commands`, `.opencode/*`       |
-| **Gemini**      | `GeminiAdapter`      | Guidance, TOML commands, MCP settings   | `GEMINI.md`, `.gemini/commands`, `.gemini/*`           |
-| **Qwen**        | `QwenAdapter`        | Guidance plus MCP settings              | `QWEN.md`, `.qwen/settings.json`                       |
-| **Kilo**        | `KiloAdapter`        | Rules, workflows, skills                | `.kilocode/rules`, `.kilocode/workflows`               |
-| **Antigravity** | `AntigravityAdapter` | Workspace rules/workflows or global doc | `.agent/rules`, `.agent/workflows`, `GEMINI.md`        |
-| **Codex**       | `CodexAdapter`       | Shared guidance, skills, MCP config     | `AGENTS.md`, `.agents/skills`, `.codex/config.toml`    |
-| **Cursor**      | `CursorAdapter`      | Project rules and skills                | `.cursor/rules`, `.cursor/skills`                      |
-| **Windsurf**    | `WindsurfAdapter`    | Shared guidance, workflows, skills      | `AGENTS.md`, `.windsurf/workflows`, `.windsurf/skills` |
+| Platform        | Adapter              | Strategy                                                        | Output surfaces                                        |
+| --------------- | -------------------- | --------------------------------------------------------------- | ------------------------------------------------------ |
+| **OpenCode**    | `OpenCodeAdapter`    | Shared guidance plus native directories                         | `AGENTS.md`, `.opencode/commands`, `.opencode/*`       |
+| **Gemini**      | `GeminiAdapter`      | Guidance, TOML commands, MCP settings                           | `GEMINI.md`, `.gemini/commands`, `.gemini/*`           |
+| **Qwen**        | `QwenAdapter`        | Guidance plus MCP settings                                      | `QWEN.md`, `.qwen/settings.json`                       |
+| **Kilo**        | `KiloAdapter`        | Rules, workflows, skills                                        | `.kilocode/rules`, `.kilocode/workflows`               |
+| **Antigravity** | `AntigravityAdapter` | Workspace rules/workflows or global doc                         | `.agent/rules`, `.agent/workflows`, `GEMINI.md`        |
+| **Codex**       | `CodexAdapter`       | Shared guidance, skills (commands mapped to skills), MCP config | `AGENTS.md`, `.agents/skills`, `.codex/config.toml`    |
+| **Cursor**      | `CursorAdapter`      | Project rules and skills                                        | `.cursor/rules`, `.cursor/skills`                      |
+| **Windsurf**    | `WindsurfAdapter`    | Shared guidance, workflows, skills                              | `AGENTS.md`, `.windsurf/workflows`, `.windsurf/skills` |
 
 ### Adapter Interface
 
