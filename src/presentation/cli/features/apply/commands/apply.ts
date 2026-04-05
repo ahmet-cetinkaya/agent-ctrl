@@ -153,12 +153,8 @@ export function createApplyCommand(): Command {
           }
 
           // Separate critical warnings (unsupported features) from noise warnings
-          const criticalWarnings = warnings.filter(
-            (w) => w.includes("does not have a documented apply target for")
-          );
-          const noiseWarnings = warnings.filter(
-            (w) => !w.includes("does not have a documented apply target for")
-          );
+          const criticalWarnings = warnings.filter((w) => w.includes("does not have a documented apply target for"));
+          const noiseWarnings = warnings.filter((w) => !w.includes("does not have a documented apply target for"));
 
           // Always show critical warnings about unsupported features
           if (criticalWarnings.length > 0) {

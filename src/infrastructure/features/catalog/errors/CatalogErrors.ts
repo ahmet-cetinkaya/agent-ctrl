@@ -32,8 +32,8 @@ export function createSkillNotFoundError(skillRef: string, cause?: string): Erro
 export function createSkillAccessBlockedError(skillRef: string): Error {
   return new Error(
     `The SkillsMP service is blocking requests for "${skillRef}".\n\n` +
-    `Hint: The service may be restricting access from this environment.\n` +
-    `Try: agent-ctrl skill search <query> to find available skills locally.`
+      `Hint: The service may be restricting access from this environment.\n` +
+      `Try: agent-ctrl skill search <query> to find available skills locally.`
   );
 }
 
@@ -44,8 +44,8 @@ export function createSkillAccessBlockedError(skillRef: string): Error {
 export function createSkillRepositoryNotAccessibleError(skillRef: string, repositoryUrl: string): Error {
   return new Error(
     `The repository for "${skillRef}" could not be accessed.\n\n` +
-    `Expected repository: ${repositoryUrl}\n\n` +
-    `Hint: Verify the repository exists and is publicly accessible, or search ` +
-    `for an alternative skill using: agent-ctrl skill search <query>`
+      `Expected repository: ${repositoryUrl}\n\n` +
+      `Hint: Verify the repository exists and is publicly accessible, or search ` +
+      `for an alternative skill using: agent-ctrl skill search <query>`
   );
 }
