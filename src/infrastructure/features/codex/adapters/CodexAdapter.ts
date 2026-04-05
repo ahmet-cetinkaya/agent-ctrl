@@ -12,6 +12,7 @@ import {
   mergeManagedTomlSection,
   renderCodexMcpServers,
   resolveApplyScope,
+  syncAgentsAsCodexToml,
   syncCommandsAsSkills,
   syncSkills,
   toStatus,
@@ -74,6 +75,14 @@ export class CodexAdapter implements IAppyPlatformAdapter {
       fileChanges.push(...commandsAsSkillsResult.paths);
     }
 
+    if (source.agents.length > 0) {
+      const agentsDir =
+        target.scope === "project" ? resolve(request.projectPath, ".codex", "agents") : resolve(userRoot, "agents");
+      const agentsResult = await syncAgentsAsCodexToml(source.agents, agentsDir, Boolean(request.dryRun));
+      changed = agentsResult.changed || changed;
+      fileChanges.push(...agentsResult.paths);
+    }
+
     if (source.mcpServers.length > 0) {
       const mcpResult = await mergeManagedTomlSection(
         configPath,
@@ -91,11 +100,11 @@ export class CodexAdapter implements IAppyPlatformAdapter {
       scope: target.scope,
       surface: target.surface,
       status: toStatus(changed),
-      message: "Applied Codex guidance, skills, and MCP servers.",
+      message: "Applied Codex guidance, skills, agents, and MCP servers.",
       fileChanges,
       warnings: [
         ...source.warnings,
-        ...countUnsupportedArtifacts("Codex", source, target.scope === "project" ? ["commands", "agents"] : ["agents"]),
+        ...countUnsupportedArtifacts("Codex", source, target.scope === "project" ? ["commands"] : []),
       ],
     };
   }

@@ -77,4 +77,43 @@ describe("CodexAdapter", () => {
 
     expect(result.warnings).toContain("Codex does not have a documented apply target for commands.");
   });
+
+  it("syncs agents as TOML files in project scope", async () => {
+    await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+
+    const agentPath = resolve(projectPath, ".codex", "agents", "architect.toml");
+    await expect(access(agentPath)).resolves.toBeNull();
+
+    const content = await readFile(agentPath, "utf-8");
+    expect(content).toContain('name = "architect"');
+    expect(content).toContain('description = "Architect"');
+    expect(content).toContain("Be explicit");
+  });
+
+  it("syncs agents as TOML files in user scope", async () => {
+    await adapter.applyAppyIntegration({
+      projectPath,
+      targetScope: "user",
+      userConfigRootPath: userRootPath,
+    });
+
+    const agentPath = resolve(userRootPath, "agents", "architect.toml");
+    await expect(access(agentPath)).resolves.toBeNull();
+
+    const content = await readFile(agentPath, "utf-8");
+    expect(content).toContain('name = "architect"');
+    expect(content).toContain('description = "Architect"');
+  });
+
+  it("removes agents from unsupported warnings", async () => {
+    const projectResult = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    expect(projectResult.warnings).not.toContain("Codex does not have a documented apply target for agents.");
+
+    const userResult = await adapter.applyAppyIntegration({
+      projectPath,
+      targetScope: "user",
+      userConfigRootPath: userRootPath,
+    });
+    expect(userResult.warnings).not.toContain("Codex does not have a documented apply target for agents.");
+  });
 });

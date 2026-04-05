@@ -200,6 +200,37 @@ export async function syncSkills(
   return { changed, paths };
 }
 
+export async function syncAgentsAsCodexToml(
+  agents: Agent[],
+  targetRoot: string,
+  dryRun: boolean
+): Promise<FileSyncResult> {
+  let changed = false;
+  const paths: string[] = [];
+
+  for (const agent of agents) {
+    const source = await readFile(agent.path, "utf-8");
+    const parsed = parseMarkdownPrompt(source, agent.id);
+    const agentName = agent.id.replaceAll("/", "-");
+
+    const tomlContent = buildCodexAgentToml(agentName, parsed);
+    const targetPath = resolve(targetRoot, `${agentName}.toml`);
+    const existing = await readTextFileOrNull(targetPath);
+
+    if (normalizeText(existing ?? "") === normalizeText(tomlContent)) {
+      continue;
+    }
+
+    changed = true;
+    paths.push(targetPath);
+    if (!dryRun) {
+      await writeTextFile(targetPath, tomlContent);
+    }
+  }
+
+  return { changed, paths };
+}
+
 export async function syncAgentsAsMarkdown(
   agents: Agent[],
   targetRoot: string,
@@ -404,6 +435,22 @@ function renderSkillMarkdown(
   }
   lines.push("---", "", source.trim());
   return lines.join("\n");
+}
+
+function buildCodexAgentToml(name: string, parsed: ParsedMarkdownPrompt): string {
+  const lines = [
+    `name = "${escapeTomlString(name)}"`,
+    `description = "${escapeTomlString(parsed.description)}"`,
+    `developer_instructions = """`,
+    parsed.body || parsed.title,
+    `"""`,
+    "",
+  ];
+  return lines.join("\n");
+}
+
+function escapeTomlString(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
 }
 
 function parseMarkdownPrompt(source: string, id: string): ParsedMarkdownPrompt {

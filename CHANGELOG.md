@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Map commands to skills for Codex instead of using deprecated custom prompts
+- Add agent support for Codex, syncing agents as TOML files to `.codex/agents/`
 
 ## [0.1.5] - 2026-03-27
 
