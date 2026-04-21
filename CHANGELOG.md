@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-04-21
+
+### Fixed
+- Support dual config directories for vscode and cli
+
 ## [0.1.6] - 2026-04-05
 
 ### Changed
@@ -87,7 +92,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct import paths in presentation layer
 - Patch path traversal and command injection vulnerabilities
 
-[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.1.6...HEAD
+[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.7
 [0.1.6]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.6
 [0.1.5]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.5
 [0.1.4]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.4
