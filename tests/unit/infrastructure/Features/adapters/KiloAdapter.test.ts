@@ -26,12 +26,12 @@ describe("KiloAdapter", () => {
     expect(result.configPath).toContain(resolve(projectPath, ".kilo"));
     expect(result.surface).toBe("rules-workflows-skills-agents-mcp");
     await expect(access(resolve(projectPath, ".kilo", "rules", "coding-style.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".kilo", "commands", "dev-fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".kilo", "commands", "dev:fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "agents", "architect.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "kilo.json"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "rules", "coding-style.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".kilocode", "commands", "dev-fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".kilocode", "commands", "dev:fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "agents", "architect.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "kilo.json"))).resolves.toBeNull();
