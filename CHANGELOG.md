@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.7] - 2026-04-21
 
 ### Fixed
-- Support dual config directories for vscode and cli
+
+- Support dual config directories for kilo vscode and cli
 
 ## [0.1.6] - 2026-04-05
 
