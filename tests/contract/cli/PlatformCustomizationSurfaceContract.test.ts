@@ -23,7 +23,7 @@ describe("Platform customization surface contract", () => {
       claude: { path: resolve(homedir(), ".claude", "CLAUDE.md"), scope: "user" },
       gemini: { path: resolve(homedir(), ".gemini", "GEMINI.md"), scope: "user" },
       qwen: { path: resolve(homedir(), ".qwen", "QWEN.md"), scope: "user" },
-      kilo: { path: resolve(homedir(), ".kilocode"), scope: "user" },
+      kilo: { path: resolve(homedir(), ".kilo"), scope: "user" },
       antigravity: { path: resolve(homedir(), ".gemini", "GEMINI.md"), scope: "user" },
       codex: { path: resolve(homedir(), ".codex", "AGENTS.md"), scope: "user" },
       cursor: { path: resolve(homedir(), ".cursor"), scope: "user" },
