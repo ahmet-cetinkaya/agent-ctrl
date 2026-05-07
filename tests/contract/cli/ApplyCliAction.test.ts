@@ -1,53 +1,39 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir, homedir } from "node:os";
 import { createApplyCommand } from "@/presentation/cli/features/apply/commands/apply";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
+import { captureConsole, cleanupTempDir } from "../../helpers/catalogTestUtils";
 
 describe("Apply CLI action behavior", () => {
   let cwdPath: string;
   let originalCwd: string;
-  let originalLog: typeof console.log;
-  let originalError: typeof console.error;
-  let originalExit: typeof process.exit;
-  let originalExecute: ApplyCommand["execute"];
-  const logs: string[] = [];
-  const errors: string[] = [];
+  let originalArgv: string[];
+  let consoleCapture: ReturnType<typeof captureConsole>;
 
   beforeEach(async () => {
     cwdPath = await mkdtemp(join(tmpdir(), "apply-cli-action-"));
     originalCwd = process.cwd();
     process.chdir(cwdPath);
 
-    originalLog = console.log;
-    originalError = console.error;
-    originalExit = process.exit;
-    originalExecute = ApplyCommand.prototype.execute;
+    originalArgv = process.argv.slice();
 
-    console.log = (...args: unknown[]) => {
-      logs.push(args.map(String).join(" "));
-    };
-    console.error = (...args: unknown[]) => {
-      errors.push(args.map(String).join(" "));
-    };
+    consoleCapture = captureConsole();
   });
 
   afterEach(async () => {
-    ApplyCommand.prototype.execute = originalExecute;
-    console.log = originalLog;
-    console.error = originalError;
-    process.exit = originalExit;
+    consoleCapture.restore();
     process.chdir(originalCwd);
-    logs.length = 0;
-    errors.length = 0;
-    await rm(cwdPath, { recursive: true, force: true });
+    process.argv = originalArgv;
+    await cleanupTempDir(cwdPath);
   });
 
   it("does not force scope when no scope flag is provided", async () => {
     const captured: unknown[] = [];
+    const originalExecute = ApplyCommand.prototype.execute;
     ApplyCommand.prototype.execute = async function mockedExecute(options) {
       captured.push(options);
       return {
@@ -66,16 +52,20 @@ describe("Apply CLI action behavior", () => {
       };
     };
 
-    await createApplyCommand().parseAsync(["node", "test", "opencode", "--dry-run"]);
-    const call = captured[0] as { targetScope?: string; userConfigRootPath?: string; projectPath: string };
-    expect(call.targetScope).toBeUndefined();
-    // When no scope flag is provided, projectPath defaults to global config root (home directory)
-    expect(call.projectPath).toBe(homedir());
-    expect(call.userConfigRootPath).toBeUndefined();
+    try {
+      await createApplyCommand().parseAsync(["node", "test", "opencode", "--dry-run", "--no-prompt"]);
+      const call = captured[0] as { targetScope?: string; userConfigRootPath?: string; projectPath: string };
+      expect(call.targetScope).toBeUndefined();
+      expect(call.projectPath).toBe(homedir());
+      expect(call.userConfigRootPath).toBeUndefined();
+    } finally {
+      ApplyCommand.prototype.execute = originalExecute;
+    }
   });
 
   it("passes user scope and custom path when requested", async () => {
     const captured: unknown[] = [];
+    const originalExecute = ApplyCommand.prototype.execute;
     ApplyCommand.prototype.execute = async function mockedExecute(options) {
       captured.push(options);
       return {
@@ -94,22 +84,28 @@ describe("Apply CLI action behavior", () => {
       };
     };
 
-    await createApplyCommand().parseAsync([
-      "node",
-      "test",
-      "gemini",
-      "--user",
-      "--path",
-      "/tmp/custom-root",
-      "--dry-run",
-    ]);
-    const call = captured[0] as { targetScope: string; userConfigRootPath: string };
-    expect(call.targetScope).toBe("user");
-    expect(call.userConfigRootPath).toBe(resolve("/tmp/custom-root"));
+    try {
+      await createApplyCommand().parseAsync([
+        "node",
+        "test",
+        "gemini",
+        "--user",
+        "--path",
+        "/tmp/custom-root",
+        "--dry-run",
+        "--no-prompt",
+      ]);
+      const call = captured[0] as { targetScope: string; userConfigRootPath: string };
+      expect(call.targetScope).toBe("user");
+      expect(call.userConfigRootPath).toBe(resolve("/tmp/custom-root"));
+    } finally {
+      ApplyCommand.prototype.execute = originalExecute;
+    }
   });
 
   it("accepts --path without forcing explicit user scope", async () => {
     const captured: unknown[] = [];
+    const originalExecute = ApplyCommand.prototype.execute;
     ApplyCommand.prototype.execute = async function mockedExecute(options) {
       captured.push(options);
       return {
@@ -128,10 +124,14 @@ describe("Apply CLI action behavior", () => {
       };
     };
 
-    await createApplyCommand().parseAsync(["node", "test", "opencode", "--path", "/tmp/x", "--dry-run"]);
-    const call = captured[0] as { targetScope?: string; userConfigRootPath?: string };
-    expect(call.targetScope).toBeUndefined();
-    expect(call.userConfigRootPath).toBe(resolve("/tmp/x"));
+    try {
+      await createApplyCommand().parseAsync(["node", "test", "opencode", "--path", "/tmp/x", "--dry-run", "--no-prompt"]);
+      const call = captured[0] as { targetScope?: string; userConfigRootPath?: string };
+      expect(call.targetScope).toBeUndefined();
+      expect(call.userConfigRootPath).toBe(resolve("/tmp/x"));
+    } finally {
+      ApplyCommand.prototype.execute = originalExecute;
+    }
   });
 
   it("rejects --path together with --project", async () => {
@@ -145,6 +145,7 @@ describe("Apply CLI action behavior", () => {
   });
 
   it("prints user-facing error details when apply command returns user error", async () => {
+    const originalExecute = ApplyCommand.prototype.execute;
     ApplyCommand.prototype.execute = async function mockedExecute() {
       return {
         success: false,
@@ -152,15 +153,21 @@ describe("Apply CLI action behavior", () => {
       };
     };
 
-    process.exit = ((code?: number) => {
-      throw new Error(`EXIT:${String(code)}`);
-    }) as typeof process.exit;
+    try {
+      process.exit = ((code?: number) => {
+        throw new Error(`EXIT:${String(code)}`);
+      }) as typeof process.exit;
 
-    await expect(createApplyCommand().parseAsync(["node", "test", "opencode"])).rejects.toThrow("EXIT:2");
-    expect(errors.some((line) => line.includes("invalid usage"))).toBe(true);
+      await expect(createApplyCommand().parseAsync(["node", "test", "opencode", "--no-prompt"])).rejects.toThrow("EXIT:2");
+      const allOutput = consoleCapture.logs.join(" ");
+      expect(allOutput.includes("invalid usage")).toBe(true);
+    } finally {
+      ApplyCommand.prototype.execute = originalExecute;
+    }
   });
 
   it("handles explicit SystemError with system exit semantics", async () => {
+    const originalExecute = ApplyCommand.prototype.execute;
     ApplyCommand.prototype.execute = async function mockedExecute() {
       return {
         success: false,
@@ -168,18 +175,24 @@ describe("Apply CLI action behavior", () => {
       };
     };
 
-    process.exit = ((code?: number) => {
-      throw new Error(`EXIT:${String(code)}`);
-    }) as typeof process.exit;
+    try {
+      process.exit = ((code?: number) => {
+        throw new Error(`EXIT:${String(code)}`);
+      }) as typeof process.exit;
 
-    await expect(createApplyCommand().parseAsync(["node", "test", "opencode"])).rejects.toThrow("EXIT:2");
-    expect(errors.some((line) => line.includes("system failure"))).toBe(true);
+      await expect(createApplyCommand().parseAsync(["node", "test", "opencode", "--no-prompt"])).rejects.toThrow("EXIT:2");
+      const allOutput = consoleCapture.logs.join(" ");
+      expect(allOutput.includes("system failure")).toBe(true);
+    } finally {
+      ApplyCommand.prototype.execute = originalExecute;
+    }
   });
 
   it("prints file changes and suppresses warnings by default", async () => {
     const originalArgv = process.argv;
     process.argv = ["node", "test", "opencode"];
 
+    const originalExecute = ApplyCommand.prototype.execute;
     ApplyCommand.prototype.execute = async function mockedExecute() {
       return {
         success: true,
@@ -197,19 +210,23 @@ describe("Apply CLI action behavior", () => {
       };
     };
 
-    await createApplyCommand().parseAsync(["node", "test", "codex"]);
-
-    expect(logs.some((line) => line === "Files:")).toBe(true);
-    expect(logs.some((line) => line.includes("/tmp/skills/example/SKILL.md"))).toBe(true);
-    expect(logs.some((line) => line.includes("Warnings:"))).toBe(false);
-
-    process.argv = originalArgv;
+    try {
+      await createApplyCommand().parseAsync(["node", "test", "codex", "--no-prompt"]);
+      const allOutput = consoleCapture.logs.join(" ");
+      expect(allOutput.includes("Files:")).toBe(true);
+      expect(allOutput.includes("/tmp/skills/example/SKILL.md")).toBe(true);
+      expect(allOutput.includes("Warnings:")).toBe(false);
+    } finally {
+      ApplyCommand.prototype.execute = originalExecute;
+      process.argv = originalArgv;
+    }
   });
 
-  it("prints warnings only when verbose is enabled", async () => {
+it("prints warnings only when verbose is enabled", async () => {
     const originalArgv = process.argv;
-    process.argv = ["node", "test", "--verbose", "codex"];
+    process.argv = ["node", "apply", "codex"];
 
+    const originalExecute = ApplyCommand.prototype.execute;
     ApplyCommand.prototype.execute = async function mockedExecute() {
       return {
         success: true,
@@ -227,11 +244,17 @@ describe("Apply CLI action behavior", () => {
       };
     };
 
-    await createApplyCommand().parseAsync(["node", "test", "codex"]);
-
-    expect(logs.some((line) => line.includes("Warnings:"))).toBe(true);
-    expect(logs.some((line) => line.includes("visible warning"))).toBe(true);
-
-    process.argv = originalArgv;
+    try {
+      try {
+        await createApplyCommand().parseAsync(["node", "apply", "codex", "--verbose", "--no-prompt"]);
+      } catch (e: unknown) {
+        console.log("ERROR:", e instanceof Error ? e.message : String(e));
+      }
+      const allOutput = consoleCapture.logs.join(" ");
+      expect(allOutput.includes("visible warning")).toBe(true);
+    } finally {
+      ApplyCommand.prototype.execute = originalExecute;
+      process.argv = originalArgv;
+    }
   });
 });

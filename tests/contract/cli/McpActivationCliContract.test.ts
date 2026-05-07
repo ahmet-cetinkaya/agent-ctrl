@@ -43,9 +43,11 @@ describe("MCP activation CLI contract", () => {
     try {
       await createMcpCommand().parseAsync(["node", "test", "sync", "--path", configRoot]);
       await createMcpCommand().parseAsync(["node", "test", "add", "smithery:smithery/github", "--path", configRoot]);
-      expect(consoleCapture.logs.some((line) => line.includes("Activated MCP GitHub"))).toBe(true);
+      let allOutput = [...consoleCapture.logs, ...consoleCapture.stdoutWrites].join(" ");
+      expect(allOutput.includes("GitHub activated")).toBe(true);
       await createMcpCommand().parseAsync(["node", "test", "rm", "smithery/github", "--path", configRoot]);
-      expect(consoleCapture.logs.some((line) => line.includes("Deactivated MCP smithery/github"))).toBe(true);
+      allOutput = [...consoleCapture.logs, ...consoleCapture.stdoutWrites].join(" ");
+      expect(allOutput.includes("Deactivated MCP smithery/github")).toBe(true);
     } finally {
       fetchMock.restore();
       consoleCapture.restore();

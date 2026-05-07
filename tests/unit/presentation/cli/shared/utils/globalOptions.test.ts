@@ -9,6 +9,7 @@ import {
   getLegacyGlobalOptions,
   type LogOptions,
 } from '@/presentation/cli/shared/utils/globalOptions';
+import { captureConsole } from '/home/ac/Code/ahmet-cetinkaya/agent-ctrl/tests/helpers/catalogTestUtils';
 
 describe('globalOptions', () => {
   describe('getGlobalOptions', () => {
@@ -50,172 +51,104 @@ describe('globalOptions', () => {
   });
 
   describe('logVerbose', () => {
+    let consoleCapture: ReturnType<typeof captureConsole>;
+
+    beforeEach(() => {
+      consoleCapture = captureConsole();
+    });
+
+    afterEach(() => {
+      consoleCapture.restore();
+    });
+
     it('should log message when verbose and not quiet', () => {
       const options: LogOptions = { verbose: true, quiet: false };
-      const spy = console.log;
-      console.log = () => {};
-
-      let logged = false;
-      console.log = (message: string) => {
-        if (message.includes('[verbose] Test message')) {
-          logged = true;
-        }
-      };
-
       logVerbose('Test message', options);
-      console.log = spy;
-
-      expect(logged).toBe(true);
+      expect(consoleCapture.logs.some((line) => line.includes('[verbose] Test message'))).toBe(true);
     });
 
     it('should not log message when not verbose', () => {
       const options: LogOptions = { verbose: false, quiet: false };
-      const spy = console.log;
-      console.log = () => {};
-
-      let logged = false;
-      console.log = (message: string) => {
-        if (message.includes('[verbose]')) {
-          logged = true;
-        }
-      };
-
       logVerbose('Test message', options);
-      console.log = spy;
-
-      expect(logged).toBe(false);
+      expect(consoleCapture.logs.some((line) => line.includes('[verbose]'))).toBe(false);
     });
 
     it('should not log message when quiet even if verbose', () => {
       const options: LogOptions = { verbose: true, quiet: true };
-      const spy = console.log;
-      console.log = () => {};
-
-      let logged = false;
-      console.log = (message: string) => {
-        if (message.includes('[verbose]')) {
-          logged = true;
-        }
-      };
-
       logVerbose('Test message', options);
-      console.log = spy;
-
-      expect(logged).toBe(false);
+      expect(consoleCapture.logs.some((line) => line.includes('[verbose]'))).toBe(false);
     });
   });
 
   describe('logWarning', () => {
+    let consoleCapture: ReturnType<typeof captureConsole>;
+
+    beforeEach(() => {
+      consoleCapture = captureConsole();
+    });
+
+    afterEach(() => {
+      consoleCapture.restore();
+    });
+
     it('should log warning when not quiet', () => {
       const options: LogOptions = { verbose: false, quiet: false };
-      const spy = console.warn;
-      console.warn = () => {};
-
-      let logged = false;
-      console.warn = (message: string) => {
-        if (message.includes('⚠ Test warning')) {
-          logged = true;
-        }
-      };
-
       logWarning('Test warning', options);
-      console.warn = spy;
-
-      expect(logged).toBe(true);
+      expect(consoleCapture.logs.some((line) => line.includes('⚠ Test warning'))).toBe(true);
     });
 
     it('should not log warning when quiet', () => {
       const options: LogOptions = { verbose: false, quiet: true };
-      const spy = console.warn;
-      console.warn = () => {};
-
-      let logged = false;
-      console.warn = (message: string) => {
-        if (message.includes('⚠')) {
-          logged = true;
-        }
-      };
-
       logWarning('Test warning', options);
-      console.warn = spy;
-
-      expect(logged).toBe(false);
+      expect(consoleCapture.logs.some((line) => line.includes('⚠'))).toBe(false);
     });
   });
 
   describe('logSuccess', () => {
+    let consoleCapture: ReturnType<typeof captureConsole>;
+
+    beforeEach(() => {
+      consoleCapture = captureConsole();
+    });
+
+    afterEach(() => {
+      consoleCapture.restore();
+    });
+
     it('should log success message when not quiet', () => {
       const options: LogOptions = { verbose: false, quiet: false };
-      const spy = console.log;
-      console.log = () => {};
-
-      let logged = false;
-      console.log = (message: string) => {
-        if (message.includes('✓ Test success')) {
-          logged = true;
-        }
-      };
-
       logSuccess('Test success', options);
-      console.log = spy;
-
-      expect(logged).toBe(true);
+      expect(consoleCapture.logs.some((line) => line.includes('✓ Test success'))).toBe(true);
     });
 
     it('should not log success message when quiet', () => {
       const options: LogOptions = { verbose: false, quiet: true };
-      const spy = console.log;
-      console.log = () => {};
-
-      let logged = false;
-      console.log = (message: string) => {
-        if (message.includes('✓')) {
-          logged = true;
-        }
-      };
-
       logSuccess('Test success', options);
-      console.log = spy;
-
-      expect(logged).toBe(false);
+      expect(consoleCapture.logs.some((line) => line.includes('✓'))).toBe(false);
     });
   });
 
   describe('logError', () => {
+    let consoleCapture: ReturnType<typeof captureConsole>;
+
+    beforeEach(() => {
+      consoleCapture = captureConsole();
+    });
+
+    afterEach(() => {
+      consoleCapture.restore();
+    });
+
     it('should log error message when not quiet', () => {
       const options: LogOptions = { verbose: false, quiet: false };
-      const spy = console.error;
-      console.error = () => {};
-
-      let logged = false;
-      console.error = (message: string) => {
-        if (message.includes('✗ Test error')) {
-          logged = true;
-        }
-      };
-
       logError('Test error', options);
-      console.error = spy;
-
-      expect(logged).toBe(true);
+      expect(consoleCapture.logs.some((line) => line.includes('✗ Test error'))).toBe(true);
     });
 
     it('should not log error message when quiet', () => {
       const options: LogOptions = { verbose: false, quiet: true };
-      const spy = console.error;
-      console.error = () => {};
-
-      let logged = false;
-      console.error = (message: string) => {
-        if (message.includes('✗')) {
-          logged = true;
-        }
-      };
-
       logError('Test error', options);
-      console.error = spy;
-
-      expect(logged).toBe(false);
+      expect(consoleCapture.logs.some((line) => line.includes('✗'))).toBe(false);
     });
   });
 

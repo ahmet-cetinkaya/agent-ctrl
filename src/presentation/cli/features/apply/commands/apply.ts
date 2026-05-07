@@ -3,10 +3,25 @@ import { resolve } from "node:path";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
-import { getSupportedApplyPlatformsDisplay } from "@/core/domain/shared/types/SupportedApplyPlatform";
+import {
+  SUPPORTED_APPLY_PLATFORMS,
+  getSupportedApplyPlatformsDisplay,
+} from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandler";
+import { LogService } from "@/presentation/cli/shared/utils/LogService";
+import { PromptService } from "@/presentation/cli/shared/utils/PromptService";
 import { getLegacyGlobalOptions } from "@/presentation/cli/shared/utils/globalOptions";
 import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
+
+type ApplyOptions = {
+  dryRun?: boolean;
+  override?: boolean;
+  project?: boolean;
+  user?: boolean;
+  path?: string;
+  prompt?: boolean;
+  verbose?: boolean;
+};
 
 /**
  * Creates the 'apply' CLI command for syncing native platform configuration.
@@ -43,9 +58,10 @@ export function createApplyCommand(): Command {
 
   return new Command("apply")
     .description("Sync .agent-ctrl artifacts into one selected platform's native configuration")
-    .argument("<platform>", `Target platform. Supported platforms: ${supportedPlatformsDisplay}`)
+    .argument("[platform]", `Target platform. Supported platforms: ${supportedPlatformsDisplay}`)
     .option("-d, --dry-run", "Show selected-platform changes without writing files", false)
     .option("-o, --override", "Replace conflicting managed configuration with agent-ctrl state", false)
+    .option("-v, --verbose", "Show detailed output including warnings", false)
     .addOption(
       new Option("-p, --project", "Apply to project-based configuration instead of the default global user scope")
         .default(false)
@@ -58,140 +74,167 @@ export function createApplyCommand(): Command {
       false
     )
     .option("--path <path>", "Custom platform user configuration root path")
-    .action(
-      async (
-        platform: string,
-        options: { dryRun?: boolean; override?: boolean; project?: boolean; user?: boolean; path?: string }
-      ) => {
-        // Validate user-provided path for security
-        if (options.path) {
-          const pathError = validateUserPath(options.path, "--path");
-          if (pathError) {
-            console.error(`✗ ${pathError}`);
-            process.exit(1);
-          }
+    .option("--no-prompt", "Skip confirmation prompt", false)
+    .action(async (platform: string | undefined, options: ApplyOptions) => {
+      if (!platform) {
+        const selected = await PromptService.selectMany({
+          message: "Select platforms to apply:",
+          options: SUPPORTED_APPLY_PLATFORMS.map((p) => ({ value: p, label: p })),
+          required: false,
+        });
+
+        if (selected === null || typeof selected === "symbol") {
+          PromptService.cancel();
+          process.exit(0);
         }
 
-        // Resolve source path: use --path if provided, otherwise use global config root
-        // For global config, pass the parent directory (home) since ApplySourceLoader appends ".agent-ctrl"
-        const globalConfigRoot = resolveConfigRoot();
-        const isGlobalConfig = !options.path;
-        const sourcePath = isGlobalConfig
-          ? resolve(globalConfigRoot, "..") // Parent of .agent-ctrl (i.e., home directory)
-          : resolve(options.path!);
+        if (!selected || (selected as string[]).length === 0) {
+          LogService.info("No platform selected");
+          return;
+        }
 
-        const applyCommand = new ApplyCommand();
-        const userConfigRootPath = options.path ? resolve(options.path) : undefined;
-        const targetScope = options.project ? "project" : options.user ? "user" : undefined;
+        const platforms = selected as string[];
+        for (let i = 0; i < platforms.length; i++) {
+          await applyToPlatform(platforms[i], options);
+        }
+        LogService.info(`Applied to ${platforms.length} platform(s)`);
+        return;
+      }
 
-        try {
-          const result = await applyCommand.execute({
-            projectPath: sourcePath,
-            platform,
-            dryRun: options.dryRun,
-            override: options.override,
-            targetScope,
-            userConfigRootPath,
-          });
+      await applyToPlatform(platform, options);
+    });
+}
 
-          if (!result.success) {
-            if (result.error instanceof UserError || result.error instanceof SystemError) {
-              console.error(`✗ ${result.error.message}`);
-              process.exit(result.error.exitCode);
-            }
-            console.error(`✗ Unexpected error: ${result.error}`);
-            process.exit(2);
-          }
+async function applyToPlatform(platform: string, options: ApplyOptions): Promise<void> {
+  if (options.path) {
+    const pathError = validateUserPath(options.path, "--path");
+    if (pathError) {
+      PromptService.cancel(pathError);
+      process.exit(1);
+    }
+  }
 
-          const { verbose } = getLegacyGlobalOptions();
-          const {
-            platform: selectedPlatform,
-            status,
-            configPath,
-            scope,
-            surface,
-            fileChanges,
-            warnings,
-            durationMs,
-          } = result.data;
+  const globalConfigRoot = resolveConfigRoot();
+  const isGlobalConfig = !options.path;
+  const sourcePath = isGlobalConfig ? resolve(globalConfigRoot, "..") : resolve(options.path!);
 
-          if (options.dryRun) {
-            console.log(`[Dry run] Selected platform: ${selectedPlatform}`);
-            console.log(`[Dry run] Result: ${status}`);
-            console.log(`[Dry run] Scope: ${scope}`);
-            console.log(`[Dry run] Surface: ${surface}`);
-            console.log(`[Dry run] Target path: ${configPath}`);
-            if (scope === "user" && userConfigRootPath) {
-              console.log(`[Dry run] User configuration root: ${userConfigRootPath}`);
-            }
-            if (fileChanges.length > 0) {
-              console.log("[Dry run] Files:");
-              for (const filePath of fileChanges) {
-                console.log(`  - ${filePath}`);
-              }
-            }
-            console.log(`[Dry run] Estimated duration: ${durationMs}ms`);
-          } else {
-            if (status === "unchanged") {
-              console.log(`✓ ${selectedPlatform}: unchanged`);
-            } else {
-              console.log(`✓ ${selectedPlatform}: success`);
-            }
-            console.log(`Scope: ${scope}`);
-            console.log(`Surface: ${surface}`);
-            if (scope === "user" && userConfigRootPath) {
-              console.log(`User configuration root: ${userConfigRootPath}`);
-            }
-            console.log(`Configuration path: ${configPath}`);
-            if (fileChanges.length > 0) {
-              console.log("Files:");
-              for (const filePath of fileChanges) {
-                console.log(`  - ${filePath}`);
-              }
-            }
-            console.log(`Duration: ${durationMs}ms`);
-          }
+  const applyCommand = new ApplyCommand();
+  const userConfigRootPath = options.path ? resolve(options.path) : undefined;
+  const targetScope = options.project ? "project" : options.user ? "user" : undefined;
+  const usePrompt = options.prompt !== false;
 
-          // Separate critical warnings (unsupported features) from noise warnings
-          const criticalWarnings = warnings.filter((w) => w.includes("does not have a documented apply target for"));
-          const noiseWarnings = warnings.filter((w) => !w.includes("does not have a documented apply target for"));
+  if (usePrompt) {
+    LogService.intro(`Applying to ${platform}`);
 
-          // Always show critical warnings about unsupported features
-          if (criticalWarnings.length > 0) {
-            console.log("\nWarnings:");
-            for (const warning of criticalWarnings) {
-              console.log(`  - ${warning}`);
-            }
-          }
+    const confirmed = await PromptService.confirm({
+      message: `Apply configuration to ${platform}?`,
+      initial: true,
+    });
 
-          // Show noise warnings only in verbose mode
-          if (verbose && noiseWarnings.length > 0) {
-            const filteredNoiseWarnings = noiseWarnings.filter(
-              (w) => !w.includes("Skipped .gitkeep") && !w.includes("invalid extension")
-            );
-            if (filteredNoiseWarnings.length > 0) {
-              if (criticalWarnings.length === 0) {
-                console.log("\nWarnings:");
-              }
-              for (const warning of filteredNoiseWarnings) {
-                console.log(`  - ${warning}`);
-              }
-            }
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          console.error(`✗ Unexpected error applying to '${platform}': ${errorMessage}`);
-          // TODO: Add Sentry logging when available
-          // logError("Apply command unexpected error", {
-          //   error,
-          //   platform,
-          //   projectPath: resolve(process.cwd()),
-          //   targetScope,
-          //   userConfigRootPath,
-          //   errorId: ERROR_IDS.CLI_EXECUTION_FAILED,
-          // });
-          process.exit(2);
+    if (confirmed === false || confirmed === null) {
+      PromptService.cancel("Apply cancelled by user");
+      return;
+    }
+
+    if (typeof confirmed === "symbol") {
+      PromptService.cancel();
+      process.exit(0);
+    }
+  }
+
+  try {
+    if (usePrompt) {
+      PromptService.startTask("Syncing configuration");
+    }
+
+    const result = await applyCommand.execute({
+      projectPath: sourcePath,
+      platform,
+      dryRun: options.dryRun,
+      override: options.override,
+      targetScope,
+      userConfigRootPath,
+    });
+
+    if (!result.success) {
+      if (result.error instanceof UserError || result.error instanceof SystemError) {
+        LogService.error(result.error.message);
+        process.exit(result.error.exitCode);
+      }
+      LogService.error(`Unexpected error: ${result.error}`);
+      process.exit(2);
+    }
+
+    const verbose = options.verbose ?? getLegacyGlobalOptions().verbose;
+    const {
+      platform: selectedPlatform,
+      status,
+      configPath,
+      scope,
+      surface,
+      fileChanges,
+      warnings,
+      durationMs,
+    } = result.data;
+
+    if (options.dryRun) {
+      if (usePrompt) {
+        PromptService.stopTask("Dry run complete");
+      }
+      LogService.info(`Selected platform: ${selectedPlatform}`);
+      LogService.info(`Result: ${status}`);
+      LogService.info(`Scope: ${scope}`);
+      LogService.info(`Surface: ${surface}`);
+      LogService.info(`Target path: ${configPath}`);
+      if (scope === "user" && userConfigRootPath) {
+        LogService.info(`User configuration root: ${userConfigRootPath}`);
+      }
+      if (fileChanges.length > 0) {
+        LogService.note(fileChanges.join("\n"), "Files:");
+      }
+      LogService.info(`Estimated duration: ${durationMs}ms`);
+    } else {
+      if (status === "unchanged") {
+        LogService.info(`${selectedPlatform}: unchanged`);
+      } else {
+        LogService.info(`${selectedPlatform}: success`);
+      }
+      LogService.info(`Scope: ${scope}`);
+      LogService.info(`Surface: ${surface}`);
+      if (scope === "user" && userConfigRootPath) {
+        LogService.info(`User configuration root: ${userConfigRootPath}`);
+      }
+      LogService.info(`Configuration path: ${configPath}`);
+      if (fileChanges.length > 0) {
+        LogService.note(fileChanges.join("\n"), "Files:");
+      }
+      LogService.info(`Duration: ${durationMs}ms`);
+      if (usePrompt) {
+        LogService.outro(`Applied to ${selectedPlatform}`);
+      }
+    }
+
+    const criticalWarnings = warnings.filter((w) => w.includes("does not have a documented apply target for"));
+    const noiseWarnings = warnings.filter((w) => !w.includes("does not have a documented apply target for"));
+
+    if (criticalWarnings.length > 0) {
+      LogService.note(criticalWarnings.join("\n"), "Warnings:");
+    }
+
+    if (verbose && noiseWarnings.length > 0) {
+      const filteredNoiseWarnings = noiseWarnings.filter(
+        (w) => !w.includes("Skipped .gitkeep") && !w.includes("invalid extension")
+      );
+      if (filteredNoiseWarnings.length > 0) {
+        if (criticalWarnings.length === 0) {
+          LogService.note(filteredNoiseWarnings.join("\n"), "Warnings:");
         }
       }
-    );
+    }
+  } catch (error) {
+    PromptService.stopTask();
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    PromptService.cancel(`Error: ${errorMessage}`);
+    process.exit(2);
+  }
 }

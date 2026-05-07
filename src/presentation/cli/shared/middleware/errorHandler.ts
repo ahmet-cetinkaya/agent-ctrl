@@ -1,4 +1,5 @@
 import { BaseError } from "@/core/domain/shared/errors/BaseError";
+import { LogService } from "@/presentation/cli/shared/utils/LogService";
 
 export interface ErrorHandlerOptions {
   verbose?: boolean;
@@ -24,10 +25,10 @@ export class ErrorHandler {
 
   private handleBaseError(error: BaseError): never {
     if (!this.options.quiet) {
-      console.error(`✗ ${error.message}`);
+      LogService.error(error.message);
 
       if (this.options.verbose && error.stack) {
-        console.error(error.stack);
+        LogService.error(error.stack);
       }
     }
 
@@ -36,10 +37,10 @@ export class ErrorHandler {
 
   private handleGenericError(error: Error): never {
     if (!this.options.quiet) {
-      console.error(`✗ Unexpected error: ${error.message}`);
+      LogService.error(`Unexpected error: ${error.message}`);
 
       if (this.options.verbose && error.stack) {
-        console.error(error.stack);
+        LogService.error(error.stack);
       }
     }
 
@@ -48,10 +49,10 @@ export class ErrorHandler {
 
   private handleUnknownError(error: unknown): never {
     if (!this.options.quiet) {
-      console.error(`✗ Unknown error occurred`);
+      LogService.error("Unknown error occurred");
 
       if (this.options.verbose) {
-        console.error(error);
+        LogService.error(String(error));
       }
     }
 

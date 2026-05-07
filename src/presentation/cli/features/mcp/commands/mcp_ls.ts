@@ -7,6 +7,7 @@ import {
   handleQueryResult,
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
+import { LogService } from "@/presentation/cli/shared/utils/LogService";
 
 /**
  * Redacts sensitive values from environment variables for safe JSON output.
@@ -67,7 +68,7 @@ export function createMcpListCommand(): Command {
       if (targetPath) {
         const pathError = validateUserPath(targetPath, "--path");
         if (pathError) {
-          console.error(`✗ ${pathError}`);
+          LogService.error(pathError);
           process.exit(1);
         }
       }
@@ -80,7 +81,7 @@ export function createMcpListCommand(): Command {
       // Check directory access with specific error handling
       const accessResult = await handleDirectoryAccess(mcpDir, "mcps/");
       if (!accessResult.success) {
-        console.error(`✗ ${accessResult.error}`);
+        LogService.error(accessResult.error ?? "Directory access failed");
         process.exit(1);
       }
 
@@ -105,7 +106,7 @@ export function createMcpListCommand(): Command {
           catalog: catalogById.get(server.serverId),
         }));
 
-        console.log(
+        LogService.raw(
           JSON.stringify(
             {
               configRoot: configRootPath,
@@ -120,30 +121,38 @@ export function createMcpListCommand(): Command {
         return;
       }
 
+      LogService.intro("Listing MCP servers");
+
       if (servers.length === 0) {
-        console.log(`No MCP servers found in ${mcpDir}`);
+        LogService.info(`No MCP servers found in ${mcpDir}`);
       } else {
-        console.log(`MCP servers (${servers.length}):`);
-        for (const server of servers) {
-          const managed = managedById.get(server.serverId);
-          const catalog = catalogById.get(server.serverId);
-          const details = [
-            managed?.state,
-            catalog?.compatibilityState,
-            catalog?.sourceVersion ? `v${catalog.sourceVersion}` : undefined,
-          ]
-            .filter(Boolean)
-            .join(" | ");
-          console.log(`  ${server.serverId}${details ? ` (${details})` : ""}`);
-        }
+        const list = servers
+          .map((server) => {
+            const managed = managedById.get(server.serverId);
+            const catalog = catalogById.get(server.serverId);
+            const details = [
+              managed?.state,
+              catalog?.compatibilityState,
+              catalog?.sourceVersion ? `v${catalog.sourceVersion}` : undefined,
+            ]
+              .filter(Boolean)
+              .join(" | ");
+            return `  ${server.serverId}${details ? ` (${details})` : ""}`;
+          })
+          .join("\n");
+        LogService.note(list, `MCP servers (${servers.length}):`);
       }
 
       if (issues.length > 0) {
-        console.log("\nIssues:");
-        for (const issue of issues) {
-          const scope = issue.serverId ? `${issue.serverId}: ` : "";
-          console.log(`  - [${issue.severity}] ${scope}${issue.message}`);
-        }
+        LogService.note(
+          issues
+            .map((issue) => {
+              const scope = issue.serverId ? `${issue.serverId}: ` : "";
+              return `[${issue.severity}] ${scope}${issue.message}`;
+            })
+            .join("\n"),
+          "Issues:"
+        );
       }
     });
 }

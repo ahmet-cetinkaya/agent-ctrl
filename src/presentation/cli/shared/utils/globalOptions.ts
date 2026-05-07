@@ -1,4 +1,5 @@
 import type { Command } from "commander";
+import { LogService } from "@/presentation/cli/shared/utils/LogService";
 
 export interface GlobalOptions {
   verbose?: boolean;
@@ -27,7 +28,7 @@ export function getGlobalOptions(program: Command): LogOptions {
  */
 export function logVerbose(message: string, options: LogOptions): void {
   if (!options.quiet && options.verbose) {
-    console.log(`[verbose] ${message}`);
+    LogService.log(`[verbose] ${message}`);
   }
 }
 
@@ -36,7 +37,7 @@ export function logVerbose(message: string, options: LogOptions): void {
  */
 export function logWarning(message: string, options: LogOptions): void {
   if (!options.quiet) {
-    console.warn(`⚠ ${message}`);
+    LogService.warn(`⚠ ${message}`);
   }
 }
 
@@ -45,7 +46,7 @@ export function logWarning(message: string, options: LogOptions): void {
  */
 export function logSuccess(message: string, options: LogOptions): void {
   if (!options.quiet) {
-    console.log(`✓ ${message}`);
+    LogService.success(`✓ ${message}`);
   }
 }
 
@@ -54,7 +55,7 @@ export function logSuccess(message: string, options: LogOptions): void {
  */
 export function logError(message: string, options: LogOptions): void {
   if (!options.quiet) {
-    console.error(`✗ ${message}`);
+    LogService.error(`✗ ${message}`);
   }
 }
 

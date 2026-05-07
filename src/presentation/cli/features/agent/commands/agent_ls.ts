@@ -8,6 +8,7 @@ import {
   handleQueryResult,
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
+import { LogService } from "@/presentation/cli/shared/utils/LogService";
 
 export function createAgentListCommand(): Command {
   return new Command("ls")
@@ -19,7 +20,7 @@ export function createAgentListCommand(): Command {
       if (targetPath) {
         const pathError = validateUserPath(targetPath, "--path");
         if (pathError) {
-          console.error(`✗ ${pathError}`);
+          LogService.error(pathError);
           process.exit(1);
         }
       }
@@ -32,7 +33,7 @@ export function createAgentListCommand(): Command {
       // Check directory access with specific error handling
       const accessResult = await handleDirectoryAccess(agentsPath, "agents/");
       if (!accessResult.success) {
-        console.error(`✗ ${accessResult.error}`);
+        LogService.error(accessResult.error ?? "Directory access failed");
         process.exit(1);
       }
 
@@ -47,24 +48,21 @@ export function createAgentListCommand(): Command {
       const { artifacts, warnings } = result.data;
 
       if (options.json) {
-        console.log(JSON.stringify({ artifacts, warnings }, null, 2));
+        LogService.raw(JSON.stringify({ artifacts, warnings }, null, 2));
         return;
       }
 
+      LogService.intro("Listing agents");
+
       if (artifacts.length === 0) {
-        console.log("No agents found in agents/ directory");
+        LogService.info("No agents found in agents/ directory");
       } else {
-        console.log(`Agents (${artifacts.length}):`);
-        for (const artifact of artifacts) {
-          console.log(`  ${artifact.id}`);
-        }
+        const list = artifacts.map((a) => a.id).join("\n");
+        LogService.note(list, `Agents (${artifacts.length}):`);
       }
 
       if (warnings.length > 0 && !options.json) {
-        console.log("\nWarnings:");
-        for (const warning of warnings) {
-          console.log(`  - ${warning}`);
-        }
+        LogService.note(warnings.join("\n"), "Warnings:");
       }
     });
 }

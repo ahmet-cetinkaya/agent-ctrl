@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
-import { tmpdir } from "node:os";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { createRuleCommand } from "@/presentation/cli/features/rule/commands/rule";
 import { createSkillCommand } from "@/presentation/cli/features/skill/commands/skill";
 import { createAgentCommand } from "@/presentation/cli/features/agent/commands/agent";
@@ -13,53 +12,33 @@ import { ListAgentsQuery } from "@/core/application/features/agent/queries/ListA
 import { ListCommandsQuery } from "@/core/application/features/command/queries/ListCommandsQuery";
 import { ListMcpServersQuery } from "@/core/application/features/mcp/queries/ListMcpServersQuery";
 import { UserError } from "@/core/domain/shared/errors/UserError";
+import { captureConsole, cleanupTempDir, createTempConfigRoot } from "../../helpers/catalogTestUtils";
 
 describe("LS command action behavior", () => {
   let homePath: string;
   let configRootPath: string;
   let originalAgentCtrlHome: string | undefined;
-  let originalLog: typeof console.log;
-  let originalError: typeof console.error;
-  let originalExit: typeof process.exit;
-  const logs: string[] = [];
-  const errors: string[] = [];
+  let consoleCapture: ReturnType<typeof captureConsole>;
 
   beforeEach(async () => {
-    homePath = await mkdirTempDir("ls-cli-action-");
-    configRootPath = resolve(homePath, ".agent-ctrl");
+    const temp = await createTempConfigRoot("ls-cli-action-");
+    homePath = temp.baseDir;
+    configRootPath = temp.configRoot;
 
     originalAgentCtrlHome = process.env.AGENT_CTRL_HOME;
     process.env.AGENT_CTRL_HOME = homePath;
 
-    originalLog = console.log;
-    originalError = console.error;
-    originalExit = process.exit;
-
-    console.log = (...args: unknown[]) => {
-      logs.push(args.map(String).join(" "));
-    };
-    console.error = (...args: unknown[]) => {
-      errors.push(args.map(String).join(" "));
-    };
-    process.exit = ((code?: number) => {
-      throw new Error(`EXIT:${String(code)}`);
-    }) as typeof process.exit;
+    consoleCapture = captureConsole();
   });
 
   afterEach(async () => {
-    console.log = originalLog;
-    console.error = originalError;
-    process.exit = originalExit;
-    logs.length = 0;
-    errors.length = 0;
-
+    consoleCapture.restore();
     if (originalAgentCtrlHome === undefined) {
       delete process.env.AGENT_CTRL_HOME;
     } else {
       process.env.AGENT_CTRL_HOME = originalAgentCtrlHome;
     }
-
-    await rm(homePath, { recursive: true, force: true });
+    await cleanupTempDir(homePath);
   });
 
   it("renders non-json outputs for rule/skill/agent/command ls", async () => {
@@ -84,15 +63,16 @@ describe("LS command action behavior", () => {
     await createAgentCommand().parseAsync(["node", "test", "ls"]);
     await createCommandCommand().parseAsync(["node", "test", "ls"]);
 
-    expect(logs.some((line) => line.includes("Rules (1):"))).toBe(true);
-    expect(logs.some((line) => line.includes("  my-rule"))).toBe(true);
-    expect(logs.some((line) => line.includes("Skills (1):"))).toBe(true);
-    expect(logs.some((line) => line.includes("  my-skill"))).toBe(true);
-    expect(logs.some((line) => line.includes("Agents (1):"))).toBe(true);
-    expect(logs.some((line) => line.includes("  my-agent"))).toBe(true);
-    expect(logs.some((line) => line.includes("Commands (1):"))).toBe(true);
-    expect(logs.some((line) => line.includes("  explain"))).toBe(true);
-    expect(logs.some((line) => line.includes("Warnings:"))).toBe(true);
+    const allOutput = consoleCapture.logs.join(" ");
+    expect(allOutput.includes("Rules (1):")).toBe(true);
+    expect(allOutput.includes("my-rule")).toBe(true);
+    expect(allOutput.includes("Skills (1):")).toBe(true);
+    expect(allOutput.includes("my-skill")).toBe(true);
+    expect(allOutput.includes("Agents (1):")).toBe(true);
+    expect(allOutput.includes("my-agent")).toBe(true);
+    expect(allOutput.includes("Commands (1):")).toBe(true);
+    expect(allOutput.includes("explain")).toBe(true);
+    expect(allOutput.includes("Warnings:")).toBe(true);
   });
 
   it("renders json outputs for all ls commands", async () => {
@@ -132,9 +112,9 @@ describe("LS command action behavior", () => {
     await createCommandCommand().parseAsync(["node", "test", "ls", "--json"]);
     await createMcpCommand().parseAsync(["node", "test", "ls", "--json"]);
 
-    expect(logs.some((line) => line.includes("\"artifacts\""))).toBe(true);
-    expect(logs.some((line) => line.includes("\"servers\""))).toBe(true);
-    expect(logs.some((line) => line.includes("\"configRoot\""))).toBe(true);
+    expect(consoleCapture.logs.some((line) => line.includes('"artifacts"'))).toBe(true);
+    expect(consoleCapture.logs.some((line) => line.includes('"servers"'))).toBe(true);
+    expect(consoleCapture.logs.some((line) => line.includes('"configRoot"'))).toBe(true);
   });
 
   it("handles empty non-json outputs for rule/skill/agent/command ls", async () => {
@@ -148,10 +128,11 @@ describe("LS command action behavior", () => {
     await createAgentCommand().parseAsync(["node", "test", "ls"]);
     await createCommandCommand().parseAsync(["node", "test", "ls"]);
 
-    expect(logs.some((line) => line.includes("No rules found"))).toBe(true);
-    expect(logs.some((line) => line.includes("No skills found"))).toBe(true);
-    expect(logs.some((line) => line.includes("No agents found"))).toBe(true);
-    expect(logs.some((line) => line.includes("No commands found"))).toBe(true);
+    const allOutput = consoleCapture.logs.join(" ");
+    expect(allOutput.includes("No rules found")).toBe(true);
+    expect(allOutput.includes("No skills found")).toBe(true);
+    expect(allOutput.includes("No agents found")).toBe(true);
+    expect(allOutput.includes("No commands found")).toBe(true);
   });
 
   it("exits with user error code when rule/skill/agent/command queries return user errors", async () => {
@@ -189,10 +170,11 @@ describe("LS command action behavior", () => {
       }
     );
 
-    expect(errors.some((line) => line.includes("rule-failed"))).toBe(true);
-    expect(errors.some((line) => line.includes("skill-failed"))).toBe(true);
-    expect(errors.some((line) => line.includes("agent-failed"))).toBe(true);
-    expect(errors.some((line) => line.includes("command-failed"))).toBe(true);
+    const allOutput = consoleCapture.logs.join(" ");
+    expect(allOutput.includes("rule-failed")).toBe(true);
+    expect(allOutput.includes("skill-failed")).toBe(true);
+    expect(allOutput.includes("agent-failed")).toBe(true);
+    expect(allOutput.includes("command-failed")).toBe(true);
   });
 
   it("exits with fallback code for unexpected query errors in rule/skill/agent/command ls", async () => {
@@ -230,19 +212,26 @@ describe("LS command action behavior", () => {
       }
     );
 
-    expect(errors.some((line) => line.includes("Unexpected error"))).toBe(true);
+    const allOutput2 = consoleCapture.logs.join(" ");
+    expect(allOutput2.includes("Unexpected error")).toBe(true);
   });
 
   it("exits when directories are missing for rule/skill/agent/command ls", async () => {
+    await rm(resolve(configRootPath, "rules"), { recursive: true, force: true });
+    await rm(resolve(configRootPath, "skills"), { recursive: true, force: true });
+    await rm(resolve(configRootPath, "agents"), { recursive: true, force: true });
+    await rm(resolve(configRootPath, "commands"), { recursive: true, force: true });
+
     await expect(createRuleCommand().parseAsync(["node", "test", "ls"])).rejects.toThrow("EXIT:1");
     await expect(createSkillCommand().parseAsync(["node", "test", "ls"])).rejects.toThrow("EXIT:1");
     await expect(createAgentCommand().parseAsync(["node", "test", "ls"])).rejects.toThrow("EXIT:1");
     await expect(createCommandCommand().parseAsync(["node", "test", "ls"])).rejects.toThrow("EXIT:1");
 
-    expect(errors.some((line) => line.includes("rules/ directory not found"))).toBe(true);
-    expect(errors.some((line) => line.includes("skills/ directory not found"))).toBe(true);
-    expect(errors.some((line) => line.includes("agents/ directory not found"))).toBe(true);
-    expect(errors.some((line) => line.includes("commands/ directory not found"))).toBe(true);
+    const allOutput = consoleCapture.logs.join(" ");
+    expect(allOutput.includes("rules/ directory not found")).toBe(true);
+    expect(allOutput.includes("skills/ directory not found")).toBe(true);
+    expect(allOutput.includes("agents/ directory not found")).toBe(true);
+    expect(allOutput.includes("commands/ directory not found")).toBe(true);
   });
 
   it("renders non-json mcp ls output including issues", async () => {
@@ -267,21 +256,26 @@ describe("LS command action behavior", () => {
 
     await createMcpCommand().parseAsync(["node", "test", "ls"]);
 
-    expect(logs.some((line) => line.includes("MCP servers (1):"))).toBe(true);
-    expect(logs.some((line) => line.includes("  local"))).toBe(true);
-    expect(logs.some((line) => line.includes("Issues:"))).toBe(true);
+    const allOutput = consoleCapture.logs.join(" ");
+    expect(allOutput.includes("MCP servers (1):")).toBe(true);
+    expect(allOutput.includes("  local")).toBe(true);
+    expect(allOutput.includes("Issues:")).toBe(true);
   });
 
   it("renders empty non-json mcp ls output", async () => {
     await mkdir(resolve(configRootPath, "mcps"), { recursive: true });
     await createMcpCommand().parseAsync(["node", "test", "ls"]);
 
-    expect(logs.some((line) => line.includes("No MCP servers found"))).toBe(true);
+    const allOutput = consoleCapture.logs.join(" ");
+    expect(allOutput.includes("No MCP servers found")).toBe(true);
   });
 
   it("exits when mcps directory is missing", async () => {
+    await rm(resolve(configRootPath, "mcps"), { recursive: true, force: true });
+
     await expect(createMcpCommand().parseAsync(["node", "test", "ls"])).rejects.toThrow("EXIT:1");
-    expect(errors.some((line) => line.includes("mcps/ directory not found"))).toBe(true);
+    const allOutput = consoleCapture.logs.join(" ");
+    expect(allOutput.includes("mcps/ directory not found")).toBe(true);
   });
 
   it("handles mcp ls user and unexpected query errors", async () => {
@@ -303,8 +297,9 @@ describe("LS command action behavior", () => {
       }
     );
 
-    expect(errors.some((line) => line.includes("mcp-failed"))).toBe(true);
-    expect(errors.some((line) => line.includes("Unexpected error"))).toBe(true);
+    const allOutput3 = consoleCapture.logs.join(" ");
+    expect(allOutput3.includes("mcp-failed")).toBe(true);
+    expect(allOutput3.includes("Unexpected error")).toBe(true);
   });
 });
 
@@ -322,6 +317,3 @@ async function withPatchedExecute<T extends { prototype: { execute: (...args: ne
   }
 }
 
-async function mkdirTempDir(prefix: string): Promise<string> {
-  return await mkdtemp(join(tmpdir(), prefix));
-}
