@@ -48,7 +48,7 @@ export function createAgentListCommand(): Command {
       const { artifacts, warnings } = result.data;
 
       if (options.json) {
-        LogService.raw(JSON.stringify({ artifacts, warnings }, null, 2));
+        LogService.unstyled(JSON.stringify({ artifacts, warnings }, null, 2));
         return;
       }
 

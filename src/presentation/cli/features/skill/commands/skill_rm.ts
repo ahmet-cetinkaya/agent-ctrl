@@ -23,7 +23,7 @@ export function createSkillRemoveCommand(): Command {
         return;
       }
       if (options.json) {
-        LogService.raw(JSON.stringify(result.data, null, 2));
+        LogService.unstyled(JSON.stringify(result.data, null, 2));
       } else {
         LogService.success(`Deactivated skill ${result.data.managedIntegration.managedId}`);
       }

@@ -14,7 +14,7 @@ export class LogService {
     clackLog.message(message);
   }
 
-  static raw(message: string): void {
+  static unstyled(message: string): void {
     process.stdout.write(message + "\n");
   }
 

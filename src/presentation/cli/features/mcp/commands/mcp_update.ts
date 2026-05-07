@@ -30,7 +30,7 @@ export function createMcpUpdateCommand(): Command {
         return;
       }
       if (options.json) {
-        LogService.raw(JSON.stringify(result.data, null, 2));
+        LogService.unstyled(JSON.stringify(result.data, null, 2));
       } else {
         for (const line of renderLifecycleSummary(result.data)) {
           LogService.log(line);

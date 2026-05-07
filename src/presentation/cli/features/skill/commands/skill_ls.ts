@@ -69,7 +69,7 @@ export function createSkillListCommand(): Command {
       const { managedById, catalogById } = catalogState;
 
       if (options.json) {
-        LogService.raw(
+        LogService.unstyled(
           JSON.stringify(
             {
               artifacts,

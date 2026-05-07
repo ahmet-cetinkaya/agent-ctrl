@@ -39,7 +39,7 @@ export function createMcpSyncCommand(): Command {
         return;
       }
       if (options.json) {
-        LogService.raw(JSON.stringify(result.data, null, 2));
+        LogService.unstyled(JSON.stringify(result.data, null, 2));
         return;
       }
       for (const line of renderSyncReport(result.data.report)) {

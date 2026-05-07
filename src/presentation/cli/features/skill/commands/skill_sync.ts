@@ -45,7 +45,7 @@ export function createSkillSyncCommand(): Command {
         return;
       }
       if (options.json) {
-        LogService.raw(JSON.stringify(result.data, null, 2));
+        LogService.unstyled(JSON.stringify(result.data, null, 2));
         return;
       }
 

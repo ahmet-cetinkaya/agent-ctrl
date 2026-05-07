@@ -42,7 +42,7 @@ export function createMcpAddCommand(): Command {
       PromptService.stopTask("MCP activated");
 
       if (options.json) {
-        LogService.raw(JSON.stringify(result.data, null, 2));
+        LogService.unstyled(JSON.stringify(result.data, null, 2));
         return;
       }
 

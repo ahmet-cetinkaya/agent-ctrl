@@ -5,23 +5,15 @@ import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import {
   SUPPORTED_APPLY_PLATFORMS,
+  SupportedApplyPlatform,
   getSupportedApplyPlatformsDisplay,
+  getPlatformDisplayName,
 } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandler";
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
 import { PromptService } from "@/presentation/cli/shared/utils/PromptService";
 import { getLegacyGlobalOptions } from "@/presentation/cli/shared/utils/globalOptions";
 import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
-
-type ApplyOptions = {
-  dryRun?: boolean;
-  override?: boolean;
-  project?: boolean;
-  user?: boolean;
-  path?: string;
-  prompt?: boolean;
-  verbose?: boolean;
-};
 
 /**
  * Creates the 'apply' CLI command for syncing native platform configuration.
@@ -75,25 +67,24 @@ export function createApplyCommand(): Command {
     )
     .option("--path <path>", "Custom platform user configuration root path")
     .option("--no-prompt", "Skip confirmation prompt", false)
-    .action(async (platform: string | undefined, options: ApplyOptions) => {
+    .action(async (platform: string | undefined, options: any) => {
+      // Get global options that were parsed by Commander
+      if (options.verbose) {
+        process.env.DEBUG = "true";
+      }
+
       if (!platform) {
-        const selected = await PromptService.selectMany({
-          message: "Select platforms to apply:",
-          options: SUPPORTED_APPLY_PLATFORMS.map((p) => ({ value: p, label: p })),
-          required: false,
+        const selected = await PromptService.selectMany<SupportedApplyPlatform>({
+          message: "Select platforms to apply configuration to",
+          options: SUPPORTED_APPLY_PLATFORMS.map((p) => ({ value: p, label: getPlatformDisplayName(p) })),
+          required: true,
         });
 
         if (selected === null || typeof selected === "symbol") {
-          PromptService.cancel();
-          process.exit(0);
+          PromptService.handleCancellation();
         }
 
-        if (!selected || (selected as string[]).length === 0) {
-          LogService.info("No platform selected");
-          return;
-        }
-
-        const platforms = selected as string[];
+        const platforms = selected as SupportedApplyPlatform[];
         for (let i = 0; i < platforms.length; i++) {
           await applyToPlatform(platforms[i], options);
         }
@@ -105,7 +96,7 @@ export function createApplyCommand(): Command {
     });
 }
 
-async function applyToPlatform(platform: string, options: ApplyOptions): Promise<void> {
+async function applyToPlatform(platform: string, options: any): Promise<void> {
   if (options.path) {
     const pathError = validateUserPath(options.path, "--path");
     if (pathError) {
@@ -123,45 +114,52 @@ async function applyToPlatform(platform: string, options: ApplyOptions): Promise
   const targetScope = options.project ? "project" : options.user ? "user" : undefined;
   const usePrompt = options.prompt !== false;
 
+  const platformDisplay = getPlatformDisplayName(platform);
   if (usePrompt) {
-    LogService.intro(`Applying to ${platform}`);
+    LogService.intro(`Applying to ${platformDisplay}`);
 
     const confirmed = await PromptService.confirm({
-      message: `Apply configuration to ${platform}?`,
+      message: `Apply configuration to ${platformDisplay}?`,
       initial: true,
     });
 
     if (confirmed === false || confirmed === null) {
-      PromptService.cancel("Apply cancelled by user");
-      return;
+      PromptService.handleCancellation("Apply cancelled by user");
     }
 
     if (typeof confirmed === "symbol") {
-      PromptService.cancel();
-      process.exit(0);
+      PromptService.handleCancellation();
     }
   }
 
   try {
-    if (usePrompt) {
-      PromptService.startTask("Syncing configuration");
-    }
+    const result = await PromptService.withCancellation(async () => {
+      const platformDisplay = getPlatformDisplayName(platform);
+      if (usePrompt) {
+        PromptService.startTask("Syncing configuration");
+      }
 
-    const result = await applyCommand.execute({
-      projectPath: sourcePath,
-      platform,
-      dryRun: options.dryRun,
-      override: options.override,
-      targetScope,
-      userConfigRootPath,
+      return await applyCommand.execute({
+        projectPath: sourcePath,
+        platform: platformDisplay,
+        dryRun: options.dryRun,
+        override: options.override,
+        targetScope,
+        userConfigRootPath,
+      });
     });
 
+    if (!result) {
+      return;
+    }
+
     if (!result.success) {
+      const platformDisplay = getPlatformDisplayName(platform);
       if (result.error instanceof UserError || result.error instanceof SystemError) {
-        LogService.error(result.error.message);
+        LogService.error(`[${platformDisplay}] ${result.error.message} (Path: ${sourcePath})`);
         process.exit(result.error.exitCode);
       }
-      LogService.error(`Unexpected error: ${result.error}`);
+      LogService.error(`[${platformDisplay}] Unexpected error: ${result.error} (Path: ${sourcePath})`);
       process.exit(2);
     }
 
@@ -178,63 +176,46 @@ async function applyToPlatform(platform: string, options: ApplyOptions): Promise
     } = result.data;
 
     if (options.dryRun) {
-      if (usePrompt) {
-        PromptService.stopTask("Dry run complete");
-      }
+      if (usePrompt) PromptService.stopTask("Dry run complete");
+
       LogService.info(`Selected platform: ${selectedPlatform}`);
       LogService.info(`Result: ${status}`);
       LogService.info(`Scope: ${scope}`);
       LogService.info(`Surface: ${surface}`);
       LogService.info(`Target path: ${configPath}`);
-      if (scope === "user" && userConfigRootPath) {
-        LogService.info(`User configuration root: ${userConfigRootPath}`);
-      }
-      if (fileChanges.length > 0) {
-        LogService.note(fileChanges.join("\n"), "Files:");
-      }
+      if (scope === "user" && userConfigRootPath) LogService.info(`User configuration root: ${userConfigRootPath}`);
+      if (fileChanges.length > 0) LogService.note(fileChanges.join("\n"), "Files:");
       LogService.info(`Estimated duration: ${durationMs}ms`);
     } else {
-      if (status === "unchanged") {
-        LogService.info(`${selectedPlatform}: unchanged`);
-      } else {
-        LogService.info(`${selectedPlatform}: success`);
-      }
+      if (status === "unchanged") LogService.info(`${selectedPlatform}: unchanged`);
+      else LogService.info(`${selectedPlatform}: success`);
+
       LogService.info(`Scope: ${scope}`);
       LogService.info(`Surface: ${surface}`);
-      if (scope === "user" && userConfigRootPath) {
-        LogService.info(`User configuration root: ${userConfigRootPath}`);
-      }
+      if (scope === "user" && userConfigRootPath) LogService.info(`User configuration root: ${userConfigRootPath}`);
+
       LogService.info(`Configuration path: ${configPath}`);
-      if (fileChanges.length > 0) {
-        LogService.note(fileChanges.join("\n"), "Files:");
-      }
+      if (fileChanges.length > 0) LogService.note(fileChanges.join("\n"), "Files:");
+
       LogService.info(`Duration: ${durationMs}ms`);
-      if (usePrompt) {
-        LogService.outro(`Applied to ${selectedPlatform}`);
-      }
+      if (usePrompt) LogService.outro(`Applied to ${selectedPlatform}`);
     }
 
     const criticalWarnings = warnings.filter((w) => w.includes("does not have a documented apply target for"));
     const noiseWarnings = warnings.filter((w) => !w.includes("does not have a documented apply target for"));
 
-    if (criticalWarnings.length > 0) {
-      LogService.note(criticalWarnings.join("\n"), "Warnings:");
-    }
+    if (criticalWarnings.length > 0) LogService.note(criticalWarnings.join("\n"), "Warnings:");
 
     if (verbose && noiseWarnings.length > 0) {
       const filteredNoiseWarnings = noiseWarnings.filter(
         (w) => !w.includes("Skipped .gitkeep") && !w.includes("invalid extension")
       );
-      if (filteredNoiseWarnings.length > 0) {
-        if (criticalWarnings.length === 0) {
-          LogService.note(filteredNoiseWarnings.join("\n"), "Warnings:");
-        }
-      }
+      if (filteredNoiseWarnings.length > 0 && criticalWarnings.length === 0)
+        LogService.note(filteredNoiseWarnings.join("\n"), "Warnings:");
     }
   } catch (error) {
-    PromptService.stopTask();
     const errorMessage = error instanceof Error ? error.message : String(error);
-    PromptService.cancel(`Error: ${errorMessage}`);
+    LogService.error(`Error: ${errorMessage}`);
     process.exit(2);
   }
 }

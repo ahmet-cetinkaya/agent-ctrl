@@ -43,7 +43,7 @@ export function createSkillAddCommand(): Command {
       PromptService.stopTask("Skill activated");
 
       if (options.json) {
-        LogService.raw(JSON.stringify(result.data, null, 2));
+        LogService.unstyled(JSON.stringify(result.data, null, 2));
         return;
       }
 

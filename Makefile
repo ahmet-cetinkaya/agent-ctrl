@@ -12,11 +12,26 @@ build:
 	bun run build
 
 # Build and verify type correctness
-.PHONY: build:check
-build:check:
+.PHONY: build-check
+build-check:
 	@echo "Building and type-checking agent-ctrl CLI..."
 	bun run build
 	bun run lint
+
+# Formatting
+.PHONY: format
+format:
+	bun run format
+
+# Linting
+.PHONY: lint
+lint:
+	bun run lint
+
+# Testing
+.PHONY: test
+test:
+	bun test
 
 # Remove build artifacts
 .PHONY: clean

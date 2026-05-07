@@ -38,7 +38,7 @@ export function createMcpSearchCommand(): Command {
 
       const { items, registry, report } = result.data;
       if (options.json) {
-        LogService.raw(JSON.stringify({ items, registry, report }, null, 2));
+        LogService.unstyled(JSON.stringify({ items, registry, report }, null, 2));
         return;
       }
 

@@ -10,7 +10,26 @@ export const SUPPORTED_APPLY_PLATFORMS = [
   "windsurf",
 ] as const;
 
+export const PLATFORM_DISPLAY_NAMES: Record<SupportedApplyPlatform, string> = {
+  antigravity: "Antigravity",
+  claude: "Claude Desktop",
+  codex: "Codex",
+  cursor: "Cursor",
+  gemini: "Gemini",
+  kilo: "Kilo",
+  opencode: "OpenCode",
+  qwen: "Qwen",
+  windsurf: "Windsurf",
+};
+
 export type SupportedApplyPlatform = (typeof SUPPORTED_APPLY_PLATFORMS)[number];
+
+export function getPlatformDisplayName(platform: string): string {
+  if (isSupportedApplyPlatform(platform)) {
+    return PLATFORM_DISPLAY_NAMES[platform];
+  }
+  return platform.charAt(0).toUpperCase() + platform.slice(1);
+}
 
 export function isSupportedApplyPlatform(value: string): value is SupportedApplyPlatform {
   return SUPPORTED_APPLY_PLATFORMS.includes(value as SupportedApplyPlatform);

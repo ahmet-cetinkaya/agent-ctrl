@@ -106,7 +106,7 @@ export function createMcpListCommand(): Command {
           catalog: catalogById.get(server.serverId),
         }));
 
-        LogService.raw(
+        LogService.unstyled(
           JSON.stringify(
             {
               configRoot: configRootPath,
