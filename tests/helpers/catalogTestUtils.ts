@@ -45,26 +45,49 @@ export function installMockFetch(routes: Array<{ match: (url: URL) => boolean; h
 export function captureConsole(): {
   logs: string[];
   errors: string[];
+  stdoutWrites: string[];
+  stderrWrites: string[];
   restore: () => void;
 } {
   const originalLog = console.log;
   const originalError = console.error;
+  const originalStdoutWrite = process.stdout.write;
+  const originalStderrWrite = process.stderr.write;
   const logs: string[] = [];
   const errors: string[] = [];
+  const stdoutWrites: string[] = [];
+  const stderrWrites: string[] = [];
 
   console.log = (...args: unknown[]) => {
-    logs.push(args.map(String).join(" "));
+    const message = args.map(String).join(" ");
+    logs.push(message);
   };
   console.error = (...args: unknown[]) => {
-    errors.push(args.map(String).join(" "));
+    const message = args.map(String).join(" ");
+    errors.push(message);
   };
+  process.stdout.write = ((chunk: string | Buffer) => {
+    stdoutWrites.push(Buffer.from(chunk).toString());
+    return true;
+  }) as typeof process.stdout.write;
+  process.stderr.write = ((chunk: string | Buffer) => {
+    stderrWrites.push(Buffer.from(chunk).toString());
+    return true;
+  }) as typeof process.stderr.write;
 
   return {
-    logs,
+    get logs() {
+      const combined = [...logs, ...stdoutWrites, ...errors, ...stderrWrites];
+      return combined.map(String);
+    },
     errors,
+    stdoutWrites,
+    stderrWrites,
     restore: () => {
       console.log = originalLog;
       console.error = originalError;
+      process.stdout.write = originalStdoutWrite;
+      process.stderr.write = originalStderrWrite;
     },
   };
 }

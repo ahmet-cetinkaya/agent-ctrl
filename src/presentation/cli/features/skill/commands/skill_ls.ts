@@ -7,6 +7,7 @@ import {
   handleQueryResult,
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
+import { LogService } from "@/presentation/cli/shared/utils/LogService";
 
 /**
  * Creates the 'skill ls' CLI subcommand for listing all skills in the project.
@@ -39,7 +40,7 @@ export function createSkillListCommand(): Command {
       if (targetPath) {
         const pathError = validateUserPath(targetPath, "--path");
         if (pathError) {
-          console.error(`✗ ${pathError}`);
+          LogService.error(pathError);
           process.exit(1);
         }
       }
@@ -52,7 +53,7 @@ export function createSkillListCommand(): Command {
       // Check directory access with specific error handling
       const accessResult = await handleDirectoryAccess(skillsPath, "skills/");
       if (!accessResult.success) {
-        console.error(`✗ ${accessResult.error}`);
+        LogService.error(accessResult.error ?? "Directory access failed");
         process.exit(1);
       }
 
@@ -68,7 +69,7 @@ export function createSkillListCommand(): Command {
       const { managedById, catalogById } = catalogState;
 
       if (options.json) {
-        console.log(
+        LogService.raw(
           JSON.stringify(
             {
               artifacts,
@@ -86,29 +87,30 @@ export function createSkillListCommand(): Command {
         return;
       }
 
+      LogService.intro("Listing skills");
+
       if (artifacts.length === 0) {
-        console.log("No skills found in skills/ directory");
+        LogService.info("No skills found in skills/ directory");
       } else {
-        console.log(`Skills (${artifacts.length}):`);
-        for (const artifact of artifacts) {
-          const managed = managedById.get(artifact.id);
-          const catalog = catalogById.get(artifact.id);
-          const details = [
-            managed?.state,
-            catalog?.compatibilityState,
-            catalog?.sourceVersion ? `v${catalog.sourceVersion}` : undefined,
-          ]
-            .filter(Boolean)
-            .join(" | ");
-          console.log(`  ${artifact.id}${details ? ` (${details})` : ""}`);
-        }
+        const list = artifacts
+          .map((artifact) => {
+            const managed = managedById.get(artifact.id);
+            const catalog = catalogById.get(artifact.id);
+            const details = [
+              managed?.state,
+              catalog?.compatibilityState,
+              catalog?.sourceVersion ? `v${catalog.sourceVersion}` : undefined,
+            ]
+              .filter(Boolean)
+              .join(" | ");
+            return `  ${artifact.id}${details ? ` (${details})` : ""}`;
+          })
+          .join("\n");
+        LogService.note(list, `Skills (${artifacts.length}):`);
       }
 
       if (warnings.length > 0 && !options.json) {
-        console.log("\nWarnings:");
-        for (const warning of warnings) {
-          console.log(`  - ${warning}`);
-        }
+        LogService.note(warnings.join("\n"), "Warnings:");
       }
     });
 }

@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { RemoveMcpCommand } from "@/core/application/features/mcp/commands/RemoveMcpCommand";
 import { handleQueryResult } from "@/presentation/cli/shared/handlers/resultHandler";
+import { LogService } from "@/presentation/cli/shared/utils/LogService";
 import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 export function createMcpRemoveCommand(): Command {
@@ -10,6 +11,7 @@ export function createMcpRemoveCommand(): Command {
     .option("-j, --json", "Output as JSON")
     .option("--path <value>", "Configuration root path")
     .action(async (ref: string, options: Record<string, string | boolean | undefined>) => {
+      LogService.intro("Deactivating MCP");
       const command = new RemoveMcpCommand();
       const result = await command.execute({
         configRoot: resolveConfigRoot(options.path as string | undefined),
@@ -21,9 +23,9 @@ export function createMcpRemoveCommand(): Command {
         return;
       }
       if (options.json) {
-        console.log(JSON.stringify(result.data, null, 2));
-        return;
+        LogService.raw(JSON.stringify(result.data, null, 2));
+      } else {
+        LogService.success(`Deactivated MCP ${result.data.managedIntegration.managedId}`);
       }
-      console.log(`Deactivated MCP ${result.data.managedIntegration.managedId}`);
     });
 }

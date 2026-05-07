@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { RemoveSkillCommand } from "@/core/application/features/skill/commands/RemoveSkillCommand";
 import { handleQueryResult } from "@/presentation/cli/shared/handlers/resultHandler";
+import { LogService } from "@/presentation/cli/shared/utils/LogService";
 import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 export function createSkillRemoveCommand(): Command {
@@ -10,6 +11,7 @@ export function createSkillRemoveCommand(): Command {
     .option("-j, --json", "Output as JSON")
     .option("--path <value>", "Configuration root path")
     .action(async (ref: string, options: Record<string, string | boolean | undefined>) => {
+      LogService.intro("Deactivating skill");
       const command = new RemoveSkillCommand();
       const result = await command.execute({
         configRoot: resolveConfigRoot(options.path as string | undefined),
@@ -21,9 +23,9 @@ export function createSkillRemoveCommand(): Command {
         return;
       }
       if (options.json) {
-        console.log(JSON.stringify(result.data, null, 2));
-        return;
+        LogService.raw(JSON.stringify(result.data, null, 2));
+      } else {
+        LogService.success(`Deactivated skill ${result.data.managedIntegration.managedId}`);
       }
-      console.log(`Deactivated skill ${result.data.managedIntegration.managedId}`);
     });
 }

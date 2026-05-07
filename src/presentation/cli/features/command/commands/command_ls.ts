@@ -7,6 +7,7 @@ import {
   handleQueryResult,
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
+import { LogService } from "@/presentation/cli/shared/utils/LogService";
 
 /**
  * Creates the 'command ls' CLI subcommand for listing all commands in the project.
@@ -39,7 +40,7 @@ export function createCommandListCommand(): Command {
       if (targetPath) {
         const pathError = validateUserPath(targetPath, "--path");
         if (pathError) {
-          console.error(`✗ ${pathError}`);
+          LogService.error(pathError);
           process.exit(1);
         }
       }
@@ -52,7 +53,7 @@ export function createCommandListCommand(): Command {
       // Check directory access with specific error handling
       const accessResult = await handleDirectoryAccess(commandsPath, "commands/");
       if (!accessResult.success) {
-        console.error(`✗ ${accessResult.error}`);
+        LogService.error(accessResult.error ?? "Directory access failed");
         process.exit(1);
       }
 
@@ -67,24 +68,21 @@ export function createCommandListCommand(): Command {
       const { artifacts, warnings } = result.data;
 
       if (options.json) {
-        console.log(JSON.stringify({ artifacts, warnings }, null, 2));
+        LogService.raw(JSON.stringify({ artifacts, warnings }, null, 2));
         return;
       }
 
+      LogService.intro("Listing commands");
+
       if (artifacts.length === 0) {
-        console.log("No commands found in commands/ directory");
+        LogService.info("No commands found in commands/ directory");
       } else {
-        console.log(`Commands (${artifacts.length}):`);
-        for (const artifact of artifacts) {
-          console.log(`  ${artifact.id}`);
-        }
+        const list = artifacts.map((a) => a.id).join("\n");
+        LogService.note(list, `Commands (${artifacts.length}):`);
       }
 
       if (warnings.length > 0) {
-        console.log("\nWarnings:");
-        for (const warning of warnings) {
-          console.log(`  - ${warning}`);
-        }
+        LogService.note(warnings.join("\n"), "Warnings:");
       }
     });
 }

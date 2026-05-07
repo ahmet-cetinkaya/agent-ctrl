@@ -40,8 +40,9 @@ describe("Registry update CLI contract", () => {
       mcpVersion = "1.1.0";
       await createSkillCommand().parseAsync(["node", "test", "update", "--all", "--refresh", "--path", configRoot]);
       await createMcpCommand().parseAsync(["node", "test", "update", "--all", "--refresh", "--path", configRoot]);
-      expect(consoleCapture.logs.some((line) => line.includes("Updated 1 skill"))).toBe(true);
-      expect(consoleCapture.logs.some((line) => line.includes("Updated 1 MCP"))).toBe(true);
+      const allOutput = [...consoleCapture.logs, ...consoleCapture.stdoutWrites].join(" ");
+      expect(allOutput.includes("Updated 1 skill")).toBe(true);
+      expect(allOutput.includes("Updated 1 MCP")).toBe(true);
     } finally {
       fetchMock.restore();
       consoleCapture.restore();

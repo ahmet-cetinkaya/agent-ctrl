@@ -11,6 +11,7 @@ describe("Init CLI action behavior", () => {
   let originalLog: typeof console.log;
   let originalError: typeof console.error;
   let originalExit: typeof process.exit;
+  let originalStdoutWrite: typeof process.stdout.write;
   const logs: string[] = [];
   const errors: string[] = [];
 
@@ -19,6 +20,7 @@ describe("Init CLI action behavior", () => {
     originalLog = console.log;
     originalError = console.error;
     originalExit = process.exit;
+    originalStdoutWrite = process.stdout.write;
 
     console.log = (...args: unknown[]) => {
       logs.push(args.map(String).join(" "));
@@ -26,6 +28,10 @@ describe("Init CLI action behavior", () => {
     console.error = (...args: unknown[]) => {
       errors.push(args.map(String).join(" "));
     };
+    process.stdout.write = ((chunk: string) => {
+      logs.push(chunk);
+      return true;
+    }) as typeof process.stdout.write;
   });
 
   afterEach(() => {
@@ -33,6 +39,7 @@ describe("Init CLI action behavior", () => {
     console.log = originalLog;
     console.error = originalError;
     process.exit = originalExit;
+    process.stdout.write = originalStdoutWrite;
     logs.length = 0;
     errors.length = 0;
   });
@@ -105,11 +112,12 @@ describe("Init CLI action behavior", () => {
 
     await createInitCommand().parseAsync(["node", "test", "/tmp/agent-ctrl-root"]);
 
-    expect(logs.some((line) => line.includes("✓ Created rules/"))).toBe(true);
-    expect(logs.some((line) => line.includes("✓ Created rules/.gitkeep"))).toBe(true);
-    expect(logs.some((line) => line.includes("✓ Created README.md"))).toBe(true);
-    expect(logs.some((line) => line.includes("Configuration root: /tmp/agent-ctrl-root"))).toBe(true);
-    expect(logs.some((line) => line.includes("Configuration initialized."))).toBe(true);
+expect(logs.some((line) => line.includes("Created rules/"))).toBe(true);
+      expect(logs.some((line) => line.includes("Created rules/.gitkeep"))).toBe(true);
+      expect(logs.some((line) => line.includes("Created README.md"))).toBe(true);
+      expect(logs.some((line) => line.includes("Configuration root:"))).toBe(true);
+expect(logs.some((line) => line.includes("Configuration root: /tmp/agent-ctrl-root"))).toBe(true);
+      expect(logs.some((line) => line.includes("Next steps:"))).toBe(true);
     expect(logs.some((line) => line.includes("Add your files in the related folders: rules, skills, agents, commands and mcps."))).toBe(true);
     expect(logs.some((line) => line.includes("You can add from remote registries:"))).toBe(true);
     expect(logs.some((line) => line.includes("Add credentials to .agent-ctrl/.env"))).toBe(true);
@@ -122,19 +130,19 @@ describe("Init CLI action behavior", () => {
     expect(logs.some((line) => line.includes("agent-ctrl apply claude"))).toBe(true);
   });
 
-  it("handles command result user errors", async () => {
-    InitCommand.prototype.execute = async function mockedExecute() {
-      return {
-        success: false,
-        error: new UserError("bad-init"),
-      };
-    };
+   it("handles command result user errors", async () => {
+     InitCommand.prototype.execute = async function mockedExecute() {
+       return {
+         success: false,
+         error: new UserError("bad-init"),
+       };
+     };
     process.exit = ((code?: number) => {
       throw new Error(`EXIT:${String(code)}`);
     }) as typeof process.exit;
 
     await expect(createInitCommand().parseAsync(["node", "test"])).rejects.toThrow("EXIT:2");
-    expect(errors.some((line) => line.includes("bad-init"))).toBe(true);
+    expect(logs.some((line) => line.includes("bad-init"))).toBe(true);
   });
 
   it("handles thrown system errors", async () => {
@@ -146,7 +154,7 @@ describe("Init CLI action behavior", () => {
     }) as typeof process.exit;
 
     await expect(createInitCommand().parseAsync(["node", "test"])).rejects.toThrow("EXIT:2");
-    expect(errors.some((line) => line.includes("system-init"))).toBe(true);
+    expect(logs.some((line) => line.includes("system-init"))).toBe(true);
   });
 
   it("handles thrown unexpected errors", async () => {
@@ -158,7 +166,7 @@ describe("Init CLI action behavior", () => {
     }) as typeof process.exit;
 
     await expect(createInitCommand().parseAsync(["node", "test"])).rejects.toThrow("EXIT:2");
-    expect(errors.some((line) => line.includes("Unexpected error"))).toBe(true);
+    expect(logs.some((line) => line.includes("Unexpected error"))).toBe(true);
   });
 
   it("handles thrown unknown values", async () => {
@@ -170,6 +178,6 @@ describe("Init CLI action behavior", () => {
     }) as typeof process.exit;
 
     await expect(createInitCommand().parseAsync(["node", "test"])).rejects.toThrow("EXIT:2");
-    expect(errors.some((line) => line.includes("Unknown error occurred"))).toBe(true);
+    expect(logs.some((line) => line.includes("Unknown error occurred"))).toBe(true);
   });
 });

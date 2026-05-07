@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import { intro, outro } from "@clack/prompts";
+import color from "picocolors";
 import { createInitCommand } from "@/presentation/cli/features/init/commands/init";
 import { createRuleCommand } from "@/presentation/cli/features/rule/commands/rule";
 import { createSkillCommand } from "@/presentation/cli/features/skill/commands/skill";
@@ -41,8 +43,12 @@ process.on("unhandledRejection", (reason) => {
 
 // SIGINT handling (T075)
 process.on("SIGINT", () => {
-  console.log("\n\nOperation cancelled by user");
+  outro(color.yellow("Operation cancelled by user"));
   process.exit(0);
 });
 
+intro(color.inverse(" agent-ctrl "));
+
 await program.parseAsync(process.argv);
+
+outro(color.cyan("Execution completed"));

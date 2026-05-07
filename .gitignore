@@ -36,6 +36,7 @@ vite.config.ts.timestamp-*
 .agents
 .claude
 .codex
+.opencode
 .serena
 .specify
 AGENTS.md

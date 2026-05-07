@@ -33,9 +33,11 @@ describe("Skill activation CLI contract", () => {
     try {
       await createSkillCommand().parseAsync(["node", "test", "sync", "--query", "code review", "--path", configRoot]);
       await createSkillCommand().parseAsync(["node", "test", "add", "skillsmp:code-review", "--path", configRoot]);
-      expect(consoleCapture.logs.some((line) => line.includes("Activated skill Code Review"))).toBe(true);
+      let allOutput = [...consoleCapture.logs, ...consoleCapture.stdoutWrites].join(" ");
+      expect(allOutput.includes("Code Review activated")).toBe(true);
       await createSkillCommand().parseAsync(["node", "test", "rm", "code-review", "--path", configRoot]);
-      expect(consoleCapture.logs.some((line) => line.includes("Deactivated skill code-review"))).toBe(true);
+      allOutput = [...consoleCapture.logs, ...consoleCapture.stdoutWrites].join(" ");
+      expect(allOutput.includes("Deactivated skill code-review")).toBe(true);
     } finally {
       fetchMock.restore();
       consoleCapture.restore();
