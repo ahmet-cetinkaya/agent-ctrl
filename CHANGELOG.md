@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-07
+
+### Added
+- Overhaul visual presentation and interactive experience
+
 ## [0.1.7] - 2026-04-21
 
 ### Fixed
@@ -93,7 +98,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct import paths in presentation layer
 - Patch path traversal and command injection vulnerabilities
 
-[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.1.7...HEAD
+[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.2.0
 [0.1.7]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.7
 [0.1.6]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.6
 [0.1.5]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.1.5
