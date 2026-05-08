@@ -85,9 +85,15 @@ describe("WindsurfAdapter", () => {
     expect(["success", "unchanged"]).toContain(result.status);
 
     // After override, verify temp files were cleaned by checking they no longer exist
-    const workflowExists = await access(tempWorkflowPath).then(() => true).catch(() => false);
-    const skillExists = await access(tempSkillPath).then(() => true).catch(() => false);
-    const agentExists = await access(tempAgentPath).then(() => true).catch(() => false);
+    const workflowExists = await access(tempWorkflowPath)
+      .then(() => true)
+      .catch(() => false);
+    const skillExists = await access(tempSkillPath)
+      .then(() => true)
+      .catch(() => false);
+    const agentExists = await access(tempAgentPath)
+      .then(() => true)
+      .catch(() => false);
 
     expect(workflowExists).toBe(false);
     expect(skillExists).toBe(false);

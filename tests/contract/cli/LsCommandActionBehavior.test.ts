@@ -316,4 +316,3 @@ async function withPatchedExecute<T extends { prototype: { execute: (...args: ne
     klass.prototype.execute = original;
   }
 }
-

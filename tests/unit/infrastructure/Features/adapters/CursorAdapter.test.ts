@@ -88,8 +88,12 @@ describe("CursorAdapter", () => {
     expect(["success", "unchanged"]).toContain(result.status);
 
     // Verify temp files are gone
-    const ruleExists = await access(tempRulePath).then(() => true).catch(() => false);
-    const skillExists = await access(tempSkillPath).then(() => true).catch(() => false);
+    const ruleExists = await access(tempRulePath)
+      .then(() => true)
+      .catch(() => false);
+    const skillExists = await access(tempSkillPath)
+      .then(() => true)
+      .catch(() => false);
 
     expect(ruleExists).toBe(false);
     expect(skillExists).toBe(false);

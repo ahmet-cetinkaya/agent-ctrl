@@ -1,20 +1,20 @@
-import { describe, it, expect } from 'bun:test';
-import { ok, err } from '@/core/domain/shared/value-objects/Result';
+import { describe, it, expect } from "bun:test";
+import { ok, err } from "@/core/domain/shared/value-objects/Result";
 
-describe('Result', () => {
-  describe('ok', () => {
-    it('should create a successful result', () => {
-      const result = ok('success');
+describe("Result", () => {
+  describe("ok", () => {
+    it("should create a successful result", () => {
+      const result = ok("success");
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data).toBe('success');
+        expect(result.data).toBe("success");
       }
     });
   });
 
-  describe('err', () => {
-    it('should create an error result', () => {
-      const error = new Error('test error');
+  describe("err", () => {
+    it("should create an error result", () => {
+      const error = new Error("test error");
       const result = err(error);
       expect(result.success).toBe(false);
       if (!result.success) {

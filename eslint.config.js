@@ -36,5 +36,5 @@ export default tseslint.config(
     rules: {
       "no-empty": "off",
     },
-  },
+  }
 );

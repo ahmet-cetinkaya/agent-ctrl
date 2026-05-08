@@ -39,7 +39,14 @@ describe("Skill activation flow", () => {
                 },
               ],
             }),
-            { status: 200, headers: { "Content-Type": "application/json", "X-RateLimit-Daily-Limit": "500", "X-RateLimit-Daily-Remaining": "500" } }
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "X-RateLimit-Daily-Limit": "500",
+                "X-RateLimit-Daily-Remaining": "500",
+              },
+            }
           ),
       },
       {
@@ -82,8 +89,7 @@ describe("Skill activation flow", () => {
         match: (url) => url.pathname === "/api/v1/skills/search",
         handler: () => {
           searchCalls += 1;
-          return (
-          new Response(
+          return new Response(
             JSON.stringify({
               skills: [
                 {
@@ -93,14 +99,21 @@ describe("Skill activation flow", () => {
                   capabilities: ["notion"],
                   categories: ["productivity"],
                   version: "1.0.0",
-                  githubUrl: "https://github.com/Morphicai/openclaw-morphixai/tree/main/packages/openclaw-plugin/skills/notion",
+                  githubUrl:
+                    "https://github.com/Morphicai/openclaw-morphixai/tree/main/packages/openclaw-plugin/skills/notion",
                   skillUrl:
                     "https://skillsmp.com/skills/morphicai-openclaw-morphixai-packages-openclaw-plugin-skills-notion-skill-md",
                 },
               ],
             }),
-            { status: 200, headers: { "Content-Type": "application/json", "X-RateLimit-Daily-Limit": "500", "X-RateLimit-Daily-Remaining": "500" } }
-          )
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "X-RateLimit-Daily-Limit": "500",
+                "X-RateLimit-Daily-Remaining": "500",
+              },
+            }
           );
         },
       },
@@ -128,7 +141,8 @@ describe("Skill activation flow", () => {
       {
         match: (url) =>
           url.hostname === "api.github.com" &&
-          url.pathname === "/repos/Morphicai/openclaw-morphixai/contents/packages/openclaw-plugin/skills/notion/scripts",
+          url.pathname ===
+            "/repos/Morphicai/openclaw-morphixai/contents/packages/openclaw-plugin/skills/notion/scripts",
         handler: () =>
           new Response(
             JSON.stringify([
@@ -155,8 +169,13 @@ describe("Skill activation flow", () => {
       {
         match: (url) =>
           url.hostname === "raw.githubusercontent.com" &&
-          url.pathname === "/Morphicai/openclaw-morphixai/main/packages/openclaw-plugin/skills/notion/scripts/notion.sh",
-        handler: () => new Response("#!/usr/bin/env bash\necho notion\n", { status: 200, headers: { "Content-Type": "text/plain" } }),
+          url.pathname ===
+            "/Morphicai/openclaw-morphixai/main/packages/openclaw-plugin/skills/notion/scripts/notion.sh",
+        handler: () =>
+          new Response("#!/usr/bin/env bash\necho notion\n", {
+            status: 200,
+            headers: { "Content-Type": "text/plain" },
+          }),
       },
     ]);
 
@@ -177,9 +196,21 @@ describe("Skill activation flow", () => {
 
       expect(skillMd).toContain("Real remote skill content.");
       expect(helperScript).toContain("echo notion");
-      expect(fetchMock.calls.some((call) => call.includes("api.github.com/repos/Morphicai/openclaw-morphixai/contents"))).toBe(true);
-      expect(fetchMock.calls.some((call) => call.includes("raw.githubusercontent.com/Morphicai/openclaw-morphixai/main/packages/openclaw-plugin/skills/notion/SKILL.md"))).toBe(true);
-      expect(fetchMock.calls.some((call) => call.includes("/skills/morphicai-openclaw-morphixai-packages-openclaw-plugin-skills-notion-skill-md"))).toBe(false);
+      expect(
+        fetchMock.calls.some((call) => call.includes("api.github.com/repos/Morphicai/openclaw-morphixai/contents"))
+      ).toBe(true);
+      expect(
+        fetchMock.calls.some((call) =>
+          call.includes(
+            "raw.githubusercontent.com/Morphicai/openclaw-morphixai/main/packages/openclaw-plugin/skills/notion/SKILL.md"
+          )
+        )
+      ).toBe(true);
+      expect(
+        fetchMock.calls.some((call) =>
+          call.includes("/skills/morphicai-openclaw-morphixai-packages-openclaw-plugin-skills-notion-skill-md")
+        )
+      ).toBe(false);
       expect(searchCalls).toBe(1);
     } finally {
       fetchMock.restore();
@@ -189,11 +220,17 @@ describe("Skill activation flow", () => {
   it("resolves a SkillsMP slug ref via repository fallback when slug search returns no exact match", async () => {
     const fetchMock = installMockFetch([
       {
-        match: (url) => url.pathname === "/api/v1/skills/search" && url.searchParams.get("q") === "openclaw-openclaw-skills-notion-skill-md",
+        match: (url) =>
+          url.pathname === "/api/v1/skills/search" &&
+          url.searchParams.get("q") === "openclaw-openclaw-skills-notion-skill-md",
         handler: () =>
           new Response(JSON.stringify({ skills: [] }), {
             status: 200,
-            headers: { "Content-Type": "application/json", "X-RateLimit-Daily-Limit": "500", "X-RateLimit-Daily-Remaining": "500" },
+            headers: {
+              "Content-Type": "application/json",
+              "X-RateLimit-Daily-Limit": "500",
+              "X-RateLimit-Daily-Remaining": "500",
+            },
           }),
       },
       {
@@ -201,7 +238,11 @@ describe("Skill activation flow", () => {
         handler: () =>
           new Response(JSON.stringify({ skills: [] }), {
             status: 200,
-            headers: { "Content-Type": "application/json", "X-RateLimit-Daily-Limit": "500", "X-RateLimit-Daily-Remaining": "500" },
+            headers: {
+              "Content-Type": "application/json",
+              "X-RateLimit-Daily-Limit": "500",
+              "X-RateLimit-Daily-Remaining": "500",
+            },
           }),
       },
       {
@@ -243,8 +284,12 @@ describe("Skill activation flow", () => {
 
       const skillMd = await readFile(resolve(addResult.data.managedIntegration.localPath, "SKILL.md"), "utf-8");
       expect(skillMd).toContain("Notion API for creating and managing pages");
-      expect(fetchMock.calls.some((call) => call.includes("/repos/openclaw/openclaw/contents/skills/notion"))).toBe(true);
-      expect(fetchMock.calls.some((call) => call.includes("/skills/openclaw-openclaw-skills-notion-skill-md"))).toBe(false);
+      expect(fetchMock.calls.some((call) => call.includes("/repos/openclaw/openclaw/contents/skills/notion"))).toBe(
+        true
+      );
+      expect(fetchMock.calls.some((call) => call.includes("/skills/openclaw-openclaw-skills-notion-skill-md"))).toBe(
+        false
+      );
     } finally {
       fetchMock.restore();
     }

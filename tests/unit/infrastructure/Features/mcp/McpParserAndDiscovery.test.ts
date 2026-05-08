@@ -41,7 +41,7 @@ describe("Mcp parser and discovery", () => {
   it("handles empty mcpServers object without errors", () => {
     const parser = new McpServersParser();
     const result = parser.parse("/tmp/empty.json", {
-      mcpServers: {}
+      mcpServers: {},
     });
 
     expect(result.issues).toHaveLength(0);

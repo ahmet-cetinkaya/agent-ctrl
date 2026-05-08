@@ -23,10 +23,73 @@ describe("Registry update CLI contract", () => {
     let skillVersion = "1.0.0";
     let mcpVersion = "1.0.0";
     const fetchMock = installMockFetch([
-      { match: (url) => url.pathname === "/api/v1/skills/search", handler: () => new Response(JSON.stringify({ skills: [{ id: "code-review", name: "Code Review", description: "Review code", capabilities: ["review"], categories: ["dev"], version: skillVersion }] }), { status: 200, headers: { "Content-Type": "application/json", "X-RateLimit-Daily-Limit": "500", "X-RateLimit-Daily-Remaining": "500" } }) },
-      { match: (url) => url.pathname === "/skills/code-review", handler: () => new Response("<pre># Code Review</pre>", { status: 200 }) },
-      { match: (url) => url.pathname === "/servers", handler: () => new Response(JSON.stringify({ servers: [{ qualifiedName: "smithery/github", displayName: "GitHub", description: "GitHub tools", capabilities: ["git"], categories: ["dev"], version: mcpVersion }], pagination: { currentPage: 1, pageSize: 100, totalPages: 1, totalCount: 1 } }), { status: 200, headers: { "Content-Type": "application/json" } }) },
-      { match: (url) => url.pathname === "/servers/smithery%2Fgithub", handler: () => new Response(JSON.stringify({ qualifiedName: "smithery/github", displayName: "GitHub", description: "GitHub tools", capabilities: ["git"], categories: ["dev"], version: mcpVersion, command: "npx", args: ["-y", "@smithery/github"] }), { status: 200, headers: { "Content-Type": "application/json" } }) },
+      {
+        match: (url) => url.pathname === "/api/v1/skills/search",
+        handler: () =>
+          new Response(
+            JSON.stringify({
+              skills: [
+                {
+                  id: "code-review",
+                  name: "Code Review",
+                  description: "Review code",
+                  capabilities: ["review"],
+                  categories: ["dev"],
+                  version: skillVersion,
+                },
+              ],
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "X-RateLimit-Daily-Limit": "500",
+                "X-RateLimit-Daily-Remaining": "500",
+              },
+            }
+          ),
+      },
+      {
+        match: (url) => url.pathname === "/skills/code-review",
+        handler: () => new Response("<pre># Code Review</pre>", { status: 200 }),
+      },
+      {
+        match: (url) => url.pathname === "/servers",
+        handler: () =>
+          new Response(
+            JSON.stringify({
+              servers: [
+                {
+                  qualifiedName: "smithery/github",
+                  displayName: "GitHub",
+                  description: "GitHub tools",
+                  capabilities: ["git"],
+                  categories: ["dev"],
+                  version: mcpVersion,
+                },
+              ],
+              pagination: { currentPage: 1, pageSize: 100, totalPages: 1, totalCount: 1 },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          ),
+      },
+      {
+        match: (url) => url.pathname === "/servers/smithery%2Fgithub",
+        handler: () =>
+          new Response(
+            JSON.stringify({
+              qualifiedName: "smithery/github",
+              displayName: "GitHub",
+              description: "GitHub tools",
+              capabilities: ["git"],
+              categories: ["dev"],
+              version: mcpVersion,
+              command: "npx",
+              args: ["-y", "@smithery/github"],
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } }
+          ),
+      },
     ]);
     const consoleCapture = captureConsole();
 

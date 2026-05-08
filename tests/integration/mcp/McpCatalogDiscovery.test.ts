@@ -24,7 +24,16 @@ describe("MCP catalog discovery", () => {
         handler: () =>
           new Response(
             JSON.stringify({
-              servers: [{ qualifiedName: "smithery/github", displayName: "GitHub", description: "GitHub tools", capabilities: ["git"], categories: ["dev"], version: "1.0.0" }],
+              servers: [
+                {
+                  qualifiedName: "smithery/github",
+                  displayName: "GitHub",
+                  description: "GitHub tools",
+                  capabilities: ["git"],
+                  categories: ["dev"],
+                  version: "1.0.0",
+                },
+              ],
               pagination: { currentPage: 1, pageSize: 100, totalPages: 2, totalCount: 2 },
             }),
             { status: 200, headers: { "Content-Type": "application/json" } }
@@ -35,7 +44,16 @@ describe("MCP catalog discovery", () => {
         handler: () =>
           new Response(
             JSON.stringify({
-              servers: [{ qualifiedName: "smithery/github", displayName: "GitHub", description: "GitHub tools", capabilities: ["git"], categories: ["dev"], version: "1.0.0" }],
+              servers: [
+                {
+                  qualifiedName: "smithery/github",
+                  displayName: "GitHub",
+                  description: "GitHub tools",
+                  capabilities: ["git"],
+                  categories: ["dev"],
+                  version: "1.0.0",
+                },
+              ],
               pagination: { currentPage: 2, pageSize: 100, totalPages: 2, totalCount: 2 },
             }),
             { status: 200, headers: { "Content-Type": "application/json" } }
@@ -45,7 +63,16 @@ describe("MCP catalog discovery", () => {
         match: (url) => url.pathname === "/servers/smithery%2Fgithub",
         handler: () =>
           new Response(
-            JSON.stringify({ qualifiedName: "smithery/github", displayName: "GitHub", description: "GitHub tools", capabilities: ["git"], categories: ["dev"], version: "1.0.0", command: "npx", args: ["-y", "@smithery/github"] }),
+            JSON.stringify({
+              qualifiedName: "smithery/github",
+              displayName: "GitHub",
+              description: "GitHub tools",
+              capabilities: ["git"],
+              categories: ["dev"],
+              version: "1.0.0",
+              command: "npx",
+              args: ["-y", "@smithery/github"],
+            }),
             { status: 200, headers: { "Content-Type": "application/json" } }
           ),
       },
@@ -55,7 +82,9 @@ describe("MCP catalog discovery", () => {
       const synchronizer = new McpCatalogSynchronizer();
       await synchronizer.synchronize({ configRoot, force: true });
 
-      const state = (await readJson(`${configRoot}/.catalog/state.json`)) as { catalogItems: Array<{ catalogKey: string }> };
+      const state = (await readJson(`${configRoot}/.catalog/state.json`)) as {
+        catalogItems: Array<{ catalogKey: string }>;
+      };
       expect(state.catalogItems.filter((item) => item.catalogKey === "smithery:smithery/github")).toHaveLength(1);
 
       const query = new SearchMcpCatalogQuery();

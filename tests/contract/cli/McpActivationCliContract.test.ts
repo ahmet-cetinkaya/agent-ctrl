@@ -23,7 +23,16 @@ describe("MCP activation CLI contract", () => {
         handler: () =>
           new Response(
             JSON.stringify({
-              servers: [{ qualifiedName: "smithery/github", displayName: "GitHub", description: "GitHub tools", capabilities: ["git"], categories: ["dev"], version: "1.0.0" }],
+              servers: [
+                {
+                  qualifiedName: "smithery/github",
+                  displayName: "GitHub",
+                  description: "GitHub tools",
+                  capabilities: ["git"],
+                  categories: ["dev"],
+                  version: "1.0.0",
+                },
+              ],
               pagination: { currentPage: 1, pageSize: 100, totalPages: 1, totalCount: 1 },
             }),
             { status: 200, headers: { "Content-Type": "application/json" } }
@@ -33,7 +42,16 @@ describe("MCP activation CLI contract", () => {
         match: (url) => url.pathname === "/servers/smithery%2Fgithub",
         handler: () =>
           new Response(
-            JSON.stringify({ qualifiedName: "smithery/github", displayName: "GitHub", description: "GitHub tools", capabilities: ["git"], categories: ["dev"], version: "1.0.0", command: "npx", args: ["-y", "@smithery/github"] }),
+            JSON.stringify({
+              qualifiedName: "smithery/github",
+              displayName: "GitHub",
+              description: "GitHub tools",
+              capabilities: ["git"],
+              categories: ["dev"],
+              version: "1.0.0",
+              command: "npx",
+              args: ["-y", "@smithery/github"],
+            }),
             { status: 200, headers: { "Content-Type": "application/json" } }
           ),
       },

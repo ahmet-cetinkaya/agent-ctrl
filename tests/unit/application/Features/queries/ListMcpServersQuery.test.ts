@@ -67,10 +67,7 @@ describe("ListMcpServersQuery", () => {
     const mcpDir = resolve(testDir, ".agent-ctrl", "mcps");
     await mkdir(mcpDir, { recursive: true });
     // Write invalid JSON - loader adds issue to report but doesn't fail
-    await writeFile(
-      resolve(mcpDir, "servers.json"),
-      "{ invalid json content",
-    );
+    await writeFile(resolve(mcpDir, "servers.json"), "{ invalid json content");
 
     const result = await query.execute({ projectPath: testDir });
     // Loader handles JSON parse errors gracefully, returning success with error report
@@ -100,16 +97,13 @@ describe("ListMcpServersQuery", () => {
             args: ["server.js"],
           },
         },
-      }),
+      })
     );
 
     // Create invalid catalog state file
     const catalogDir = resolve(testDir, ".catalog");
     await mkdir(catalogDir, { recursive: true });
-    await writeFile(
-      resolve(catalogDir, "state.json"),
-      "{ invalid catalog json",
-    );
+    await writeFile(resolve(catalogDir, "state.json"), "{ invalid catalog json");
 
     // Spy on console.warn to verify warning is logged
     const originalWarn = console.warn;
@@ -123,7 +117,7 @@ describe("ListMcpServersQuery", () => {
     console.warn = originalWarn;
 
     expect(result.success).toBe(true);
-    expect(warnings.some(w => w.includes("Failed to load catalog state"))).toBe(true);
+    expect(warnings.some((w) => w.includes("Failed to load catalog state"))).toBe(true);
 
     if (!result.success) {
       return;
@@ -148,7 +142,7 @@ describe("ListMcpServersQuery", () => {
             args: ["server.js"],
           },
         },
-      }),
+      })
     );
 
     // Create valid catalog state
@@ -182,7 +176,7 @@ describe("ListMcpServersQuery", () => {
             lastSeenAt: "2024-01-01T00:00:00Z",
           },
         ],
-      }),
+      })
     );
 
     const result = await query.execute({ projectPath: testDir });

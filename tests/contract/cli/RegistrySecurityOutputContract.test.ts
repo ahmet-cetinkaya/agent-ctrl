@@ -20,7 +20,11 @@ describe("Registry security output contract", () => {
     const fetchMock = installMockFetch([
       {
         match: (url) => url.pathname === "/servers",
-        handler: () => new Response(JSON.stringify({ error: "unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } }),
+        handler: () =>
+          new Response(JSON.stringify({ error: "unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          }),
       },
     ]);
     const consoleCapture = captureConsole();
@@ -65,7 +69,11 @@ describe("Registry security output contract", () => {
     const fetchMock = installMockFetch([
       {
         match: (url) => url.pathname === "/servers",
-        handler: () => new Response(JSON.stringify({ error: "internal server error" }), { status: 500, headers: { "Content-Type": "application/json" } }),
+        handler: () =>
+          new Response(JSON.stringify({ error: "internal server error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          }),
       },
     ]);
     const consoleCapture = captureConsole();
@@ -85,7 +93,11 @@ describe("Registry security output contract", () => {
     const fetchMock = installMockFetch([
       {
         match: (url) => url.pathname === "/servers",
-        handler: () => new Response(JSON.stringify({ error: "service unavailable" }), { status: 503, headers: { "Content-Type": "application/json" } }),
+        handler: () =>
+          new Response(JSON.stringify({ error: "service unavailable" }), {
+            status: 503,
+            headers: { "Content-Type": "application/json" },
+          }),
       },
     ]);
     const consoleCapture = captureConsole();

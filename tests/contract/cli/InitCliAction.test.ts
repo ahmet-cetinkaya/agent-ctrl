@@ -112,13 +112,17 @@ describe("Init CLI action behavior", () => {
 
     await createInitCommand().parseAsync(["node", "test", "/tmp/agent-ctrl-root"]);
 
-expect(logs.some((line) => line.includes("Created rules/"))).toBe(true);
-      expect(logs.some((line) => line.includes("Created rules/.gitkeep"))).toBe(true);
-      expect(logs.some((line) => line.includes("Created README.md"))).toBe(true);
-      expect(logs.some((line) => line.includes("Configuration root:"))).toBe(true);
-expect(logs.some((line) => line.includes("Configuration root: /tmp/agent-ctrl-root"))).toBe(true);
-      expect(logs.some((line) => line.includes("Next steps:"))).toBe(true);
-    expect(logs.some((line) => line.includes("Add your files in the related folders: rules, skills, agents, commands and mcps."))).toBe(true);
+    expect(logs.some((line) => line.includes("Created rules/"))).toBe(true);
+    expect(logs.some((line) => line.includes("Created rules/.gitkeep"))).toBe(true);
+    expect(logs.some((line) => line.includes("Created README.md"))).toBe(true);
+    expect(logs.some((line) => line.includes("Configuration root:"))).toBe(true);
+    expect(logs.some((line) => line.includes("Configuration root: /tmp/agent-ctrl-root"))).toBe(true);
+    expect(logs.some((line) => line.includes("Next steps:"))).toBe(true);
+    expect(
+      logs.some((line) =>
+        line.includes("Add your files in the related folders: rules, skills, agents, commands and mcps.")
+      )
+    ).toBe(true);
     expect(logs.some((line) => line.includes("You can add from remote registries:"))).toBe(true);
     expect(logs.some((line) => line.includes("Add credentials to .agent-ctrl/.env"))).toBe(true);
     expect(logs.some((line) => line.includes("agent-ctrl rule ls"))).toBe(true);
@@ -130,13 +134,13 @@ expect(logs.some((line) => line.includes("Configuration root: /tmp/agent-ctrl-ro
     expect(logs.some((line) => line.includes("agent-ctrl apply claude"))).toBe(true);
   });
 
-   it("handles command result user errors", async () => {
-     InitCommand.prototype.execute = async function mockedExecute() {
-       return {
-         success: false,
-         error: new UserError("bad-init"),
-       };
-     };
+  it("handles command result user errors", async () => {
+    InitCommand.prototype.execute = async function mockedExecute() {
+      return {
+        success: false,
+        error: new UserError("bad-init"),
+      };
+    };
     process.exit = ((code?: number) => {
       throw new Error(`EXIT:${String(code)}`);
     }) as typeof process.exit;

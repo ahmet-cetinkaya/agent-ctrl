@@ -16,7 +16,7 @@ TARGET_DIR="${TARGET_DIR:-$PROJECT_ROOT}"
 FIX="${FIX:-false}"
 
 show_help() {
-  cat << EOF
+	cat <<EOF
 Usage: lint.sh [OPTIONS]
 
 Options:
@@ -27,21 +27,21 @@ EOF
 }
 
 while [[ $# -gt 0 ]]; do
-  case $1 in
-    --fix)
-      FIX=true
-      shift
-      ;;
-    -h | --help)
-      show_help
-      exit 0
-      ;;
-    *)
-      acore_log_error "Unknown option: $1"
-      show_help
-      exit 1
-      ;;
-  esac
+	case $1 in
+	--fix)
+		FIX=true
+		shift
+		;;
+	-h | --help)
+		show_help
+		exit 0
+		;;
+	*)
+		acore_log_error "Unknown option: $1"
+		show_help
+		exit 1
+		;;
+	esac
 done
 
 acore_log_header "Project Linter" "="
@@ -52,9 +52,9 @@ acore_log_success "TypeScript check passed"
 
 acore_log_section "ESLint"
 if [[ "$FIX" == "true" ]]; then
-  eslint "$TARGET_DIR" --fix
+	eslint "$TARGET_DIR" --fix
 else
-  eslint "$TARGET_DIR"
+	eslint "$TARGET_DIR"
 fi
 acore_log_success "ESLint check passed"
 

@@ -96,12 +96,18 @@ describe("ClaudeApplyAdapter", () => {
     });
 
     expect(result.status).toBe("success");
-    
+
     // Verify artifacts were cleaned and replaced with project artifacts
-    await expect(access(resolve(claudeHomePath, ".claude", "skills", "existing-skill"))).rejects.toMatchObject({ code: "ENOENT" });
-    await expect(access(resolve(claudeHomePath, ".claude", "agents", "existing-agent.md"))).rejects.toMatchObject({ code: "ENOENT" });
-    await expect(access(resolve(claudeHomePath, ".claude", "commands", "existing-command.md"))).rejects.toMatchObject({ code: "ENOENT" });
-    
+    await expect(access(resolve(claudeHomePath, ".claude", "skills", "existing-skill"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(access(resolve(claudeHomePath, ".claude", "agents", "existing-agent.md"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(access(resolve(claudeHomePath, ".claude", "commands", "existing-command.md"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+
     // Verify project artifacts exist
     await expect(access(resolve(claudeHomePath, ".claude", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(claudeHomePath, ".claude", "agents", "architect.md"))).resolves.toBeNull();

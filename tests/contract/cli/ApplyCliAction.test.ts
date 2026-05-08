@@ -125,7 +125,15 @@ describe("Apply CLI action behavior", () => {
     };
 
     try {
-      await createApplyCommand().parseAsync(["node", "test", "opencode", "--path", "/tmp/x", "--dry-run", "--no-prompt"]);
+      await createApplyCommand().parseAsync([
+        "node",
+        "test",
+        "opencode",
+        "--path",
+        "/tmp/x",
+        "--dry-run",
+        "--no-prompt",
+      ]);
       const call = captured[0] as { targetScope?: string; userConfigRootPath?: string };
       expect(call.targetScope).toBeUndefined();
       expect(call.userConfigRootPath).toBe(resolve("/tmp/x"));
@@ -158,7 +166,9 @@ describe("Apply CLI action behavior", () => {
         throw new Error(`EXIT:${String(code)}`);
       }) as typeof process.exit;
 
-      await expect(createApplyCommand().parseAsync(["node", "test", "opencode", "--no-prompt"])).rejects.toThrow("EXIT:2");
+      await expect(createApplyCommand().parseAsync(["node", "test", "opencode", "--no-prompt"])).rejects.toThrow(
+        "EXIT:2"
+      );
       const allOutput = consoleCapture.logs.join(" ");
       expect(allOutput.includes("invalid usage")).toBe(true);
     } finally {
@@ -180,7 +190,9 @@ describe("Apply CLI action behavior", () => {
         throw new Error(`EXIT:${String(code)}`);
       }) as typeof process.exit;
 
-      await expect(createApplyCommand().parseAsync(["node", "test", "opencode", "--no-prompt"])).rejects.toThrow("EXIT:2");
+      await expect(createApplyCommand().parseAsync(["node", "test", "opencode", "--no-prompt"])).rejects.toThrow(
+        "EXIT:2"
+      );
       const allOutput = consoleCapture.logs.join(" ");
       expect(allOutput.includes("system failure")).toBe(true);
     } finally {
@@ -229,7 +241,7 @@ describe("Apply CLI action behavior", () => {
     }
   });
 
-it("prints warnings only when verbose is enabled", async () => {
+  it("prints warnings only when verbose is enabled", async () => {
     const originalArgv = process.argv;
     process.argv = ["node", "apply", "codex"];
 

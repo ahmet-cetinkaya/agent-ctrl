@@ -21,12 +21,33 @@ describe("Skill activation CLI contract", () => {
       {
         match: (url) => url.pathname === "/api/v1/skills/search",
         handler: () =>
-          new Response(JSON.stringify({ skills: [{ id: "code-review", name: "Code Review", description: "Review code", capabilities: ["review"], categories: ["dev"], version: "1.0.0" }] }), {
-            status: 200,
-            headers: { "Content-Type": "application/json", "X-RateLimit-Daily-Limit": "500", "X-RateLimit-Daily-Remaining": "500" },
-          }),
+          new Response(
+            JSON.stringify({
+              skills: [
+                {
+                  id: "code-review",
+                  name: "Code Review",
+                  description: "Review code",
+                  capabilities: ["review"],
+                  categories: ["dev"],
+                  version: "1.0.0",
+                },
+              ],
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "X-RateLimit-Daily-Limit": "500",
+                "X-RateLimit-Daily-Remaining": "500",
+              },
+            }
+          ),
       },
-      { match: (url) => url.pathname === "/skills/code-review", handler: () => new Response("<pre># Code Review</pre>", { status: 200 }) },
+      {
+        match: (url) => url.pathname === "/skills/code-review",
+        handler: () => new Response("<pre># Code Review</pre>", { status: 200 }),
+      },
     ]);
     const consoleCapture = captureConsole();
 

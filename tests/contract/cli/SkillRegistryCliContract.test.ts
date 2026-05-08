@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { createSkillCommand } from "@/presentation/cli/features/skill/commands/skill";
-import { captureConsole, cleanupTempDir, createTempConfigRoot, installMockFetch, seedSkill } from "../../helpers/catalogTestUtils";
+import {
+  captureConsole,
+  cleanupTempDir,
+  createTempConfigRoot,
+  installMockFetch,
+  seedSkill,
+} from "../../helpers/catalogTestUtils";
 
 describe("Skill registry CLI contract", () => {
   let baseDir = "";

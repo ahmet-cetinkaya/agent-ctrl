@@ -26,7 +26,16 @@ describe("MCP update flow", () => {
         handler: () =>
           new Response(
             JSON.stringify({
-              servers: [{ qualifiedName: "smithery/github", displayName: "GitHub", description: "GitHub tools", capabilities: ["git"], categories: ["dev"], version }],
+              servers: [
+                {
+                  qualifiedName: "smithery/github",
+                  displayName: "GitHub",
+                  description: "GitHub tools",
+                  capabilities: ["git"],
+                  categories: ["dev"],
+                  version,
+                },
+              ],
               pagination: { currentPage: 1, pageSize: 100, totalPages: 1, totalCount: 1 },
             }),
             { status: 200, headers: { "Content-Type": "application/json" } }
@@ -36,7 +45,16 @@ describe("MCP update flow", () => {
         match: (url) => url.pathname === "/servers/smithery%2Fgithub",
         handler: () =>
           new Response(
-            JSON.stringify({ qualifiedName: "smithery/github", displayName: "GitHub", description: "GitHub tools", capabilities: ["git"], categories: ["dev"], version, command: "npx", args: ["-y", "@smithery/github"] }),
+            JSON.stringify({
+              qualifiedName: "smithery/github",
+              displayName: "GitHub",
+              description: "GitHub tools",
+              capabilities: ["git"],
+              categories: ["dev"],
+              version,
+              command: "npx",
+              args: ["-y", "@smithery/github"],
+            }),
             { status: 200, headers: { "Content-Type": "application/json" } }
           ),
       },

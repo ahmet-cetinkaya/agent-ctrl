@@ -80,9 +80,15 @@ describe("KiloAdapter", () => {
 
     // After override, verify temp files were cleaned by checking they no longer exist
     // Use a try/catch approach since the files should NOT exist
-    const commandExists = await access(tempCommandPath).then(() => true).catch(() => false);
-    const skillExists = await access(tempSkillPath).then(() => true).catch(() => false);
-    const agentExists = await access(tempAgentPath).then(() => true).catch(() => false);
+    const commandExists = await access(tempCommandPath)
+      .then(() => true)
+      .catch(() => false);
+    const skillExists = await access(tempSkillPath)
+      .then(() => true)
+      .catch(() => false);
+    const agentExists = await access(tempAgentPath)
+      .then(() => true)
+      .catch(() => false);
 
     expect(commandExists).toBe(false);
     expect(skillExists).toBe(false);

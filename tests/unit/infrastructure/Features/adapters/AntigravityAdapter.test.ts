@@ -88,9 +88,15 @@ describe("AntigravityAdapter", () => {
     expect(["success", "unchanged"]).toContain(result.status);
 
     // After override, verify temp files were cleaned by checking they no longer exist
-    const ruleExists = await access(tempRulePath).then(() => true).catch(() => false);
-    const workflowExists = await access(tempWorkflowPath).then(() => true).catch(() => false);
-    const skillExists = await access(tempSkillPath).then(() => true).catch(() => false);
+    const ruleExists = await access(tempRulePath)
+      .then(() => true)
+      .catch(() => false);
+    const workflowExists = await access(tempWorkflowPath)
+      .then(() => true)
+      .catch(() => false);
+    const skillExists = await access(tempSkillPath)
+      .then(() => true)
+      .catch(() => false);
 
     expect(ruleExists).toBe(false);
     expect(workflowExists).toBe(false);

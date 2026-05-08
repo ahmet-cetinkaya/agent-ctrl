@@ -25,7 +25,28 @@ describe("Catalog sync resilience", () => {
     const fetchMock = installMockFetch([
       {
         match: (url) => url.pathname === "/api/v1/skills/search",
-        handler: () => new Response(JSON.stringify({ skills: [{ id: "code-review", name: "Code Review", capabilities: ["review"], categories: ["dev"], version: "1.0.0" }] }), { status: 200, headers: { "Content-Type": "application/json", "X-RateLimit-Daily-Limit": "500", "X-RateLimit-Daily-Remaining": "500" } }),
+        handler: () =>
+          new Response(
+            JSON.stringify({
+              skills: [
+                {
+                  id: "code-review",
+                  name: "Code Review",
+                  capabilities: ["review"],
+                  categories: ["dev"],
+                  version: "1.0.0",
+                },
+              ],
+            }),
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "X-RateLimit-Daily-Limit": "500",
+                "X-RateLimit-Daily-Remaining": "500",
+              },
+            }
+          ),
       },
     ]);
 
@@ -178,7 +199,10 @@ describe("Catalog sync resilience", () => {
         match: (url) => url.pathname === "/servers" && url.searchParams.get("page") === "2",
         handler: () => {
           _callCount++;
-          return new Response(JSON.stringify({ error: "internal error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+          return new Response(JSON.stringify({ error: "internal error" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
         },
       },
     ]);

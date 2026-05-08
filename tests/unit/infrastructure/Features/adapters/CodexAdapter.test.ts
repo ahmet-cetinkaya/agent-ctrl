@@ -147,8 +147,12 @@ describe("CodexAdapter", () => {
     expect(["success", "unchanged"]).toContain(result.status);
 
     // After override, verify temp files were cleaned by checking they no longer exist
-    const skillExists = await access(tempSkillPath).then(() => true).catch(() => false);
-    const agentExists = await access(tempAgentPath).then(() => true).catch(() => false);
+    const skillExists = await access(tempSkillPath)
+      .then(() => true)
+      .catch(() => false);
+    const agentExists = await access(tempAgentPath)
+      .then(() => true)
+      .catch(() => false);
 
     expect(skillExists).toBe(false);
     expect(agentExists).toBe(false);

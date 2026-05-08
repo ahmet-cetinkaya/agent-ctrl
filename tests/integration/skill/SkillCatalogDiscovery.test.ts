@@ -25,11 +25,32 @@ describe("Skill catalog discovery", () => {
           new Response(
             JSON.stringify({
               skills: [
-                { id: "code-review", name: "Code Review", description: "Review code", capabilities: ["review"], categories: ["dev"], version: "1.0.0" },
-                { id: "code-review", name: "Code Review", description: "Review code", capabilities: ["review"], categories: ["dev"], version: "1.0.0" },
+                {
+                  id: "code-review",
+                  name: "Code Review",
+                  description: "Review code",
+                  capabilities: ["review"],
+                  categories: ["dev"],
+                  version: "1.0.0",
+                },
+                {
+                  id: "code-review",
+                  name: "Code Review",
+                  description: "Review code",
+                  capabilities: ["review"],
+                  categories: ["dev"],
+                  version: "1.0.0",
+                },
               ],
             }),
-            { status: 200, headers: { "Content-Type": "application/json", "X-RateLimit-Daily-Limit": "500", "X-RateLimit-Daily-Remaining": "498" } }
+            {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+                "X-RateLimit-Daily-Limit": "500",
+                "X-RateLimit-Daily-Remaining": "498",
+              },
+            }
           ),
       },
     ]);
@@ -39,7 +60,10 @@ describe("Skill catalog discovery", () => {
       await synchronizer.synchronize({ configRoot, query: "code review", force: true });
       await synchronizer.synchronize({ configRoot, query: "code review", force: true });
 
-      const state = (await readJson(`${configRoot}/.catalog/state.json`)) as { discoveryScopes: Array<{ scopeId: string }>; catalogItems: Array<{ catalogKey: string }> };
+      const state = (await readJson(`${configRoot}/.catalog/state.json`)) as {
+        discoveryScopes: Array<{ scopeId: string }>;
+        catalogItems: Array<{ catalogKey: string }>;
+      };
       expect(state.discoveryScopes.some((scope) => scope.scopeId.includes("code review"))).toBe(true);
       expect(state.catalogItems.filter((item) => item.catalogKey === "skillsmp:code-review")).toHaveLength(1);
 

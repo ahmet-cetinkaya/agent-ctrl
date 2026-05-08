@@ -65,15 +65,7 @@ describe("Registry credential source CLI contract", () => {
     const consoleCapture = captureConsole();
 
     try {
-      await createSkillCommand().parseAsync([
-        "node",
-        "test",
-        "sync",
-        "--query",
-        "code review",
-        "--path",
-        configRoot,
-      ]);
+      await createSkillCommand().parseAsync(["node", "test", "sync", "--query", "code review", "--path", configRoot]);
       await createMcpCommand().parseAsync(["node", "test", "sync", "--path", configRoot]);
 
       expect(authHeaders).toContain("Bearer skills-from-config");

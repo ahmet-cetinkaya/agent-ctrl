@@ -45,7 +45,7 @@ describe("InitCommand", () => {
 
     const mcpDirExists = await access(resolve(testDir, ".agent-ctrl", "mcps")).then(
       () => true,
-      () => false,
+      () => false
     );
     expect(mcpDirExists).toBe(true);
 
@@ -60,7 +60,7 @@ describe("InitCommand", () => {
     for (const path of gitkeepPaths) {
       const exists = await access(path).then(
         () => true,
-        () => false,
+        () => false
       );
       expect(exists).toBe(true);
     }
@@ -81,7 +81,7 @@ describe("InitCommand", () => {
     const readmePath = resolve(testDir, "README.md");
     const readmeExists = await access(readmePath).then(
       () => true,
-      () => false,
+      () => false
     );
     expect(readmeExists).toBe(true);
     const readmeContent = await readFile(readmePath, "utf-8");
@@ -93,11 +93,11 @@ describe("InitCommand", () => {
 
   it("should fail on non-empty directory", async () => {
     const initCommand = new InitCommand(fileSystem);
-    
+
     await initCommand.execute({ targetPath: testDir });
-    
+
     const result = await initCommand.execute({ targetPath: testDir });
-    
+
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.message).toContain("--override");
@@ -139,13 +139,13 @@ describe("InitCommand", () => {
 
     const mcpDirExists = await access(resolve(targetConfigRoot, "mcps")).then(
       () => true,
-      () => false,
+      () => false
     );
     expect(mcpDirExists).toBe(true);
 
     const nestedMcpDirExists = await access(resolve(targetConfigRoot, ".agent-ctrl", "mcps")).then(
       () => true,
-      () => false,
+      () => false
     );
     expect(nestedMcpDirExists).toBe(false);
     expect(await readFile(resolve(targetConfigRoot, ".env"), "utf-8")).toContain("https://skillsmp.com/docs/api");
