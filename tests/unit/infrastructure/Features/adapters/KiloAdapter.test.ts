@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { KiloAdapter } from "@/infrastructure/features/kilo/adapters/KiloAdapter";
@@ -43,5 +43,54 @@ describe("KiloAdapter", () => {
     await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("unchanged");
+  });
+
+  it("cleans existing managed artifacts when override is enabled", async () => {
+    // Create initial artifacts
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+    // Create a temp command that should be cleaned
+    const tempCommandPath = resolve(projectPath, ".kilo", "commands", "_temp_mock.md");
+    await writeFile(tempCommandPath, "# Temp Mock Command\n");
+
+    // Create a temp skill that should be cleaned
+    const tempSkillPath = resolve(projectPath, ".kilo", "skills", "_temp_mock", "SKILL.md");
+    await mkdir(resolve(projectPath, ".kilo", "skills", "_temp_mock"), { recursive: true });
+    await writeFile(tempSkillPath, "# Temp Mock Skill\n");
+
+    // Create a temp agent that should be cleaned
+    const tempAgentPath = resolve(projectPath, ".kilo", "agents", "_temp_mock.md");
+    await mkdir(resolve(projectPath, ".kilo", "agents"), { recursive: true });
+    await writeFile(tempAgentPath, "# Temp Mock Agent\n");
+
+    // Verify temp files exist
+    await expect(access(tempCommandPath)).resolves.toBeNull();
+    await expect(access(tempSkillPath)).resolves.toBeNull();
+    await expect(access(tempAgentPath)).resolves.toBeNull();
+
+    // Apply with override
+    const result = await adapter.applyApplyIntegration({
+      projectPath,
+      targetScope: "project",
+      override: true,
+    });
+
+    // The result should be either "success" or "unchanged" since we're syncing the same artifacts
+    expect(["success", "unchanged"]).toContain(result.status);
+
+    // After override, verify temp files were cleaned by checking they no longer exist
+    // Use a try/catch approach since the files should NOT exist
+    const commandExists = await access(tempCommandPath).then(() => true).catch(() => false);
+    const skillExists = await access(tempSkillPath).then(() => true).catch(() => false);
+    const agentExists = await access(tempAgentPath).then(() => true).catch(() => false);
+
+    expect(commandExists).toBe(false);
+    expect(skillExists).toBe(false);
+    expect(agentExists).toBe(false);
+
+    // Verify project artifacts still exist
+    await expect(access(resolve(projectPath, ".kilo", "commands", "dev:fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".kilo", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".kilo", "agents", "architect.md"))).resolves.toBeNull();
   });
 });

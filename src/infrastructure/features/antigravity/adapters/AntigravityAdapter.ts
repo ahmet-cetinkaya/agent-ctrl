@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { rm } from "node:fs/promises";
 import type {
   ApplyConfigTarget,
   ApplyIntegrationRequest,
@@ -41,9 +42,48 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
   async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
     const userRoot = request.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".gemini");
+    const projectRoot = request.projectPath;
     const source = await this.sourceLoader.load(request.projectPath);
+
     let changed = false;
     const fileChanges: string[] = [];
+
+    // Clean existing managed artifacts if override is enabled
+    if (request.override) {
+      if (target.scope === "project") {
+        const projectScopeSkillsPath = resolve(projectRoot, ".agent", "skills");
+        const projectScopeRulesPath = resolve(projectRoot, ".agent", "rules");
+        const projectScopeWorkflowsPath = resolve(projectRoot, ".agent", "workflows");
+
+        await Promise.all([
+          rm(projectScopeSkillsPath, { recursive: true, force: true }).catch((error) => {
+            if (error.code !== "ENOENT") {
+              throw error;
+            }
+          }),
+          rm(projectScopeRulesPath, { recursive: true, force: true }).catch((error) => {
+            if (error.code !== "ENOENT") {
+              throw error;
+            }
+          }),
+          rm(projectScopeWorkflowsPath, { recursive: true, force: true }).catch((error) => {
+            if (error.code !== "ENOENT") {
+              throw error;
+            }
+          }),
+        ]);
+      } else {
+        const userScopeSkillsPath = resolve(userRoot, "antigravity", "skills");
+
+        await Promise.all([
+          rm(userScopeSkillsPath, { recursive: true, force: true }).catch((error) => {
+            if (error.code !== "ENOENT") {
+              throw error;
+            }
+          }),
+        ]);
+      }
+    }
 
     if (target.scope === "project") {
       const rulesResult = await syncRulesAsFiles(

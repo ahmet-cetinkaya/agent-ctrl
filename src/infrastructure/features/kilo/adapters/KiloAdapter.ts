@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { mkdir } from "node:fs/promises";
+import { mkdir, rm } from "node:fs/promises";
 import type {
   ApplyConfigTarget,
   ApplyIntegrationRequest,
@@ -59,6 +59,34 @@ export class KiloAdapter implements IApplyPlatformAdapter {
     const source = await this.sourceLoader.load(request.projectPath);
     let changed = false;
     const fileChanges: string[] = [];
+
+    // Clean existing managed artifacts if override is enabled
+    if (request.override) {
+      // Clean both .kilo and .kilocode directories
+      for (const targetRoot of targetRoots) {
+        const commandsPath = resolve(targetRoot, "commands");
+        const skillsPath = resolve(targetRoot, "skills");
+        const agentsPath = resolve(targetRoot, "agents");
+
+        await Promise.all([
+          rm(commandsPath, { recursive: true, force: true }).catch((error) => {
+            if (error.code !== "ENOENT") {
+              throw error;
+            }
+          }),
+          rm(skillsPath, { recursive: true, force: true }).catch((error) => {
+            if (error.code !== "ENOENT") {
+              throw error;
+            }
+          }),
+          rm(agentsPath, { recursive: true, force: true }).catch((error) => {
+            if (error.code !== "ENOENT") {
+              throw error;
+            }
+          }),
+        ]);
+      }
+    }
 
     for (const targetRoot of targetRoots) {
       const rulesResult = await syncRulesAsFiles(

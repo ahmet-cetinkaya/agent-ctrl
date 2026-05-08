@@ -19,6 +19,7 @@ import {
   toStatus,
   upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
+import { rm } from "node:fs/promises";
 
 export class ForgeCodeAdapter implements IApplyPlatformAdapter {
   readonly platformName = "forgecode" as const;
@@ -58,6 +59,31 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
 
     let changed = false;
     const fileChanges: string[] = [];
+
+    // Clean existing managed artifacts if override is enabled
+    if (request.override) {
+      const commandsPath = commandRoot;
+      const skillsPath = skillRoot;
+      const agentsPath = agentRoot;
+
+      await Promise.all([
+        rm(commandsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(skillsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(agentsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+      ]);
+    }
 
     // Sync rules to AGENTS.md
     const rulesResult = await upsertManagedRuleDocument(

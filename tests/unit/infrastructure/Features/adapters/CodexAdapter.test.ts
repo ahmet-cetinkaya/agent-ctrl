@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { CodexAdapter } from "@/infrastructure/features/codex/adapters/CodexAdapter";
@@ -115,5 +115,46 @@ describe("CodexAdapter", () => {
       userConfigRootPath: userRootPath,
     });
     expect(userResult.warnings).not.toContain("Codex does not have a documented apply target for agents.");
+  });
+
+  it("cleans existing managed artifacts when override is enabled", async () => {
+    // Create initial artifacts
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "user", userConfigRootPath: userRootPath });
+
+    // Create a temp skill that should be cleaned (in user scope)
+    const tempSkillPath = resolve(userRootPath, "skills", "_temp_mock", "SKILL.md");
+    await mkdir(resolve(userRootPath, "skills", "_temp_mock"), { recursive: true });
+    await writeFile(tempSkillPath, "# Temp Mock Skill\n");
+
+    // Create a temp agent that should be cleaned (in user scope)
+    const tempAgentPath = resolve(userRootPath, "agents", "_temp_mock.md");
+    await mkdir(resolve(userRootPath, "agents"), { recursive: true });
+    await writeFile(tempAgentPath, "# Temp Mock Agent\n");
+
+    // Verify temp files exist
+    await expect(access(tempSkillPath)).resolves.toBeNull();
+    await expect(access(tempAgentPath)).resolves.toBeNull();
+
+    // Apply with override
+    const result = await adapter.applyApplyIntegration({
+      projectPath,
+      targetScope: "user",
+      userConfigRootPath: userRootPath,
+      override: true,
+    });
+
+    // The result should be either "success" or "unchanged" since we're syncing the same artifacts
+    expect(["success", "unchanged"]).toContain(result.status);
+
+    // After override, verify temp files were cleaned by checking they no longer exist
+    const skillExists = await access(tempSkillPath).then(() => true).catch(() => false);
+    const agentExists = await access(tempAgentPath).then(() => true).catch(() => false);
+
+    expect(skillExists).toBe(false);
+    expect(agentExists).toBe(false);
+
+    // Verify project artifacts still exist in user scope
+    await expect(access(resolve(userRootPath, "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
+    await expect(access(resolve(userRootPath, "agents", "architect.toml"))).resolves.toBeNull();
   });
 });

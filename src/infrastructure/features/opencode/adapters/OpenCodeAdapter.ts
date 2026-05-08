@@ -17,6 +17,7 @@ import {
   toStatus,
   upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
+import { rm } from "node:fs/promises";
 
 export class OpenCodeAdapter implements IApplyPlatformAdapter {
   readonly platformName = "opencode" as const;
@@ -58,6 +59,32 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
 
     let changed = false;
     const fileChanges: string[] = [];
+
+    // Clean existing managed artifacts if override is enabled
+    if (request.override) {
+      const commandsPath = resolve(userRoot, "commands");
+      const skillsPath = resolve(userRoot, "skills");
+      const agentsPath = resolve(userRoot, "agents");
+
+      await Promise.all([
+        rm(commandsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(skillsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(agentsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+      ]);
+    }
+
     const rulesResult = await upsertManagedRuleDocument(
       target.configPath,
       source.rules,

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { access, mkdtemp, rm } from "node:fs/promises";
+import { access, mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { CursorAdapter } from "@/infrastructure/features/cursor/adapters/CursorAdapter";
@@ -46,5 +46,56 @@ describe("CursorAdapter", () => {
     await expect(access(resolve(userRootPath, "commands", "dev", "fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, "agents", "architect.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, "mcp.json"))).resolves.toBeNull();
+  });
+
+  it("cleans existing managed artifacts when override is enabled", async () => {
+    // Create initial artifacts
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+    // Create a temp rule that should be cleaned
+    const tempRulePath = resolve(projectPath, ".cursor", "rules", "_temp_mock.md");
+    await writeFile(tempRulePath, "# Temp Mock Rule\n");
+
+    // Create a temp skill that should be cleaned
+    const tempSkillPath = resolve(projectPath, ".cursor", "skills", "_temp_mock", "SKILL.md");
+    await mkdir(resolve(projectPath, ".cursor", "skills", "_temp_mock"), { recursive: true });
+    await writeFile(tempSkillPath, "# Temp Mock Skill\n");
+
+    // Create a temp command that should be cleaned
+    const tempCommandPath = resolve(projectPath, ".cursor", "commands", "_temp_mock.md");
+    await mkdir(resolve(projectPath, ".cursor", "commands"), { recursive: true });
+    await writeFile(tempCommandPath, "# Temp Mock Command\n");
+
+    // Create a temp agent that should be cleaned
+    const tempAgentPath = resolve(projectPath, ".cursor", "agents", "_temp_mock.md");
+    await mkdir(resolve(projectPath, ".cursor", "agents"), { recursive: true });
+    await writeFile(tempAgentPath, "# Temp Mock Agent\n");
+
+    // Verify temp files exist
+    await expect(access(tempRulePath)).resolves.toBeNull();
+    await expect(access(tempSkillPath)).resolves.toBeNull();
+    await expect(access(tempCommandPath)).resolves.toBeNull();
+    await expect(access(tempAgentPath)).resolves.toBeNull();
+
+    // Apply with override
+    const result = await adapter.applyApplyIntegration({
+      projectPath,
+      targetScope: "project",
+      override: true,
+    });
+
+    // The result should be either "success" or "unchanged" since we're syncing the same artifacts
+    expect(["success", "unchanged"]).toContain(result.status);
+
+    // Verify temp files are gone
+    const ruleExists = await access(tempRulePath).then(() => true).catch(() => false);
+    const skillExists = await access(tempSkillPath).then(() => true).catch(() => false);
+
+    expect(ruleExists).toBe(false);
+    expect(skillExists).toBe(false);
+
+    // Verify project artifacts exist in .cursor/rules and .cursor/skills
+    await expect(access(resolve(projectPath, ".cursor", "rules", "coding-style.mdc"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".cursor", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { ForgeCodeAdapter } from "@/infrastructure/features/forgecode/adapters/ForgeCodeAdapter";
@@ -58,5 +58,52 @@ describe("ForgeCodeAdapter", () => {
     await expect(access(resolve(userRootPath, "agents", "architect.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, ".mcp.json"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, ".forge"))).rejects.toBeDefined();
+  });
+
+  it("cleans existing managed artifacts when override is enabled", async () => {
+    // Create initial artifacts
+    await adapter.applyApplyIntegration({
+      projectPath,
+      targetScope: "user",
+      userConfigRootPath: userRootPath,
+    });
+
+    // Create a temp command that should be cleaned
+    const tempCommandPath = resolve(userRootPath, "commands", "_temp_mock.md");
+    await writeFile(tempCommandPath, "# Temp Mock Command\n");
+
+    // Create a temp skill that should be cleaned
+    const tempSkillPath = resolve(userRootPath, "skills", "_temp_mock", "SKILL.md");
+    await mkdir(resolve(userRootPath, "skills", "_temp_mock"), { recursive: true });
+    await writeFile(tempSkillPath, "# Temp Mock Skill\n");
+
+    // Create a temp agent that should be cleaned
+    const tempAgentPath = resolve(userRootPath, "agents", "_temp_mock.md");
+    await writeFile(tempAgentPath, "# Temp Mock Agent\n");
+
+    // Verify temp files exist
+    await expect(access(tempCommandPath)).resolves.toBeNull();
+    await expect(access(tempSkillPath)).resolves.toBeNull();
+    await expect(access(tempAgentPath)).resolves.toBeNull();
+
+    // Apply with override
+    const result = await adapter.applyApplyIntegration({
+      projectPath,
+      targetScope: "user",
+      userConfigRootPath: userRootPath,
+      override: true,
+    });
+
+    expect(result.status).toBe("success");
+
+    // Verify temp files were cleaned
+    await expect(access(tempCommandPath)).rejects.toBeDefined();
+    await expect(access(tempSkillPath)).rejects.toBeDefined();
+    await expect(access(tempAgentPath)).rejects.toBeDefined();
+
+    // Verify project artifacts still exist
+    await expect(access(resolve(userRootPath, "commands", "fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(userRootPath, "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
+    await expect(access(resolve(userRootPath, "agents", "architect.md"))).resolves.toBeNull();
   });
 });

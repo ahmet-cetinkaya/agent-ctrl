@@ -101,7 +101,6 @@ export class ClaudeAdapter implements IPlatformAdapter {
       const existingContent = await readFile(this.configPath, "utf-8").catch(() => "");
       const mergedContent = this.upsertManagedSection(existingContent, config, await this.loadRuleContents(config));
       await writeFile(this.configPath, mergedContent, "utf-8");
-      await this.writeClaudeMcpConfig(config, options?.cleanExistingArtifacts);
 
       if (options?.cleanExistingArtifacts) {
         await this.cleanManagedArtifacts();
@@ -110,6 +109,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
       await this.syncSkills(config);
       await this.syncAgents(config);
       await this.syncCommands();
+      await this.writeClaudeMcpConfig(config, options?.cleanExistingArtifacts);
 
       return ok(undefined);
     } catch (error) {
@@ -280,9 +280,21 @@ export class ClaudeAdapter implements IPlatformAdapter {
 
   private async cleanManagedArtifacts(): Promise<void> {
     await Promise.all([
-      rm(resolve(this.claudeRoot, "skills"), { recursive: true, force: true }),
-      rm(resolve(this.claudeRoot, "agents"), { recursive: true, force: true }),
-      rm(resolve(this.claudeRoot, "commands"), { recursive: true, force: true }),
+      rm(resolve(this.claudeRoot, "skills"), { recursive: true, force: true }).catch((error) => {
+        if (error.code !== "ENOENT") {
+          throw error;
+        }
+      }),
+      rm(resolve(this.claudeRoot, "agents"), { recursive: true, force: true }).catch((error) => {
+        if (error.code !== "ENOENT") {
+          throw error;
+        }
+      }),
+      rm(resolve(this.claudeRoot, "commands"), { recursive: true, force: true }).catch((error) => {
+        if (error.code !== "ENOENT") {
+          throw error;
+        }
+      }),
     ]);
   }
 

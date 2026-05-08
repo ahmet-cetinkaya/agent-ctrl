@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { AntigravityAdapter } from "@/infrastructure/features/antigravity/adapters/AntigravityAdapter";
@@ -53,5 +53,52 @@ describe("AntigravityAdapter", () => {
     await expect(access(resolve(userRootPath, "antigravity", "mcp_config.json"))).resolves.toBeNull();
     expect(result.warnings).not.toContain("Antigravity does not have a documented apply target for skills.");
     expect(result.warnings).not.toContain("Antigravity does not have a documented apply target for MCP servers.");
+  });
+
+  it("cleans existing managed artifacts when override is enabled", async () => {
+    // Create initial artifacts
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+    // Create a temp rule that should be cleaned (project scope - syncs to .agent/rules/)
+    const tempRulePath = resolve(projectPath, ".agent", "rules", "_temp_mock.md");
+    await writeFile(tempRulePath, "# Temp Mock Rule\n");
+
+    // Create a temp workflow that should be cleaned (project scope - syncs to .agent/workflows/)
+    const tempWorkflowPath = resolve(projectPath, ".agent", "workflows", "_temp_mock.md");
+    await writeFile(tempWorkflowPath, "# Temp Mock Workflow\n");
+
+    // Create a temp skill that should be cleaned (project scope - syncs to .agent/skills/)
+    const tempSkillPath = resolve(projectPath, ".agent", "skills", "_temp_mock", "SKILL.md");
+    await mkdir(resolve(projectPath, ".agent", "skills", "_temp_mock"), { recursive: true });
+    await writeFile(tempSkillPath, "# Temp Mock Skill\n");
+
+    // Verify temp files exist
+    await expect(access(tempRulePath)).resolves.toBeNull();
+    await expect(access(tempWorkflowPath)).resolves.toBeNull();
+    await expect(access(tempSkillPath)).resolves.toBeNull();
+
+    // Apply with override
+    const result = await adapter.applyApplyIntegration({
+      projectPath,
+      targetScope: "project",
+      override: true,
+    });
+
+    // The result should be either "success" or "unchanged" since we're syncing the same artifacts
+    expect(["success", "unchanged"]).toContain(result.status);
+
+    // After override, verify temp files were cleaned by checking they no longer exist
+    const ruleExists = await access(tempRulePath).then(() => true).catch(() => false);
+    const workflowExists = await access(tempWorkflowPath).then(() => true).catch(() => false);
+    const skillExists = await access(tempSkillPath).then(() => true).catch(() => false);
+
+    expect(ruleExists).toBe(false);
+    expect(workflowExists).toBe(false);
+    expect(skillExists).toBe(false);
+
+    // Verify project artifacts still exist in .agent/ directory
+    await expect(access(resolve(projectPath, ".agent", "rules", "coding-style.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".agent", "workflows", "dev", "fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".agent", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
   });
 });

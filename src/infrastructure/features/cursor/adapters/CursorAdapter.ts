@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { rm } from "node:fs/promises";
 import type {
   ApplyConfigTarget,
   ApplyIntegrationRequest,
@@ -37,6 +38,32 @@ export class CursorAdapter implements IApplyPlatformAdapter {
     const source = await this.sourceLoader.load(request.projectPath);
     let changed = false;
     const fileChanges: string[] = [];
+
+    // Clean existing managed artifacts if override is enabled
+    if (request.override) {
+      await Promise.all([
+        rm(resolve(target.configPath, "rules"), { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(resolve(target.configPath, "skills"), { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(resolve(target.configPath, "commands"), { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(resolve(target.configPath, "agents"), { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+      ]);
+    }
 
     const rulesResult = await syncRulesAsFiles(
       source.rules,

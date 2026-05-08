@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { rm } from "node:fs/promises";
 import type {
   ApplyConfigTarget,
   ApplyIntegrationRequest,
@@ -55,6 +56,27 @@ export class CodexAdapter implements IApplyPlatformAdapter {
 
     let changed = false;
     const fileChanges: string[] = [];
+
+    // Clean existing managed artifacts if override is enabled
+    if (request.override) {
+      const skillsPath = skillRoot;
+      const agentsPath =
+        target.scope === "project" ? resolve(request.projectPath, ".codex", "agents") : resolve(userRoot, "agents");
+
+      await Promise.all([
+        rm(skillsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(agentsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+      ]);
+    }
+
     const rulesResult = await upsertManagedRuleDocument(
       target.configPath,
       source.rules,

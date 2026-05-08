@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { rm } from "node:fs/promises";
 import type {
   ApplyConfigTarget,
   ApplyIntegrationRequest,
@@ -49,13 +50,41 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
         : resolve(userRoot, "workflows");
     const skillsRoot =
       target.scope === "project" ? resolve(request.projectPath, ".windsurf", "skills") : resolve(userRoot, "skills");
+    const agentsRoot =
+      target.scope === "project" ? resolve(request.projectPath, ".windsurf", "agents") : resolve(userRoot, "agents");
     const mcpPath =
       target.scope === "project"
         ? resolve(request.projectPath, ".windsurf", "mcp_config.json")
         : resolve(userRoot, "mcp_config.json");
     const source = await this.sourceLoader.load(request.projectPath);
+
     let changed = false;
     const fileChanges: string[] = [];
+
+    // Clean existing managed artifacts if override is enabled
+    if (request.override) {
+      const workflowsPath = workflowsRoot;
+      const skillsPath = skillsRoot;
+      const agentsPath = agentsRoot;
+
+      await Promise.all([
+        rm(workflowsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(skillsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(agentsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+      ]);
+    }
 
     const rulesResult = await upsertManagedRuleDocument(
       target.configPath,
@@ -75,8 +104,6 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
     changed = skillsResult.changed || changed;
     fileChanges.push(...skillsResult.paths);
 
-    const agentsRoot =
-      target.scope === "project" ? resolve(request.projectPath, ".windsurf", "agents") : resolve(userRoot, "agents");
     const agentsResult = await syncAgentsAsMarkdown(source.agents, agentsRoot, Boolean(request.dryRun), true);
     changed = agentsResult.changed || changed;
     fileChanges.push(...agentsResult.paths);
