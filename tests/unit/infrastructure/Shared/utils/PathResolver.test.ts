@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "bun:test";
 import { PathResolver } from "@/infrastructure/shared/utils/PathResolver";
 
 describe("PathResolver", () => {
-  const projectRoot = "/home/user/project";
+  const projectRoot = "/tmp/project";
   let resolver: PathResolver;
 
   beforeEach(() => {
@@ -66,9 +66,9 @@ describe("PathResolver", () => {
     });
 
     it("should return false for paths outside project", () => {
-      expect(resolver.isWithinProject("/home/user/other")).toBe(false);
+      expect(resolver.isWithinProject("/tmp/other")).toBe(false);
       expect(resolver.isWithinProject("/etc/passwd")).toBe(false);
-      expect(resolver.isWithinProject("/tmp")).toBe(false);
+      expect(resolver.isWithinProject("/var/tmp")).toBe(false);
     });
 
     it("should return false for parent directory traversal", () => {

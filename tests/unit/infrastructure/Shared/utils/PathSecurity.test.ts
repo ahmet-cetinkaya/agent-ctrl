@@ -16,7 +16,7 @@ describe("PathSecurity", () => {
     });
 
     it("should return false for paths outside project", () => {
-      expect(security.isWithinProject("/home/user/other")).toBe(false);
+      expect(security.isWithinProject("/tmp/other")).toBe(false);
       expect(security.isWithinProject("/etc/passwd")).toBe(false);
     });
   });

@@ -30,8 +30,8 @@ describe("resultHandler", () => {
     });
 
     it("returns undefined for valid absolute paths", () => {
-      expect(validateUserPath("/home/user/config", "--path")).toBeUndefined();
-      expect(validateUserPath("/usr/local/bin", "--path")).toBeUndefined();
+      expect(validateUserPath("/tmp/user/config", "--path")).toBeUndefined();
+      expect(validateUserPath("/var/local/bin", "--path")).toBeUndefined();
     });
 
     it("warns about absolute paths that are not /home/ or /users/", () => {
