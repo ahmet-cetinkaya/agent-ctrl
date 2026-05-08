@@ -6,8 +6,6 @@ export interface ApplyMergeResult {
 }
 
 export class ApplyMergePolicy {
-  constructor() {}
-
   static mergeText(existingContent: string | null, desiredContent: string, override: boolean): ApplyMergeResult {
     if (!override && existingContent !== null) {
       const normalizedExisting = ApplyMergePolicy.normalize(existingContent);

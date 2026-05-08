@@ -8,12 +8,13 @@ import type {
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import { CommandRendererFactory } from "@/infrastructure/features/apply/adapters/CommandRendererFactory";
+import { AgentRendererFactory } from "@/infrastructure/features/apply/adapters/AgentRendererFactory";
 import {
   mergeJsonObjectFile,
   renderForgeCodeMcpConfig,
   resolveApplyScope,
   syncAgentsAsMarkdown,
-  syncCommandsAsMarkdown,
+  syncCommandsAsMarkdownFlattened,
   syncSkills,
   toStatus,
   upsertManagedRuleDocument,
@@ -23,6 +24,7 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
   readonly platformName = "forgecode" as const;
   private readonly sourceLoader = new ApplySourceLoader();
   private readonly commandRenderer = CommandRendererFactory.getRenderer("forgecode");
+  private readonly agentRenderer = AgentRendererFactory.getRenderer("forgecode");
   private static readonly markers = {
     start: "<!-- agent-ctrl:forgecode:start -->",
     end: "<!-- agent-ctrl:forgecode:end -->",
@@ -69,7 +71,7 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
     fileChanges.push(...rulesResult.paths);
 
     // Sync commands to .forge/commands/
-    const commandsResult = await syncCommandsAsMarkdown(
+    const commandsResult = await syncCommandsAsMarkdownFlattened(
       source.commands,
       commandRoot,
       Boolean(request.dryRun),
@@ -89,7 +91,7 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
       agentRoot,
       Boolean(request.dryRun),
       true,
-      this.commandRenderer
+      this.agentRenderer
     );
     changed = agentsResult.changed || changed;
     fileChanges.push(...agentsResult.paths);
@@ -110,6 +112,13 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
       surface: target.surface,
       status: toStatus(changed),
       message: "Applied ForgeCode AGENTS.md, commands, skills, agents, and MCP servers.",
+      artifactCounts: {
+        rules: source.rules.length,
+        commands: source.commands.length,
+        skills: source.skills.length,
+        agents: source.agents.length,
+        mcpServers: source.mcpServers.length,
+      },
       fileChanges,
       warnings: source.warnings,
     };

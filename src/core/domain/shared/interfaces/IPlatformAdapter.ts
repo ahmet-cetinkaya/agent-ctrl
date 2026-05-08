@@ -86,6 +86,17 @@ export interface ApplyIntegrationRequest {
 }
 
 /**
+ * Artifact counts for synchronization result.
+ */
+export interface ArtifactCounts {
+  readonly rules?: number;
+  readonly commands?: number;
+  readonly skills?: number;
+  readonly agents?: number;
+  readonly mcpServers?: number;
+}
+
+/**
  * Result of selected-platform synchronization.
  */
 export interface ApplyIntegrationResult {
@@ -95,6 +106,7 @@ export interface ApplyIntegrationResult {
   readonly surface: string;
   readonly status: ApplyPlatformStatus;
   readonly message: string;
+  readonly artifactCounts?: ArtifactCounts;
   readonly fileChanges?: readonly string[];
   readonly warnings?: readonly string[];
 }

@@ -2,9 +2,8 @@ import { describe, it, expect } from "bun:test";
 import { ApplyMergePolicy } from "@/infrastructure/features/apply/adapters/ApplyMergePolicy";
 
 describe("ApplyMergePolicy", () => {
-  it("supports class instantiation", () => {
-    const policy = new ApplyMergePolicy();
-    expect(policy).toBeInstanceOf(ApplyMergePolicy);
+  it("has static mergeText method", () => {
+    expect(typeof ApplyMergePolicy.mergeText).toBe("function");
   });
 
   it("returns unchanged when normalized content matches", () => {

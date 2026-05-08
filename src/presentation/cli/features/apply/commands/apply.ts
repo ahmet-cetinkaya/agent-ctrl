@@ -96,6 +96,25 @@ export function createApplyCommand(): Command {
     });
 }
 
+function displayArtifactCounts(counts: {
+  rules?: number;
+  commands?: number;
+  skills?: number;
+  agents?: number;
+  mcpServers?: number;
+}): void {
+  const items: string[] = [];
+  if (counts.rules !== undefined) items.push(`${counts.rules} rules`);
+  if (counts.commands !== undefined) items.push(`${counts.commands} commands`);
+  if (counts.skills !== undefined) items.push(`${counts.skills} skills`);
+  if (counts.agents !== undefined) items.push(`${counts.agents} agents`);
+  if (counts.mcpServers !== undefined) items.push(`${counts.mcpServers} MCP servers`);
+
+  if (items.length > 0) {
+    LogService.note(items.join(", "), "Artifacts:");
+  }
+}
+
 async function applyToPlatform(platform: string, options: any): Promise<void> {
   if (options.path) {
     const pathError = validateUserPath(options.path, "--path");
@@ -134,14 +153,13 @@ async function applyToPlatform(platform: string, options: any): Promise<void> {
 
   try {
     const result = await PromptService.withCancellation(async () => {
-      const platformDisplay = getPlatformDisplayName(platform);
       if (usePrompt) {
         PromptService.startTask("Syncing configuration");
       }
 
       return await applyCommand.execute({
         projectPath: sourcePath,
-        platform: platformDisplay,
+        platform: platform,
         dryRun: options.dryRun,
         override: options.override,
         targetScope,
@@ -170,6 +188,7 @@ async function applyToPlatform(platform: string, options: any): Promise<void> {
       configPath,
       scope,
       surface,
+      artifactCounts,
       fileChanges,
       warnings,
       durationMs,
@@ -184,7 +203,8 @@ async function applyToPlatform(platform: string, options: any): Promise<void> {
       LogService.info(`Surface: ${surface}`);
       LogService.info(`Target path: ${configPath}`);
       if (scope === "user" && userConfigRootPath) LogService.info(`User configuration root: ${userConfigRootPath}`);
-      if (fileChanges.length > 0) LogService.note(fileChanges.join("\n"), "Files:");
+      if (artifactCounts) displayArtifactCounts(artifactCounts);
+      if (verbose && fileChanges.length > 0) LogService.note(fileChanges.join("\n"), "Files:");
       LogService.info(`Estimated duration: ${durationMs}ms`);
     } else {
       if (status === "unchanged") LogService.info(`${selectedPlatform}: unchanged`);
@@ -195,7 +215,8 @@ async function applyToPlatform(platform: string, options: any): Promise<void> {
       if (scope === "user" && userConfigRootPath) LogService.info(`User configuration root: ${userConfigRootPath}`);
 
       LogService.info(`Configuration path: ${configPath}`);
-      if (fileChanges.length > 0) LogService.note(fileChanges.join("\n"), "Files:");
+      if (artifactCounts) displayArtifactCounts(artifactCounts);
+      if (verbose && fileChanges.length > 0) LogService.note(fileChanges.join("\n"), "Files:");
 
       LogService.info(`Duration: ${durationMs}ms`);
       if (usePrompt) LogService.outro(`Applied to ${selectedPlatform}`);

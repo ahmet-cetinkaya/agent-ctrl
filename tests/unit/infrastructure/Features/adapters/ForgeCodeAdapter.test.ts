@@ -31,7 +31,7 @@ describe("ForgeCodeAdapter", () => {
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain("<!-- agent-ctrl:forgecode:start -->");
     expect(content).toContain("## Coding Style");
-    await expect(access(resolve(projectPath, ".forge", "commands", "dev", "fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".forge", "commands", "fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".forge", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".forge", "agents", "architect.md"))).resolves.toBeNull();
   });
@@ -53,7 +53,7 @@ describe("ForgeCodeAdapter", () => {
     expect(result.scope).toBe("user");
     expect(result.configPath).toBe(resolve(userRootPath, "AGENTS.md"));
 
-    await expect(access(resolve(userRootPath, "commands", "dev", "fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(userRootPath, "commands", "fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, "agents", "architect.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, ".mcp.json"))).resolves.toBeNull();

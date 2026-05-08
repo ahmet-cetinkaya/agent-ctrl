@@ -25,6 +25,13 @@ export interface ApplyCommandResult {
   scope: "project" | "user";
   surface: string;
   message: string;
+  artifactCounts?: {
+    rules?: number;
+    commands?: number;
+    skills?: number;
+    agents?: number;
+    mcpServers?: number;
+  };
   durationMs: number;
   fileChanges: string[];
   warnings: string[];
@@ -75,6 +82,7 @@ export class ApplyCommand {
         scope: applyResult.scope,
         surface: applyResult.surface,
         message: applyResult.message,
+        artifactCounts: applyResult.artifactCounts,
         durationMs,
         fileChanges: [...(applyResult.fileChanges ?? [])],
         warnings,

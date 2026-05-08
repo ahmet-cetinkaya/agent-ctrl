@@ -9,6 +9,8 @@ import { mergeManagedTextSection, type ManagedTextSectionMarkers } from "./Manag
 import type { ApplyMcpServer } from "./ApplySourceLoader";
 import { CommandRendererFactory } from "./CommandRendererFactory";
 import type { ICommandRenderer, ParsedMarkdownPrompt } from "./ICommandRenderer";
+import { AgentRendererFactory } from "./AgentRendererFactory";
+import type { IAgentRenderer } from "./IAgentRenderer";
 import { McpConfigRendererFactory } from "./McpConfigRendererFactory";
 
 export interface FileSyncResult {
@@ -99,6 +101,27 @@ export async function syncCommandsAsMarkdown(
       const relativePath = flattenSeparator
         ? `${command.id.replaceAll("/", flattenSeparator)}${commandRenderer.fileExtension}`
         : `${command.id}${commandRenderer.fileExtension}`;
+
+      return {
+        relativePath,
+        content: commandRenderer.renderCommand(source, command.id),
+      };
+    })
+  );
+  return syncRenderedFiles(targetRoot, rendered, dryRun);
+}
+
+export async function syncCommandsAsMarkdownFlattened(
+  commands: CommandArtifact[],
+  targetRoot: string,
+  dryRun: boolean,
+  renderer?: ICommandRenderer
+): Promise<FileSyncResult> {
+  const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("opencode");
+  const rendered = await Promise.all(
+    commands.map(async (command) => {
+      const source = await readFile(command.path, "utf-8");
+      const relativePath = `${command.id.split("/").pop()}${commandRenderer.fileExtension}`;
 
       return {
         relativePath,
@@ -236,15 +259,15 @@ export async function syncAgentsAsMarkdown(
   targetRoot: string,
   dryRun: boolean,
   withFrontmatter: boolean,
-  renderer?: ICommandRenderer
+  agentRenderer?: IAgentRenderer
 ): Promise<FileSyncResult> {
-  const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("opencode");
+  const renderer = agentRenderer ?? AgentRendererFactory.getRenderer("forgecode");
   const rendered = await Promise.all(
     agents.map(async (agent) => {
       const source = await readFile(agent.path, "utf-8");
       return {
-        relativePath: `${agent.id}${commandRenderer.fileExtension}`,
-        content: withFrontmatter ? commandRenderer.renderCommand(source, agent.id) : source.trimEnd(),
+        relativePath: `${agent.id}${renderer.fileExtension}`,
+        content: withFrontmatter ? renderer.renderAgent(source, agent.id) : source.trimEnd(),
       };
     })
   );

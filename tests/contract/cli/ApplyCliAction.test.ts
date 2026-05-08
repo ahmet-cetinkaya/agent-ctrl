@@ -206,6 +206,13 @@ describe("Apply CLI action behavior", () => {
           durationMs: 1,
           fileChanges: ["/tmp/config", "/tmp/skills/example/SKILL.md"],
           warnings: ["hidden warning"],
+          artifactCounts: {
+            rules: 5,
+            commands: 10,
+            skills: 15,
+            agents: 3,
+            mcpServers: 2,
+          },
         },
       };
     };
@@ -213,8 +220,8 @@ describe("Apply CLI action behavior", () => {
     try {
       await createApplyCommand().parseAsync(["node", "test", "codex", "--no-prompt"]);
       const allOutput = consoleCapture.logs.join(" ");
-      expect(allOutput.includes("Files:")).toBe(true);
-      expect(allOutput.includes("/tmp/skills/example/SKILL.md")).toBe(true);
+      expect(allOutput.includes("Artifacts:")).toBe(true);
+      expect(allOutput.includes("5 rules, 10 commands, 15 skills, 3 agents, 2 MCP servers")).toBe(true);
       expect(allOutput.includes("Warnings:")).toBe(false);
     } finally {
       ApplyCommand.prototype.execute = originalExecute;
