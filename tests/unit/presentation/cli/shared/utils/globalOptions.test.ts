@@ -9,7 +9,7 @@ import {
   getLegacyGlobalOptions,
   type LogOptions,
 } from "@/presentation/cli/shared/utils/globalOptions";
-import { captureConsole } from "/home/ac/Code/ahmet-cetinkaya/agent-ctrl/tests/helpers/catalogTestUtils";
+import { captureConsole } from "@tests/helpers/catalogTestUtils";
 
 describe("globalOptions", () => {
   describe("getGlobalOptions", () => {
@@ -64,19 +64,19 @@ describe("globalOptions", () => {
     it("should log message when verbose and not quiet", () => {
       const options: LogOptions = { verbose: true, quiet: false };
       logVerbose("Test message", options);
-      expect(consoleCapture.logs.some((line) => line.includes("[verbose] Test message"))).toBe(true);
+      expect(consoleCapture.logs.some((line: string) => line.includes("[verbose] Test message"))).toBe(true);
     });
 
     it("should not log message when not verbose", () => {
       const options: LogOptions = { verbose: false, quiet: false };
       logVerbose("Test message", options);
-      expect(consoleCapture.logs.some((line) => line.includes("[verbose]"))).toBe(false);
+      expect(consoleCapture.logs.some((line: string) => line.includes("[verbose]"))).toBe(false);
     });
 
     it("should not log message when quiet even if verbose", () => {
       const options: LogOptions = { verbose: true, quiet: true };
       logVerbose("Test message", options);
-      expect(consoleCapture.logs.some((line) => line.includes("[verbose]"))).toBe(false);
+      expect(consoleCapture.logs.some((line: string) => line.includes("[verbose]"))).toBe(false);
     });
   });
 
@@ -94,13 +94,13 @@ describe("globalOptions", () => {
     it("should log warning when not quiet", () => {
       const options: LogOptions = { verbose: false, quiet: false };
       logWarning("Test warning", options);
-      expect(consoleCapture.logs.some((line) => line.includes("⚠ Test warning"))).toBe(true);
+      expect(consoleCapture.logs.some((line: string) => line.includes("⚠ Test warning"))).toBe(true);
     });
 
     it("should not log warning when quiet", () => {
       const options: LogOptions = { verbose: false, quiet: true };
       logWarning("Test warning", options);
-      expect(consoleCapture.logs.some((line) => line.includes("⚠"))).toBe(false);
+      expect(consoleCapture.logs.some((line: string) => line.includes("⚠"))).toBe(false);
     });
   });
 
@@ -118,13 +118,13 @@ describe("globalOptions", () => {
     it("should log success message when not quiet", () => {
       const options: LogOptions = { verbose: false, quiet: false };
       logSuccess("Test success", options);
-      expect(consoleCapture.logs.some((line) => line.includes("✓ Test success"))).toBe(true);
+      expect(consoleCapture.logs.some((line: string) => line.includes("✓ Test success"))).toBe(true);
     });
 
     it("should not log success message when quiet", () => {
       const options: LogOptions = { verbose: false, quiet: true };
       logSuccess("Test success", options);
-      expect(consoleCapture.logs.some((line) => line.includes("✓"))).toBe(false);
+      expect(consoleCapture.logs.some((line: string) => line.includes("✓"))).toBe(false);
     });
   });
 
@@ -142,13 +142,13 @@ describe("globalOptions", () => {
     it("should log error message when not quiet", () => {
       const options: LogOptions = { verbose: false, quiet: false };
       logError("Test error", options);
-      expect(consoleCapture.logs.some((line) => line.includes("✗ Test error"))).toBe(true);
+      expect(consoleCapture.logs.some((line: string) => line.includes("✗ Test error"))).toBe(true);
     });
 
     it("should not log error message when quiet", () => {
       const options: LogOptions = { verbose: false, quiet: true };
       logError("Test error", options);
-      expect(consoleCapture.logs.some((line) => line.includes("✗"))).toBe(false);
+      expect(consoleCapture.logs.some((line: string) => line.includes("✗"))).toBe(false);
     });
   });
 
