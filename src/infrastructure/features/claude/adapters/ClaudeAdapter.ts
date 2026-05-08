@@ -103,6 +103,10 @@ export class ClaudeAdapter implements IPlatformAdapter {
       await writeFile(this.configPath, mergedContent, "utf-8");
       await this.writeClaudeMcpConfig(config, options?.cleanExistingArtifacts);
 
+      if (options?.cleanExistingArtifacts) {
+        await this.cleanManagedArtifacts();
+      }
+
       await this.syncSkills(config);
       await this.syncAgents(config);
       await this.syncCommands();

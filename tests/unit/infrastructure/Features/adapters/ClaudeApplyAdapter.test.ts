@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { access, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, mkdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { ClaudeApplyAdapter } from "@/infrastructure/features/claude/adapters/ClaudeApplyAdapter";
@@ -68,5 +68,43 @@ describe("ClaudeApplyAdapter", () => {
     expect(result.fileChanges).toContain(resolve(claudeHomePath, ".claude", "commands", "dev", "fix-lint.md"));
     expect(result.fileChanges).not.toContain(resolve(claudeHomePath, ".claude", "skills"));
     expect(result.fileChanges).not.toContain(resolve(claudeHomePath, ".claude", "commands"));
+  });
+
+  it("cleans existing managed artifacts when override is enabled", async () => {
+    const existingSkillPath = resolve(claudeHomePath, ".claude", "skills", "existing-skill", "SKILL.md");
+    const existingAgentPath = resolve(claudeHomePath, ".claude", "agents", "existing-agent.md");
+    const existingCommandPath = resolve(claudeHomePath, ".claude", "commands", "existing-command.md");
+
+    // Create existing artifacts
+    await mkdir(resolve(claudeHomePath, ".claude"), { recursive: true });
+    await mkdir(resolve(claudeHomePath, ".claude", "skills", "existing-skill"), { recursive: true });
+    await writeFile(resolve(existingSkillPath), "existing skill content", "utf-8");
+    await mkdir(resolve(claudeHomePath, ".claude", "agents"), { recursive: true });
+    await writeFile(resolve(existingAgentPath), "existing agent content", "utf-8");
+    await mkdir(resolve(claudeHomePath, ".claude", "commands"), { recursive: true });
+    await writeFile(resolve(existingCommandPath), "existing command content", "utf-8");
+
+    // Verify artifacts exist before applying with override
+    await expect(access(existingSkillPath)).resolves.toBeNull();
+    await expect(access(existingAgentPath)).resolves.toBeNull();
+    await expect(access(existingCommandPath)).resolves.toBeNull();
+
+    const result = await adapter.applyApplyIntegration({
+      projectPath,
+      targetScope: "user",
+      override: true,
+    });
+
+    expect(result.status).toBe("success");
+    
+    // Verify artifacts were cleaned and replaced with project artifacts
+    await expect(access(resolve(claudeHomePath, ".claude", "skills", "existing-skill"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(access(resolve(claudeHomePath, ".claude", "agents", "existing-agent.md"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(access(resolve(claudeHomePath, ".claude", "commands", "existing-command.md"))).rejects.toMatchObject({ code: "ENOENT" });
+    
+    // Verify project artifacts exist
+    await expect(access(resolve(claudeHomePath, ".claude", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
+    await expect(access(resolve(claudeHomePath, ".claude", "agents", "architect.md"))).resolves.toBeNull();
+    await expect(access(resolve(claudeHomePath, ".claude", "commands", "dev", "fix-lint.md"))).resolves.toBeNull();
   });
 });
