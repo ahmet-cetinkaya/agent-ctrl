@@ -4,7 +4,7 @@ import type {
   AppyConfigTarget,
   AppyIntegrationRequest,
   AppyIntegrationResult,
-  IAppyPlatformAdapter,
+  IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
@@ -19,7 +19,7 @@ import {
   upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
-export class CodexAdapter implements IAppyPlatformAdapter {
+export class CodexAdapter implements IApplyPlatformAdapter {
   readonly platformName = "codex" as const;
   private readonly sourceLoader = new ApplySourceLoader();
   private static readonly ruleMarkers = {

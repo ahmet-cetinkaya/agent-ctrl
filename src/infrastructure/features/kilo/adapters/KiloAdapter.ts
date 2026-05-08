@@ -5,7 +5,7 @@ import type {
   AppyConfigTarget,
   AppyIntegrationRequest,
   AppyIntegrationResult,
-  IAppyPlatformAdapter,
+  IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
@@ -31,7 +31,7 @@ async function ensureDirExists(path: string): Promise<void> {
   await mkdir(path, { recursive: true });
 }
 
-export class KiloAdapter implements IAppyPlatformAdapter {
+export class KiloAdapter implements IApplyPlatformAdapter {
   readonly platformName = "kilo" as const;
   private readonly sourceLoader = new ApplySourceLoader();
 

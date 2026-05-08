@@ -4,7 +4,7 @@ import type {
   AppyConfigTarget,
   AppyIntegrationRequest,
   AppyIntegrationResult,
-  IAppyPlatformAdapter,
+  IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { AppyMergePolicy, type AppyMergeResult } from "@/infrastructure/features/apply/adapters/AppyMergePolicy";
@@ -17,7 +17,7 @@ import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
  * Handles common file I/O operations with proper error handling.
  * Provides shared scope resolver to eliminate duplication across platform adapters.
  */
-export abstract class BaseTextAppyAdapter implements IAppyPlatformAdapter {
+export abstract class BaseTextAppyAdapter implements IApplyPlatformAdapter {
   abstract readonly platformName: SupportedApplyPlatform;
 
   /**

@@ -106,7 +106,7 @@ export interface AppyIntegrationResult {
  * Separated from the legacy IPlatformAdapter interface which uses a different
  * approach for artifact synchronization.
  */
-export interface IAppyPlatformAdapter {
+export interface IApplyPlatformAdapter {
   readonly platformName: SupportedApplyPlatform;
 
   /**

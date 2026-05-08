@@ -4,7 +4,7 @@ import type {
   AppyConfigTarget,
   AppyIntegrationRequest,
   AppyIntegrationResult,
-  IAppyPlatformAdapter,
+  IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
@@ -18,7 +18,7 @@ import {
   upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
-export class WindsurfAdapter implements IAppyPlatformAdapter {
+export class WindsurfAdapter implements IApplyPlatformAdapter {
   readonly platformName = "windsurf" as const;
   private readonly sourceLoader = new ApplySourceLoader();
   private static readonly markers = {

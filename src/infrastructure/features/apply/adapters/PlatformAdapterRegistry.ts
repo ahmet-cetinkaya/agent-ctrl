@@ -18,8 +18,8 @@ import { SUPPORTED_APPLY_PLATFORMS } from "@/core/domain/shared/types/SupportedA
  * Ensures all supported platforms have registered adapters.
  */
 export class PlatformAdapterRegistry {
-  private readonly registry = new Map<SupportedApplyPlatform, IAppyPlatformAdapter>();
-  private readonly factories: Record<SupportedApplyPlatform, () => IAppyPlatformAdapter> = {
+  private readonly registry = new Map<SupportedApplyPlatform, IApplyPlatformAdapter>();
+  private readonly factories: Record<SupportedApplyPlatform, () => IApplyPlatformAdapter> = {
     antigravity: () => new AntigravityAdapter(),
     claude: () => new ClaudeApplyAdapter(),
     codex: () => new CodexAdapter(),
@@ -46,7 +46,7 @@ export class PlatformAdapterRegistry {
    * Resolves the adapter for the given platform.
    * @throws {SystemError} If the adapter is not registered (should never happen with validation)
    */
-  resolve(platform: SupportedApplyPlatform): IAppyPlatformAdapter {
+  resolve(platform: SupportedApplyPlatform): IApplyPlatformAdapter {
     const existing = this.registry.get(platform);
     if (existing) {
       return existing;

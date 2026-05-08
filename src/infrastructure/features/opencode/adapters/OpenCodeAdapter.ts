@@ -4,7 +4,7 @@ import type {
   AppyConfigTarget,
   AppyIntegrationRequest,
   AppyIntegrationResult,
-  IAppyPlatformAdapter,
+  IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
@@ -18,7 +18,7 @@ import {
   upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
-export class OpenCodeAdapter implements IAppyPlatformAdapter {
+export class OpenCodeAdapter implements IApplyPlatformAdapter {
   readonly platformName = "opencode" as const;
   private readonly sourceLoader = new ApplySourceLoader();
   private static readonly markers = {

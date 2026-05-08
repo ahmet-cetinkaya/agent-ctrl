@@ -5,13 +5,13 @@ import type {
   AppyConfigTarget,
   AppyIntegrationRequest,
   AppyIntegrationResult,
-  IAppyPlatformAdapter,
+  IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ClaudeAdapter } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import { resolveApplyScope } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
-export class ClaudeApplyAdapter implements IAppyPlatformAdapter {
+export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
   readonly platformName = "claude" as const;
   private readonly sourceLoader = new ApplySourceLoader();
 

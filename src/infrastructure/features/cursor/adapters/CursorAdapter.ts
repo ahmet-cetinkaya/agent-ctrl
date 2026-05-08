@@ -4,7 +4,7 @@ import type {
   AppyConfigTarget,
   AppyIntegrationRequest,
   AppyIntegrationResult,
-  IAppyPlatformAdapter,
+  IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
@@ -18,7 +18,7 @@ import {
   toStatus,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
-export class CursorAdapter implements IAppyPlatformAdapter {
+export class CursorAdapter implements IApplyPlatformAdapter {
   readonly platformName = "cursor" as const;
   private readonly sourceLoader = new ApplySourceLoader();
 

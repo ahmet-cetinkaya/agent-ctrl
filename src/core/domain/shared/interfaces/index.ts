@@ -2,7 +2,7 @@ export type { IFileValidator } from "./IFileValidator";
 export type {
   IPlatformAdapter,
   PlatformConfig,
-  IAppyPlatformAdapter,
+  IApplyPlatformAdapter,
   AppyConfigTarget,
   AppyIntegrationRequest,
   AppyIntegrationResult,
