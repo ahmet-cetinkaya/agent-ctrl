@@ -1,17 +1,17 @@
 import type { ApplyPlatformStatus } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 
-export interface AppyMergeResult {
+export interface ApplyMergeResult {
   status: ApplyPlatformStatus;
   content: string;
 }
 
-export class AppyMergePolicy {
+export class ApplyMergePolicy {
   constructor() {}
 
-  static mergeText(existingContent: string | null, desiredContent: string, override: boolean): AppyMergeResult {
+  static mergeText(existingContent: string | null, desiredContent: string, override: boolean): ApplyMergeResult {
     if (!override && existingContent !== null) {
-      const normalizedExisting = AppyMergePolicy.normalize(existingContent);
-      const normalizedDesired = AppyMergePolicy.normalize(desiredContent);
+      const normalizedExisting = ApplyMergePolicy.normalize(existingContent);
+      const normalizedDesired = ApplyMergePolicy.normalize(desiredContent);
       if (normalizedExisting === normalizedDesired) {
         return {
           status: "unchanged",
@@ -31,6 +31,6 @@ export class AppyMergePolicy {
   }
 }
 
-export function normalizeAppyContent(content: string): string {
+export function normalizeApplyContent(content: string): string {
   return content.replace(/\r\n/g, "\n").trimEnd();
 }

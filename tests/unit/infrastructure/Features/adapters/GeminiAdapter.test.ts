@@ -20,7 +20,7 @@ describe("GeminiAdapter", () => {
   });
 
   it("creates Gemini guidance and TOML commands", async () => {
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
     expect(result.configPath).toBe(resolve(projectPath, "GEMINI.md"));
@@ -35,8 +35,8 @@ describe("GeminiAdapter", () => {
   });
 
   it("reapplies deterministically", async () => {
-    await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("unchanged");
   });
 });

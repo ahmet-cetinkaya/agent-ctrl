@@ -1,11 +1,11 @@
-# Implementation Plan: Appy Platform Apply Integration
+# Implementation Plan: Apply Platform Apply Integration
 
-**Branch**: `[003-integrate-appy-platforms]` | **Date**: 2026-03-06 | **Spec**: [/home/ac/Code/ahmet-cetinkaya/agent-ctrl/specs/003-integrate-appy-platforms/spec.md](/home/ac/Code/ahmet-cetinkaya/agent-ctrl/specs/003-integrate-appy-platforms/spec.md)
-**Input**: Feature specification from `/specs/003-integrate-appy-platforms/spec.md`
+**Branch**: `[003-integrate-apply-platforms]` | **Date**: 2026-03-06 | **Spec**: [/home/ac/Code/ahmet-cetinkaya/agent-ctrl/specs/003-integrate-apply-platforms/spec.md](/home/ac/Code/ahmet-cetinkaya/agent-ctrl/specs/003-integrate-apply-platforms/spec.md)
+**Input**: Feature specification from `/specs/003-integrate-apply-platforms/spec.md`
 
 ## Summary
 
-Extend the existing `apply` flow from a single supported platform to eight selectable targets (`opencode`, `gemini`, `qwen`, `kilo`, `antigravity`, `codex`, `cursor`, `windsurf`) so each run configures the `appy` integration artifact for exactly one platform, preserves unrelated settings, replaces conflicting `appy` entries, enforces documented scope precedence where applicable, and returns deterministic status (`success`/`unchanged`/`failure`).
+Extend the existing `apply` flow from a single supported platform to eight selectable targets (`opencode`, `gemini`, `qwen`, `kilo`, `antigravity`, `codex`, `cursor`, `windsurf`) so each run configures the `apply` integration artifact for exactly one platform, preserves unrelated settings, replaces conflicting `apply` entries, enforces documented scope precedence where applicable, and returns deterministic status (`success`/`unchanged`/`failure`).
 
 ## Technical Context
 
@@ -17,14 +17,14 @@ Extend the existing `apply` flow from a single supported platform to eight selec
 **Project Type**: Layered CLI application (`core` + `infrastructure` + `presentation`)  
 **Performance Goals**: 95% of selected-platform apply runs complete within 5 seconds for typical projects (10-50 artifacts)  
 **Constraints**: Single-platform argument is mandatory; unchanged outcome returns success; unsupported/missing platform returns usage error with no writes; deterministic and idempotent config updates; documented user/project scope precedence must be applied consistently  
-**Scale/Scope**: 8 supported targets, one platform processed per run, repeated runs must converge without duplicate `appy` entries
+**Scale/Scope**: 8 supported targets, one platform processed per run, repeated runs must converge without duplicate `apply` entries
 
 ## Constitution Check
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **I. Layered Architecture Boundaries**: PASS. Plan keeps CLI parsing in `presentation`, orchestration in `core`, and per-platform file integrations in `infrastructure` adapters.
-- **II. Deterministic Configuration Behavior**: PASS. Plan enforces explicit selected-platform processing, replace-conflict behavior for `appy`, and unchanged/success semantics.
+- **II. Deterministic Configuration Behavior**: PASS. Plan enforces explicit selected-platform processing, replace-conflict behavior for `apply`, and unchanged/success semantics.
 - **III. Test and Type Safety Gates**: PASS. Plan includes unit/integration/contract tests and preserves strict TypeScript typing.
 - **IV. Security and Secret Handling**: PASS. Plan reuses sanitized error handling conventions and does not introduce secret-value logging in apply outputs.
 - **V. CLI Observability and Usability**: PASS. Plan adds clear selected-platform result messages and actionable errors for unsupported/missing platform input.
@@ -34,14 +34,14 @@ _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 ### Documentation (this feature)
 
 ```text
-specs/003-integrate-appy-platforms/
+specs/003-integrate-apply-platforms/
 ├── plan.md
 ├── research.md
 ├── data-model.md
 ├── quickstart.md
 ├── contracts/
-│   ├── cli-apply-appy-contract.md
-│   └── platform-appy-config-contract.md
+│   ├── cli-apply-apply-contract.md
+│   └── platform-apply-config-contract.md
 └── tasks.md
 ```
 
@@ -107,12 +107,12 @@ tests/
 ## Phase 0: Research
 
 - Completed in `research.md`.
-- Focus areas: per-platform `appy` integration contract, adapter-selection strategy, deterministic merge/replace behavior, and CLI status semantics.
+- Focus areas: per-platform `apply` integration contract, adapter-selection strategy, deterministic merge/replace behavior, and CLI status semantics.
 
 ## Phase 1: Design & Contracts
 
 - Completed in `data-model.md`, `contracts/`, and `quickstart.md`.
-- Design defines selected-platform request/outcome entities, `appy` entry lifecycle, and CLI command contract for missing/unsupported platform behavior.
+- Design defines selected-platform request/outcome entities, `apply` entry lifecycle, and CLI command contract for missing/unsupported platform behavior.
 
 ## Phase 2: Planning Readiness
 

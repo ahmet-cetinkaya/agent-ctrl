@@ -2,10 +2,10 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
-import { BaseTextAppyAdapter } from "@/infrastructure/features/apply/adapters/BaseTextAppyAdapter";
-import type { AppyConfigTarget, AppyIntegrationRequest } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import { BaseTextApplyAdapter } from "@/infrastructure/features/apply/adapters/BaseTextApplyAdapter";
+import type { ApplyConfigTarget, ApplyIntegrationRequest } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 
-class TestTextAdapter extends BaseTextAppyAdapter {
+class TestTextAdapter extends BaseTextApplyAdapter {
   readonly platformName = "opencode" as const;
   private readonly targetPath: string;
 
@@ -14,7 +14,7 @@ class TestTextAdapter extends BaseTextAppyAdapter {
     this.targetPath = targetPath;
   }
 
-  async resolveTarget(_projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
+  async resolveTarget(_projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     return {
       configPath: this.targetPath,
       scope: request?.targetScope ?? "user",
@@ -22,12 +22,12 @@ class TestTextAdapter extends BaseTextAppyAdapter {
     };
   }
 
-  protected buildDesiredContent(target: AppyConfigTarget): string {
+  protected buildDesiredContent(target: ApplyConfigTarget): string {
     return `content:${target.scope}`;
   }
 }
 
-describe("BaseTextAppyAdapter", () => {
+describe("BaseTextApplyAdapter", () => {
   let workspace: string;
   let targetPath: string;
   let adapter: TestTextAdapter;
@@ -43,7 +43,7 @@ describe("BaseTextAppyAdapter", () => {
   });
 
   it("writes config for success path and reports success message", async () => {
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath: workspace,
       targetScope: "user",
     });
@@ -55,12 +55,12 @@ describe("BaseTextAppyAdapter", () => {
   });
 
   it("reports unchanged when target content is already in desired state", async () => {
-    await adapter.applyAppyIntegration({
+    await adapter.applyApplyIntegration({
       projectPath: workspace,
       targetScope: "project",
     });
 
-    const second = await adapter.applyAppyIntegration({
+    const second = await adapter.applyApplyIntegration({
       projectPath: workspace,
       targetScope: "project",
     });
@@ -69,7 +69,7 @@ describe("BaseTextAppyAdapter", () => {
   });
 
   it("honors dry-run by skipping file write", async () => {
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath: workspace,
       dryRun: true,
       targetScope: "user",

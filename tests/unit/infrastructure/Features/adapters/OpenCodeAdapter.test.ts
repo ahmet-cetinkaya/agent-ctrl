@@ -23,7 +23,7 @@ describe("OpenCodeAdapter", () => {
   });
 
   it("syncs OpenCode native files", async () => {
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
     expect(result.configPath).toBe(resolve(projectPath, "AGENTS.md"));
@@ -37,13 +37,13 @@ describe("OpenCodeAdapter", () => {
   });
 
   it("preserves unchanged state on rerun", async () => {
-    await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("unchanged");
   });
 
   it("writes user scope artifacts directly into the OpenCode config root", async () => {
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath,
       targetScope: "user",
       userConfigRootPath: userRootPath,

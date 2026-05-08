@@ -1,4 +1,4 @@
-# Data Model: Appy Platform Apply Integration
+# Data Model: Apply Platform Apply Integration
 
 ## Entity: PlatformApplyRequest
 
@@ -25,16 +25,16 @@
 - `id` is unique and maps to exactly one adapter.
 - Unsupported values must produce deterministic error message.
 
-## Entity: AppyIntegrationConfiguration
+## Entity: ApplyIntegrationConfiguration
 
-- Description: Required managed `appy` command configuration for one platform.
+- Description: Required managed `apply` command configuration for one platform.
 - Fields:
-- `commandId` (string): `appy`
-- `payload` (object): platform-shaped config body for `appy`
+- `commandId` (string): `apply`
+- `payload` (object): platform-shaped config body for `apply`
 - `source` (string): managed by `agent-ctrl`
 - `versionTag` (string, optional)
 - Validation rules:
-- `commandId` is always `appy`.
+- `commandId` is always `apply`.
 - Payload must satisfy adapter-specific schema checks.
 
 ## Entity: ExistingPlatformConfig
@@ -42,11 +42,11 @@
 - Description: Current target platform configuration before apply.
 - Fields:
 - `entries` (map<string, unknown>)
-- `hasAppyEntry` (boolean)
-- `appyEntryValid` (boolean)
+- `hasApplyEntry` (boolean)
+- `applyEntryValid` (boolean)
 - Validation rules:
-- Non-`appy` entries are preserved.
-- Invalid/conflicting `appy` entries are replaced, not duplicated.
+- Non-`apply` entries are preserved.
+- Invalid/conflicting `apply` entries are replaced, not duplicated.
 
 ## Entity: ApplyResult
 
@@ -74,8 +74,8 @@
 ## Relationships
 
 - One `PlatformApplyRequest` resolves to one `PlatformTarget`.
-- One `PlatformTarget` produces one `AppyIntegrationConfiguration` per run.
-- One `ExistingPlatformConfig` is merged with one `AppyIntegrationConfiguration` to produce one `ApplyResult`.
+- One `PlatformTarget` produces one `ApplyIntegrationConfiguration` per run.
+- One `ExistingPlatformConfig` is merged with one `ApplyIntegrationConfiguration` to produce one `ApplyResult`.
 - One `ApplyResult` determines one `ApplyCommandExit`.
 
 ## State Transitions
@@ -83,5 +83,5 @@
 - `ApplyResult.status`:
 - `success -> unchanged` (on subsequent idempotent reruns)
 - `failure -> success` (after corrective action and rerun)
-- `ExistingPlatformConfig.appyEntryValid`:
+- `ExistingPlatformConfig.applyEntryValid`:
 - `false -> true` (after replace-on-conflict apply)

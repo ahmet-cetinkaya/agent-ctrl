@@ -1,10 +1,10 @@
-# Quickstart: Appy Platform Apply Integration
+# Quickstart: Apply Platform Apply Integration
 
 ## Prerequisites
 
 - Repository dependencies installed.
 - Project contains standard artifact directories (`rules/`, `skills/`, `agents/`).
-- You are on branch `003-integrate-appy-platforms`.
+- You are on branch `003-integrate-apply-platforms`.
 
 ## 1. Verify Command Help
 
@@ -55,7 +55,7 @@ Expected behavior for each run:
 
 - Exactly one selected platform is processed.
 - Missing/unsupported platform input fails with guidance and no writes.
-- Conflicting existing `appy` entries are replaced with valid managed `appy` configuration.
+- Conflicting existing `apply` entries are replaced with valid managed `apply` configuration.
 - Unrelated configuration entries remain intact.
 
 ## 4. Verify Idempotency
@@ -71,7 +71,7 @@ Expected behavior:
 
 - First run: typically `success`.
 - Second run: `unchanged` (exit code 0).
-- No duplicate `appy` entries are introduced.
+- No duplicate `apply` entries are introduced.
 
 ## 5. Dry Run Validation
 

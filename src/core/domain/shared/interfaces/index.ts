@@ -3,9 +3,9 @@ export type {
   IPlatformAdapter,
   PlatformConfig,
   IApplyPlatformAdapter,
-  AppyConfigTarget,
-  AppyIntegrationRequest,
-  AppyIntegrationResult,
+  ApplyConfigTarget,
+  ApplyIntegrationRequest,
+  ApplyIntegrationResult,
   ApplyPlatformScope,
   ApplyPlatformStatus,
 } from "./IPlatformAdapter";

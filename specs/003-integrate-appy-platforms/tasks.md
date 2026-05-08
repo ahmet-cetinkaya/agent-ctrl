@@ -1,6 +1,6 @@
-# Tasks: Appy Platform Apply Integration
+# Tasks: Apply Platform Apply Integration
 
-**Input**: Design documents from `/specs/003-integrate-appy-platforms/`  
+**Input**: Design documents from `/specs/003-integrate-apply-platforms/`  
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
 **Tests**: Included. The plan and constitution require unit/integration/contract coverage for changed behavior.
@@ -33,7 +33,7 @@
 **⚠️ CRITICAL**: No user story implementation starts before this phase is complete.
 
 - [x] T007 Define supported apply platform type and parser in `src/core/domain/shared/types/SupportedApplyPlatform.ts`
-- [x] T008 Extend platform adapter interface for platform-native appy artifacts in `src/core/domain/shared/interfaces/IPlatformAdapter.ts`
+- [x] T008 Extend platform adapter interface for platform-native apply artifacts in `src/core/domain/shared/interfaces/IPlatformAdapter.ts`
 - [x] T009 Implement platform adapter registry and resolution in `src/infrastructure/features/apply/adapters/PlatformAdapterRegistry.ts`
 - [x] T010 Refactor adapter selection in apply command to use registry in `src/core/application/features/apply/commands/ApplyCommand.ts`
 - [x] T011 Update CLI argument help and supported-platform list in `src/presentation/cli/features/apply/commands/apply.ts`
@@ -44,11 +44,11 @@
 
 ---
 
-## Phase 3: User Story 1 - Apply Appy To A Selected Platform (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 - Apply Apply To A Selected Platform (Priority: P1) 🎯 MVP
 
-**Goal**: Configure `appy` for exactly one selected platform with platform-native artifacts.
+**Goal**: Configure `apply` for exactly one selected platform with platform-native artifacts.
 
-**Independent Test**: Run `apply` for one platform and verify only that platform receives valid managed `appy` integration without duplicate entries.
+**Independent Test**: Run `apply` for one platform and verify only that platform receives valid managed `apply` integration without duplicate entries.
 
 ### Tests for User Story 1
 
@@ -56,18 +56,18 @@
 - [x] T015 [P] [US1] Add Gemini adapter unit tests for TOML command create/replace behavior in `tests/unit/infrastructure/Features/adapters/GeminiAdapter.test.ts`
 - [x] T016 [P] [US1] Add Qwen adapter unit tests for managed command upsert behavior in `tests/unit/infrastructure/Features/adapters/QwenAdapter.test.ts`
 - [x] T017 [P] [US1] Add Kilo adapter unit tests for managed command upsert behavior in `tests/unit/infrastructure/Features/adapters/KiloAdapter.test.ts`
-- [x] T018 [P] [US1] Add Antigravity, Codex, Cursor, and Windsurf adapter unit tests for documented customization-surface appy behavior in `tests/unit/infrastructure/Features/adapters/AntigravityAdapter.test.ts`, `tests/unit/infrastructure/Features/adapters/CodexAdapter.test.ts`, `tests/unit/infrastructure/Features/adapters/CursorAdapter.test.ts`, and `tests/unit/infrastructure/Features/adapters/WindsurfAdapter.test.ts`
+- [x] T018 [P] [US1] Add Antigravity, Codex, Cursor, and Windsurf adapter unit tests for documented customization-surface apply behavior in `tests/unit/infrastructure/Features/adapters/AntigravityAdapter.test.ts`, `tests/unit/infrastructure/Features/adapters/CodexAdapter.test.ts`, `tests/unit/infrastructure/Features/adapters/CursorAdapter.test.ts`, and `tests/unit/infrastructure/Features/adapters/WindsurfAdapter.test.ts`
 - [x] T019 [P] [US1] Add selected-platform apply integration matrix test in `tests/integration/apply/PlatformApplyFlow.test.ts`
 
 ### Implementation for User Story 1
 
-- [x] T020 [US1] Implement OpenCode appy integration adapter in `src/infrastructure/features/opencode/adapters/OpenCodeAdapter.ts`
-- [x] T021 [US1] Implement Gemini appy integration adapter in `src/infrastructure/features/gemini/adapters/GeminiAdapter.ts`
-- [x] T022 [US1] Implement Qwen appy integration adapter in `src/infrastructure/features/qwen/adapters/QwenAdapter.ts`
-- [x] T023 [US1] Implement Kilo appy integration adapter in `src/infrastructure/features/kilo/adapters/KiloAdapter.ts`
-- [x] T024 [US1] Implement Antigravity, Codex, Cursor, and Windsurf appy integration adapters in `src/infrastructure/features/antigravity/adapters/AntigravityAdapter.ts`, `src/infrastructure/features/codex/adapters/CodexAdapter.ts`, `src/infrastructure/features/cursor/adapters/CursorAdapter.ts`, and `src/infrastructure/features/windsurf/adapters/WindsurfAdapter.ts`
+- [x] T020 [US1] Implement OpenCode apply integration adapter in `src/infrastructure/features/opencode/adapters/OpenCodeAdapter.ts`
+- [x] T021 [US1] Implement Gemini apply integration adapter in `src/infrastructure/features/gemini/adapters/GeminiAdapter.ts`
+- [x] T022 [US1] Implement Qwen apply integration adapter in `src/infrastructure/features/qwen/adapters/QwenAdapter.ts`
+- [x] T023 [US1] Implement Kilo apply integration adapter in `src/infrastructure/features/kilo/adapters/KiloAdapter.ts`
+- [x] T024 [US1] Implement Antigravity, Codex, Cursor, and Windsurf apply integration adapters in `src/infrastructure/features/antigravity/adapters/AntigravityAdapter.ts`, `src/infrastructure/features/codex/adapters/CodexAdapter.ts`, `src/infrastructure/features/cursor/adapters/CursorAdapter.ts`, and `src/infrastructure/features/windsurf/adapters/WindsurfAdapter.ts`
 - [x] T025 [US1] Register platform adapters for opencode/gemini/qwen/kilo/antigravity/codex/cursor/windsurf in `src/infrastructure/features/apply/adapters/PlatformAdapterRegistry.ts`
-- [x] T026 [US1] Integrate appy artifact generation and selected-platform write flow in `src/core/application/features/apply/commands/ApplyCommand.ts`
+- [x] T026 [US1] Integrate apply artifact generation and selected-platform write flow in `src/core/application/features/apply/commands/ApplyCommand.ts`
 - [x] T027 [P] [US1] Add user-level vs project-level precedence tests for command scope resolution (including Cursor and Windsurf rule scopes) in `tests/unit/infrastructure/Features/adapters/CommandScopePrecedenceResolver.test.ts`
 - [x] T028 [US1] Implement command scope precedence resolver for user/project surfaces in `src/infrastructure/features/apply/adapters/CommandScopePrecedenceResolver.ts`
 
@@ -100,7 +100,7 @@
 
 **Goal**: Ensure reruns are idempotent, replace conflicts, avoid duplicates, and report `unchanged` as success.
 
-**Independent Test**: Run apply twice for the same platform and verify second run returns unchanged (success) with no duplicate managed appy entries.
+**Independent Test**: Run apply twice for the same platform and verify second run returns unchanged (success) with no duplicate managed apply entries.
 
 ### Tests for User Story 3
 
@@ -110,7 +110,7 @@
 ### Implementation for User Story 3
 
 - [x] T036 [US3] Implement deterministic unchanged detection in apply orchestration in `src/core/application/features/apply/commands/ApplyCommand.ts`
-- [x] T037 [US3] Implement shared appy merge policy for replace-conflict/no-duplicate guarantees in `src/infrastructure/features/apply/adapters/AppyMergePolicy.ts`
+- [x] T037 [US3] Implement shared apply merge policy for replace-conflict/no-duplicate guarantees in `src/infrastructure/features/apply/adapters/ApplyMergePolicy.ts`
 - [x] T038 [US3] Apply shared merge policy across platform adapters in `src/infrastructure/features/opencode/adapters/OpenCodeAdapter.ts`, `src/infrastructure/features/gemini/adapters/GeminiAdapter.ts`, `src/infrastructure/features/qwen/adapters/QwenAdapter.ts`, `src/infrastructure/features/kilo/adapters/KiloAdapter.ts`, `src/infrastructure/features/antigravity/adapters/AntigravityAdapter.ts`, `src/infrastructure/features/codex/adapters/CodexAdapter.ts`, `src/infrastructure/features/cursor/adapters/CursorAdapter.ts`, and `src/infrastructure/features/windsurf/adapters/WindsurfAdapter.ts`
 - [x] T039 [US3] Ensure unchanged result maps to success exit behavior in `src/presentation/cli/features/apply/commands/apply.ts`
 
@@ -123,13 +123,13 @@
 **Purpose**: Final consistency, documentation, and validation.
 
 - [x] T040 [P] Update usage and troubleshooting documentation for supported platforms, error remediation, and single-target behavior in `docs/COMMANDS.md` and `docs/TROUBLESHOOTING.md`
-- [x] T041 [P] Update architecture adapter matrix for platform-native appy artifacts in `docs/ARCHITECTURE.md`
-- [x] T042 Validate quickstart scenario coverage and refresh expected outcomes in `specs/003-integrate-appy-platforms/quickstart.md`
-- [x] T043 Run full test and type-check validation and record result notes in `specs/003-integrate-appy-platforms/quickstart.md`
+- [x] T041 [P] Update architecture adapter matrix for platform-native apply artifacts in `docs/ARCHITECTURE.md`
+- [x] T042 Validate quickstart scenario coverage and refresh expected outcomes in `specs/003-integrate-apply-platforms/quickstart.md`
+- [x] T043 Run full test and type-check validation and record result notes in `specs/003-integrate-apply-platforms/quickstart.md`
 - [x] T044 [P] Add SC-001 performance/outcome protocol validation (>=320 runs, >=40 per platform, duration+outcome capture) in `tests/integration/apply/PlatformApplyPerformance.test.ts`
 - [x] T045 [P] Add remediation-time integration validation for SC-004 in `tests/integration/apply/PlatformApplyRemediationTime.test.ts`
 - [x] T046 [P] Add contract tests ensuring documented customization surfaces are used per platform (including Codex, Cursor, and Windsurf documented behavior) in `tests/contract/cli/PlatformCustomizationSurfaceContract.test.ts`
-- [x] T047 [P] Validate and refresh documented customization-surface baseline references used by contracts in `specs/003-integrate-appy-platforms/research.md`
+- [x] T047 [P] Validate and refresh documented customization-surface baseline references used by contracts in `specs/003-integrate-apply-platforms/research.md`
 
 ---
 
@@ -191,7 +191,7 @@ T034, T035
 1. Complete Phase 1 and Phase 2.
 2. Complete Phase 3 (US1).
 3. Validate US1 independently via `tests/integration/apply/PlatformApplyFlow.test.ts`.
-4. Demo/deploy MVP behavior for selected-platform appy integration.
+4. Demo/deploy MVP behavior for selected-platform apply integration.
 
 ### Incremental Delivery
 

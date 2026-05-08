@@ -23,7 +23,7 @@ describe("CursorAdapter", () => {
   });
 
   it("writes project-scope artifacts when explicitly requested", async () => {
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.scope).toBe("project");
     expect(result.configPath).toBe(resolve(projectPath, ".cursor"));
     expect(result.surface).toBe("rules-skills-commands-agents-mcp");
@@ -35,7 +35,7 @@ describe("CursorAdapter", () => {
   });
 
   it("writes user-scope artifacts by default", async () => {
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath,
       userConfigRootPath: userRootPath,
     });

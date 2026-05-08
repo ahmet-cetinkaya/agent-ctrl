@@ -1,9 +1,9 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import type {
-  AppyConfigTarget,
-  AppyIntegrationRequest,
-  AppyIntegrationResult,
+  ApplyConfigTarget,
+  ApplyIntegrationRequest,
+  ApplyIntegrationResult,
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
@@ -22,7 +22,7 @@ export class CursorAdapter implements IApplyPlatformAdapter {
   readonly platformName = "cursor" as const;
   private readonly sourceLoader = new ApplySourceLoader();
 
-  async resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
+  async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
     const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".cursor");
     return {
@@ -32,7 +32,7 @@ export class CursorAdapter implements IApplyPlatformAdapter {
     };
   }
 
-  async applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult> {
+  async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
     const source = await this.sourceLoader.load(request.projectPath);
     let changed = false;

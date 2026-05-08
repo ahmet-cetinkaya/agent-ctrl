@@ -1,8 +1,8 @@
-# Research: Appy Platform Apply Integration
+# Research: Apply Platform Apply Integration
 
 ## Scope
 
-Feature context: support `agent-ctrl apply <platform>` for `opencode`, `gemini`, `qwen`, `kilo`, `antigravity`, `codex`, `cursor`, and `windsurf`, with each execution applying `appy` integration to one selected platform only.
+Feature context: support `agent-ctrl apply <platform>` for `opencode`, `gemini`, `qwen`, `kilo`, `antigravity`, `codex`, `cursor`, and `windsurf`, with each execution applying `apply` integration to one selected platform only.
 
 ## Decision 1: Selected-Platform Processing Model
 
@@ -20,38 +20,38 @@ Feature context: support `agent-ctrl apply <platform>` for `opencode`, `gemini`,
 - Conditional `if/else` chain inside `ApplyCommand`. Rejected due to scaling and maintainability issues.
 - Dynamic runtime discovery by filesystem scanning. Rejected because deterministic support/error messaging is required.
 
-## Decision 3: OpenCode Appy Integration Contract
+## Decision 3: OpenCode Apply Integration Contract
 
-- Decision: OpenCode adapter writes or updates only the managed `appy` command configuration for OpenCode while preserving unrelated OpenCode settings.
+- Decision: OpenCode adapter writes or updates only the managed `apply` command configuration for OpenCode while preserving unrelated OpenCode settings.
 - Rationale: Satisfies replace-conflict and preserve-unrelated requirements with idempotent reruns.
 - Alternatives considered:
 - Overwrite entire OpenCode configuration document. Rejected because it risks user-owned settings.
-- Append-only updates. Rejected because stale/conflicting `appy` entries must be replaced.
+- Append-only updates. Rejected because stale/conflicting `apply` entries must be replaced.
 
-## Decision 4: Gemini Appy Integration Contract
+## Decision 4: Gemini Apply Integration Contract
 
-- Decision: Gemini adapter applies a single managed `appy` command entry in Gemini target config, replacing conflicting `appy` definitions and preserving non-`appy` entries.
+- Decision: Gemini adapter applies a single managed `apply` command entry in Gemini target config, replacing conflicting `apply` definitions and preserving non-`apply` entries.
 - Rationale: Consistent behavior across platforms lowers operational ambiguity and test variance.
 - Alternatives considered:
-- Store multiple `appy` variants side-by-side. Rejected because duplicates violate idempotency and conflict rules.
+- Store multiple `apply` variants side-by-side. Rejected because duplicates violate idempotency and conflict rules.
 
-## Decision 5: Qwen Appy Integration Contract
+## Decision 5: Qwen Apply Integration Contract
 
-- Decision: Qwen adapter follows the same managed-entry contract: create missing `appy`, replace conflicting `appy`, preserve unrelated Qwen settings.
+- Decision: Qwen adapter follows the same managed-entry contract: create missing `apply`, replace conflicting `apply`, preserve unrelated Qwen settings.
 - Rationale: Keeps core behavior uniform while allowing adapter-specific storage shape.
 - Alternatives considered:
 - Platform-specific conflict semantics for Qwen only. Rejected because it would fragment CLI expectations.
 
-## Decision 6: Kilo Appy Integration Contract
+## Decision 6: Kilo Apply Integration Contract
 
-- Decision: Kilo adapter performs deterministic upsert for `appy` and reports `success`, `unchanged`, or `failure` for the selected platform.
+- Decision: Kilo adapter performs deterministic upsert for `apply` and reports `success`, `unchanged`, or `failure` for the selected platform.
 - Rationale: Directly aligns with spec FR-009/FR-014 and measurable result reporting.
 - Alternatives considered:
 - Success only when changes occurred. Rejected because unchanged desired state must still be success.
 
-## Decision 7: Antigravity Appy Integration Contract
+## Decision 7: Antigravity Apply Integration Contract
 
-- Decision: Antigravity adapter uses the same deterministic managed `appy` lifecycle as other targets, including replace-on-conflict behavior.
+- Decision: Antigravity adapter uses the same deterministic managed `apply` lifecycle as other targets, including replace-on-conflict behavior.
 - Rationale: Shared lifecycle keeps acceptance tests reusable across all supported platforms.
 - Alternatives considered:
 - Defer Antigravity to later phase. Rejected because supported-platform scope is explicit in the spec.
@@ -70,9 +70,9 @@ Feature context: support `agent-ctrl apply <platform>` for `opencode`, `gemini`,
 - Alternatives considered:
 - Integration-only coverage. Rejected because core routing and status semantics need fast deterministic unit checks.
 
-## Decision 10: Codex Appy Integration Contract
+## Decision 10: Codex Apply Integration Contract
 
-- Decision: Codex adapter writes a managed `appy` integration artifact using documented Codex configuration/customization surfaces, including trusted project-scoped and user-scoped configuration behavior.
+- Decision: Codex adapter writes a managed `apply` integration artifact using documented Codex configuration/customization surfaces, including trusted project-scoped and user-scoped configuration behavior.
 - Rationale: Codex provides explicit configuration layering and documented customization surfaces; using those avoids unstable or deprecated paths.
 - Alternatives considered:
 - Use deprecated custom prompt mechanism as the primary integration path. Rejected because deprecated mechanisms increase long-term maintenance risk.
@@ -90,7 +90,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - https://opencode.ai/docs/commands
 - https://opencode.ai/docs/config
 - Confirmed pattern: custom commands can be defined in config (`command` object) or command files; command definitions include `template` and optional metadata (`description`, `agent`, `model`).
-- Planning impact: OpenCode adapter should target managed command-definition insertion/update for `appy` in the platform-native command config shape.
+- Planning impact: OpenCode adapter should target managed command-definition insertion/update for `apply` in the platform-native command config shape.
 
 ### Gemini CLI
 
@@ -99,7 +99,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/custom-commands.md
 - https://github.com/google-gemini/gemini-cli/blob/main/docs/extensions/writing-extensions.md
 - Confirmed pattern: custom commands are TOML files (for example under `~/.gemini/commands/`) with `description` and `prompt`; arguments are passed via `{{args}}`.
-- Planning impact: Gemini adapter should manage a single `appy` TOML command definition and replace conflicting managed definitions.
+- Planning impact: Gemini adapter should manage a single `apply` TOML command definition and replace conflicting managed definitions.
 
 ### Qwen Code
 
@@ -108,7 +108,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - https://github.com/qwenlm/qwen-code/blob/main/docs/cli/commands.md
 - https://github.com/qwenlm/qwen-code/blob/main/docs/extensions/getting-started-extensions.md
 - Confirmed pattern: custom commands are TOML files, discovered from command directories with namespacing by subdirectory.
-- Planning impact: Qwen adapter should write/update a managed `appy` TOML command in user/project command scope with idempotent replacement.
+- Planning impact: Qwen adapter should write/update a managed `apply` TOML command in user/project command scope with idempotent replacement.
 
 ### Kilo and Antigravity
 
@@ -118,7 +118,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - Verified docs include:
 - Kilo config schema examples showing `command` definitions and global config shape (`$schema`, `command`, `agent`, `mcp`, etc.)
 - Kilo migration docs describing config file discovery under `~/.config/kilo/` with `config.json`, `opencode.json`, `opencode.jsonc`
-- Confirmed pattern: Kilo supports command definitions in config and explicit config file locations suitable for managed `appy` entry updates.
+- Confirmed pattern: Kilo supports command definitions in config and explicit config file locations suitable for managed `apply` entry updates.
 - Planning impact: Kilo adapter can follow the same managed command upsert strategy as OpenCode with a Kilo-specific config path and schema.
 
 ### Antigravity
@@ -128,7 +128,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - `/websites/antigravity_google_home`
 - `/llmstxt/raw_githubusercontent_sirius-red_llms_txt_refs_heads_main_google_antigravity_llms-full_txt`
 - Confirmed from official documentation: product-level capabilities, editor/agent workflows, and general settings surfaces.
-- Not confirmed from official documentation: explicit CLI command-definition file format for custom `appy` command integration.
+- Not confirmed from official documentation: explicit CLI command-definition file format for custom `apply` command integration.
 - Planning impact: Antigravity implementation should remain behind a documentation-validation gate until an authoritative config/command contract is confirmed.
 
 ## Independent Internet Validation (2026-03-06)
@@ -139,14 +139,14 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - https://opencode.ai/docs/commands/
 - https://open-code.ai/docs/en/config
 - Confirmed: custom commands can be defined via config (`command` object) or Markdown files in command directories (including project-local `.opencode/commands/`).
-- Planning impact: OpenCode `appy` integration can be implemented as a managed command entry with deterministic upsert semantics.
+- Planning impact: OpenCode `apply` integration can be implemented as a managed command entry with deterministic upsert semantics.
 
 ### Gemini CLI
 
 - Verified sources:
 - https://github.com/google-gemini/gemini-cli/blob/main/docs/cli/custom-commands.md
 - Confirmed: custom slash commands are TOML files under user and project command directories with precedence rules (project overrides user).
-- Planning impact: Gemini `appy` integration should write a managed TOML command and replace conflicting managed definition.
+- Planning impact: Gemini `apply` integration should write a managed TOML command and replace conflicting managed definition.
 
 ### Qwen Code
 
@@ -164,7 +164,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - https://kilo.ai/docs/zh-CN/cli
 - https://kilo.ai/cli
 - Confirmed: Kilo CLI docs and customization/config surfaces are available, and Kilo ecosystem documentation references OpenCode-style command/config capabilities.
-- Planning impact: Kilo `appy` integration can follow managed command upsert strategy, with final schema/path validated against Kilo’s active CLI config docs during implementation.
+- Planning impact: Kilo `apply` integration can follow managed command upsert strategy, with final schema/path validated against Kilo’s active CLI config docs during implementation.
 
 ### Antigravity
 
@@ -175,7 +175,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - https://antigravity.google/docs/skills
 - Confirmed: Antigravity documents rules/workflows/skills and settings locations (including global and workspace rule/skill conventions).
 - Remaining ambiguity: no explicit official “custom slash command file” contract was found analogous to OpenCode/Gemini/Qwen command docs.
-- Planning impact: for Antigravity, model `appy` integration as managed rules/workflows-style configuration unless official command-definition docs are confirmed.
+- Planning impact: for Antigravity, model `apply` integration as managed rules/workflows-style configuration unless official command-definition docs are confirmed.
 
 ### Codex CLI
 
@@ -184,7 +184,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - https://developers.openai.com/codex/config-reference/
 - https://developers.openai.com/codex/skills/
 - Confirmed: Codex supports layered configuration (`~/.codex/config.toml` and project `.codex/config.toml` for trusted projects), and reusable capability surfaces through skills. Custom prompts are explicitly deprecated in favor of skills; commands are mapped to skill format for Codex.
-- Planning impact: Codex `appy` integration should use documented Codex config and skill-oriented customization surfaces, with deterministic precedence and trusted-project behavior.
+- Planning impact: Codex `apply` integration should use documented Codex config and skill-oriented customization surfaces, with deterministic precedence and trusted-project behavior.
 
 ### Cursor
 
@@ -192,7 +192,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - https://cursor.com/docs/context/rules
 - https://cursor.com/help/customization/rules
 - Confirmed: Cursor supports project rules in `.cursor/rules` and additional user/global rule scopes, with rule file structures documented for markdown-based instructions.
-- Planning impact: Cursor `appy` integration should use documented Cursor rule/configuration surfaces with deterministic scope precedence and preserve unrelated rule content.
+- Planning impact: Cursor `apply` integration should use documented Cursor rule/configuration surfaces with deterministic scope precedence and preserve unrelated rule content.
 
 ### Windsurf
 
@@ -201,7 +201,7 @@ All technical-context unknowns and integration patterns are resolved for plannin
 - https://docs.windsurf.com/windsurf/cascade/workflows
 - https://docs.windsurf.com/windsurf/cascade/agents-md
 - Confirmed: Windsurf supports workspace-level rules in `.windsurf/rules`, global rules, workflow markdown files, and `AGENTS.md` style guidance discovery.
-- Planning impact: Windsurf `appy` integration should use documented Windsurf rule/workflow surfaces and maintain deterministic behavior across workspace/global scopes.
+- Planning impact: Windsurf `apply` integration should use documented Windsurf rule/workflow surfaces and maintain deterministic behavior across workspace/global scopes.
 
 ## Cross-Platform Configuration Surface Analysis (2026-03-07)
 

@@ -2,9 +2,9 @@ import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { mkdir } from "node:fs/promises";
 import type {
-  AppyConfigTarget,
-  AppyIntegrationRequest,
-  AppyIntegrationResult,
+  ApplyConfigTarget,
+  ApplyIntegrationRequest,
+  ApplyIntegrationResult,
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
@@ -35,7 +35,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
   readonly platformName = "kilo" as const;
   private readonly sourceLoader = new ApplySourceLoader();
 
-  async resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
+  async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
     const targetPath = scope === "project" ? projectPath : (request?.userConfigRootPath ?? resolve(homedir()));
 
@@ -51,7 +51,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
     };
   }
 
-  async applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult> {
+  async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
     const targetPath = scope === "project" ? request.projectPath : (request?.userConfigRootPath ?? resolve(homedir()));
 

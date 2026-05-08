@@ -1,4 +1,4 @@
-# Specification Quality Checklist: Integrate Appy Across Platforms
+# Specification Quality Checklist: Integrate Apply Across Platforms
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning  
 **Created**: 2026-03-06  

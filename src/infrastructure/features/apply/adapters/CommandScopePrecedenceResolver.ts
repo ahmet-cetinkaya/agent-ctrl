@@ -1,4 +1,4 @@
-import type { ApplyPlatformScope, AppyConfigTarget } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import type { ApplyPlatformScope, ApplyConfigTarget } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 
 export interface CommandScopeResolutionOptions {
@@ -10,7 +10,7 @@ export interface CommandScopeResolutionOptions {
 }
 
 export class CommandScopePrecedenceResolver {
-  resolve(options: CommandScopeResolutionOptions): AppyConfigTarget {
+  resolve(options: CommandScopeResolutionOptions): ApplyConfigTarget {
     const scope = this.resolveScope(options.preferredScope, options.defaultScope ?? "user");
 
     if (scope === "user") {

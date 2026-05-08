@@ -1,5 +1,5 @@
-import type { AppyMergeResult } from "@/infrastructure/features/apply/adapters/AppyMergePolicy";
-import { normalizeAppyContent } from "@/infrastructure/features/apply/adapters/AppyMergePolicy";
+import type { ApplyMergeResult } from "@/infrastructure/features/apply/adapters/ApplyMergePolicy";
+import { normalizeApplyContent } from "@/infrastructure/features/apply/adapters/ApplyMergePolicy";
 
 export interface ManagedTextSectionMarkers {
   start: string;
@@ -10,12 +10,12 @@ export function mergeManagedTextSection(
   existingContent: string | null,
   sectionBody: string,
   markers: ManagedTextSectionMarkers
-): AppyMergeResult {
+): ApplyMergeResult {
   const nextContent = upsertManagedTextSection(existingContent, sectionBody, markers);
   const currentContent = existingContent ?? "";
 
   return {
-    status: normalizeAppyContent(currentContent) === normalizeAppyContent(nextContent) ? "unchanged" : "success",
+    status: normalizeApplyContent(currentContent) === normalizeApplyContent(nextContent) ? "unchanged" : "success",
     content: nextContent,
   };
 }

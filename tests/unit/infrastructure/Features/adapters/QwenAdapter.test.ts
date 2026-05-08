@@ -20,7 +20,7 @@ describe("QwenAdapter", () => {
   });
 
   it("creates managed QWEN.md guidance for qwen", async () => {
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
     expect(result.configPath).toBe(resolve(projectPath, "QWEN.md"));
@@ -37,14 +37,14 @@ describe("QwenAdapter", () => {
   });
 
   it("returns unchanged when desired state already exists", async () => {
-    await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("unchanged");
   });
 
   it("supports documented user-scope file writes", async () => {
     const userRoot = resolve(projectPath, ".qwen-user");
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath,
       targetScope: "user",
       userConfigRootPath: userRoot,

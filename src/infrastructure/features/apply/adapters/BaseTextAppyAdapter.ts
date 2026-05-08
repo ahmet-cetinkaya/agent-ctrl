@@ -1,13 +1,13 @@
 import { dirname } from "node:path";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import type {
-  AppyConfigTarget,
-  AppyIntegrationRequest,
-  AppyIntegrationResult,
+  ApplyConfigTarget,
+  ApplyIntegrationRequest,
+  ApplyIntegrationResult,
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
-import { AppyMergePolicy, type AppyMergeResult } from "@/infrastructure/features/apply/adapters/AppyMergePolicy";
+import { ApplyMergePolicy, type ApplyMergeResult } from "@/infrastructure/features/apply/adapters/ApplyMergePolicy";
 import { CommandScopePrecedenceResolver } from "@/infrastructure/features/apply/adapters/CommandScopePrecedenceResolver";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
@@ -17,7 +17,7 @@ import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
  * Handles common file I/O operations with proper error handling.
  * Provides shared scope resolver to eliminate duplication across platform adapters.
  */
-export abstract class BaseTextAppyAdapter implements IApplyPlatformAdapter {
+export abstract class BaseTextApplyAdapter implements IApplyPlatformAdapter {
   abstract readonly platformName: SupportedApplyPlatform;
 
   /**
@@ -28,18 +28,18 @@ export abstract class BaseTextAppyAdapter implements IApplyPlatformAdapter {
 
   constructor() {}
 
-  abstract resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
+  abstract resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget>;
 
-  protected abstract buildDesiredContent(target: AppyConfigTarget): string;
+  protected abstract buildDesiredContent(target: ApplyConfigTarget): string;
 
   protected mergeContent(
     existingContent: string | null,
     desiredContent: string,
-    target: AppyConfigTarget,
+    target: ApplyConfigTarget,
     override: boolean
-  ): AppyMergeResult {
+  ): ApplyMergeResult {
     void target;
-    return AppyMergePolicy.mergeText(existingContent, desiredContent, override);
+    return ApplyMergePolicy.mergeText(existingContent, desiredContent, override);
   }
 
   /**
@@ -49,12 +49,12 @@ export abstract class BaseTextAppyAdapter implements IApplyPlatformAdapter {
    * 1. Resolves the target configuration path
    * 2. Builds the desired content for the platform
    * 3. Reads existing content (if any) with proper error handling
-   * 4. Merges using AppyMergePolicy
+   * 4. Merges using ApplyMergePolicy
    * 5. Writes to disk (unless dry-run) with comprehensive error handling
    *
    * @throws {SystemError} If file I/O fails due to permissions, disk space, or other system errors
    */
-  async applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult> {
+  async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
     const desiredContent = this.buildDesiredContent(target);
 

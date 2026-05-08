@@ -23,7 +23,7 @@ describe("CodexAdapter", () => {
   });
 
   it("writes managed Codex guidance into AGENTS.md by default", async () => {
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.scope).toBe("project");
     expect(result.configPath).toBe(resolve(projectPath, "AGENTS.md"));
 
@@ -34,7 +34,7 @@ describe("CodexAdapter", () => {
   });
 
   it("supports explicit user scope selection", async () => {
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath,
       targetScope: "user",
       userConfigRootPath: userRootPath,
@@ -49,7 +49,7 @@ describe("CodexAdapter", () => {
   });
 
   it("maps commands to skills in user scope", async () => {
-    await adapter.applyAppyIntegration({
+    await adapter.applyApplyIntegration({
       projectPath,
       targetScope: "user",
       userConfigRootPath: userRootPath,
@@ -65,21 +65,21 @@ describe("CodexAdapter", () => {
   });
 
   it("updates only the managed block when AGENTS.md already exists", async () => {
-    const first = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const first = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(first.status).toBe("success");
 
-    const second = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const second = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(second.status).toBe("unchanged");
   });
 
   it("keeps project-scope commands unsupported", async () => {
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
 
     expect(result.warnings).toContain("Codex does not have a documented apply target for commands.");
   });
 
   it("syncs agents as TOML files in project scope", async () => {
-    await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
 
     const agentPath = resolve(projectPath, ".codex", "agents", "architect.toml");
     await expect(access(agentPath)).resolves.toBeNull();
@@ -91,7 +91,7 @@ describe("CodexAdapter", () => {
   });
 
   it("syncs agents as TOML files in user scope", async () => {
-    await adapter.applyAppyIntegration({
+    await adapter.applyApplyIntegration({
       projectPath,
       targetScope: "user",
       userConfigRootPath: userRootPath,
@@ -106,10 +106,10 @@ describe("CodexAdapter", () => {
   });
 
   it("removes agents from unsupported warnings", async () => {
-    const projectResult = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const projectResult = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(projectResult.warnings).not.toContain("Codex does not have a documented apply target for agents.");
 
-    const userResult = await adapter.applyAppyIntegration({
+    const userResult = await adapter.applyApplyIntegration({
       projectPath,
       targetScope: "user",
       userConfigRootPath: userRootPath,

@@ -5,7 +5,7 @@ import type { SystemError } from "@/core/domain/shared/errors/SystemError";
 
 /**
  * Legacy platform adapter interface for artifact synchronization.
- * @deprecated Use IAppyPlatformAdapter for the selected-platform native sync flow.
+ * @deprecated Use IApplyPlatformAdapter for the selected-platform native sync flow.
  */
 export interface IPlatformAdapter {
   readonly platformName: string;
@@ -68,7 +68,7 @@ export type ApplyPlatformStatus = "success" | "unchanged";
 /**
  * Target configuration location for selected-platform synchronization.
  */
-export interface AppyConfigTarget {
+export interface ApplyConfigTarget {
   readonly configPath: string;
   readonly scope: ApplyPlatformScope;
   readonly surface: string;
@@ -77,7 +77,7 @@ export interface AppyConfigTarget {
 /**
  * Request parameters for selected-platform synchronization.
  */
-export interface AppyIntegrationRequest {
+export interface ApplyIntegrationRequest {
   readonly projectPath: string;
   readonly dryRun?: boolean;
   readonly override?: boolean;
@@ -88,7 +88,7 @@ export interface AppyIntegrationRequest {
 /**
  * Result of selected-platform synchronization.
  */
-export interface AppyIntegrationResult {
+export interface ApplyIntegrationResult {
   readonly platform: SupportedApplyPlatform;
   readonly configPath: string;
   readonly scope: ApplyPlatformScope;
@@ -115,12 +115,12 @@ export interface IApplyPlatformAdapter {
    * @param request Optional integration request parameters
    * @returns The resolved configuration target
    */
-  resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
+  resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget>;
 
   /**
    * Applies selected-platform synchronization to the target platform.
    * @param request Integration request parameters
    * @returns Result with integration outcome or error
    */
-  applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult>;
+  applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult>;
 }

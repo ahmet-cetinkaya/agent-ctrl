@@ -54,7 +54,7 @@ export class ApplyCommand {
     const startedAt = Date.now();
 
     try {
-      const applyResult = await adapter.applyAppyIntegration({
+      const applyResult = await adapter.applyApplyIntegration({
         projectPath,
         dryRun,
         override,

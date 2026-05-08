@@ -23,7 +23,7 @@ describe("AntigravityAdapter", () => {
   });
 
   it("writes workspace rules and workflows", async () => {
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
     expect(result.configPath).toContain(".agent/rules");
@@ -37,7 +37,7 @@ describe("AntigravityAdapter", () => {
   });
 
   it("writes managed global Antigravity guidance into GEMINI.md", async () => {
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath,
       targetScope: "user",
       userConfigRootPath: userRootPath,
@@ -47,7 +47,9 @@ describe("AntigravityAdapter", () => {
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain("<!-- agent-ctrl:antigravity:start -->");
     expect(content).toContain("## Coding Style");
-    await expect(access(resolve(userRootPath, "antigravity", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
+    await expect(
+      access(resolve(userRootPath, "antigravity", "skills", "git-workflow", "SKILL.md"))
+    ).resolves.toBeNull();
     await expect(access(resolve(userRootPath, "antigravity", "mcp_config.json"))).resolves.toBeNull();
     expect(result.warnings).not.toContain("Antigravity does not have a documented apply target for skills.");
     expect(result.warnings).not.toContain("Antigravity does not have a documented apply target for MCP servers.");

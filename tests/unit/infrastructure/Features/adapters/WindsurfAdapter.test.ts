@@ -23,7 +23,7 @@ describe("WindsurfAdapter", () => {
   });
 
   it("writes project AGENTS guidance when explicitly requested", async () => {
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.scope).toBe("project");
     expect(result.configPath).toBe(resolve(projectPath, "AGENTS.md"));
     expect(result.surface).toBe("agents-md-workflows-skills-mcp");
@@ -38,7 +38,7 @@ describe("WindsurfAdapter", () => {
   });
 
   it("writes global Windsurf rules/workflows/skills by default", async () => {
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath,
       userConfigRootPath: userRootPath,
     });

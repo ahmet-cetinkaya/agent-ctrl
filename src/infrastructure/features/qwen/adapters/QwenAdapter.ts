@@ -1,9 +1,9 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 import type {
-  AppyConfigTarget,
-  AppyIntegrationRequest,
-  AppyIntegrationResult,
+  ApplyConfigTarget,
+  ApplyIntegrationRequest,
+  ApplyIntegrationResult,
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
@@ -26,7 +26,7 @@ export class QwenAdapter implements IApplyPlatformAdapter {
     end: "<!-- agent-ctrl:qwen:end -->",
   };
 
-  async resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
+  async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
     const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".qwen");
     return {
@@ -36,7 +36,7 @@ export class QwenAdapter implements IApplyPlatformAdapter {
     };
   }
 
-  async applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult> {
+  async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
     const userRoot = request.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".qwen");
     const userAgentsRoot = request.userConfigRootPath

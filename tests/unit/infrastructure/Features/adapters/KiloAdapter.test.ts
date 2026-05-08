@@ -20,7 +20,7 @@ describe("KiloAdapter", () => {
   });
 
   it("creates rules, workflows, and skills", async () => {
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
     expect(result.configPath).toContain(resolve(projectPath, ".kilo"));
@@ -40,8 +40,8 @@ describe("KiloAdapter", () => {
   });
 
   it("reapplies idempotently", async () => {
-    await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
-    const result = await adapter.applyAppyIntegration({ projectPath, targetScope: "project" });
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("unchanged");
   });
 });

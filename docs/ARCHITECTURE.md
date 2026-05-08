@@ -68,12 +68,12 @@ Each target platform uses a specialized adapter to sync `.agent-ctrl` artifacts 
 ### Adapter Interface
 
 ```typescript
-interface IAppyPlatformAdapter {
+interface IApplyPlatformAdapter {
   // Resolve target path and scope (project/user) for selected platform
-  resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget>;
+  resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget>;
 
   // Apply deterministic native-platform synchronization
-  applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult>;
+  applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult>;
 }
 ```
 

@@ -1,8 +1,8 @@
-# Contract: CLI Apply Appy
+# Contract: CLI Apply Apply
 
 ## Purpose
 
-Defines the command contract for applying `appy` integration to one selected platform per run.
+Defines the command contract for applying `apply` integration to one selected platform per run.
 
 ## Usage
 

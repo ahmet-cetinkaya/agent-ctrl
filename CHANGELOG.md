@@ -65,7 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add command and mcp ls subcommands with global path support
 - Add default global config path support using ~/.agent-ctrl
 - Add project scope and custom user config root support
-- Implement multi-platform appy integration across 8 targets
+- Implement multi-platform apply integration across 8 targets
 - Implement dynamic MCP configuration management
 - Rename force to override and add artifact cleaning capability
 - Implement core application architecture and CLI foundation

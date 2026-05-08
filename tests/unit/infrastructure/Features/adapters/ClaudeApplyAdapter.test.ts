@@ -25,7 +25,7 @@ describe("ClaudeApplyAdapter", () => {
   });
 
   it("applies full Claude integration from local project artifacts", async () => {
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath,
       targetScope: "user",
     });
@@ -45,7 +45,7 @@ describe("ClaudeApplyAdapter", () => {
   });
 
   it("applies Claude integration to project scope when requested", async () => {
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath,
       targetScope: "project",
     });
@@ -56,7 +56,7 @@ describe("ClaudeApplyAdapter", () => {
   });
 
   it("reports concrete file changes instead of directory placeholders", async () => {
-    const result = await adapter.applyAppyIntegration({
+    const result = await adapter.applyApplyIntegration({
       projectPath,
       targetScope: "user",
       dryRun: true,

@@ -2,9 +2,9 @@ import { homedir } from "node:os";
 import { readdir } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import type {
-  AppyConfigTarget,
-  AppyIntegrationRequest,
-  AppyIntegrationResult,
+  ApplyConfigTarget,
+  ApplyIntegrationRequest,
+  ApplyIntegrationResult,
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ClaudeAdapter } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
@@ -15,7 +15,7 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
   readonly platformName = "claude" as const;
   private readonly sourceLoader = new ApplySourceLoader();
 
-  async resolveTarget(projectPath: string, request?: AppyIntegrationRequest): Promise<AppyConfigTarget> {
+  async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
     const claudeRoot =
       scope === "project"
@@ -29,7 +29,7 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
     };
   }
 
-  async applyAppyIntegration(request: AppyIntegrationRequest): Promise<AppyIntegrationResult> {
+  async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
     const adapter = new ClaudeAdapter(
       request.projectPath,
