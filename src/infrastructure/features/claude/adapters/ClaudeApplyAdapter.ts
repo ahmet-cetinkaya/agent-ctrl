@@ -48,7 +48,7 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
           mcpServers: source.mcpServers,
         },
         {
-          cleanExistingArtifacts: Boolean(request.override),
+          cleanExistingArtifacts: request.override,
         }
       );
       if (!writeResult.success) {
