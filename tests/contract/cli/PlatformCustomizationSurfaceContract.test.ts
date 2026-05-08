@@ -19,14 +19,15 @@ describe("Platform customization surface contract", () => {
 
   it("resolves documented customization surfaces for all supported platforms", async () => {
     const expectedTargets: Record<string, { path: string; scope: "project" | "user" }> = {
-      opencode: { path: resolve(homedir(), ".config", "opencode", "AGENTS.md"), scope: "user" },
-      claude: { path: resolve(homedir(), ".claude", "CLAUDE.md"), scope: "user" },
-      gemini: { path: resolve(homedir(), ".gemini", "GEMINI.md"), scope: "user" },
-      qwen: { path: resolve(homedir(), ".qwen", "QWEN.md"), scope: "user" },
-      kilo: { path: resolve(homedir(), ".kilo"), scope: "user" },
       antigravity: { path: resolve(homedir(), ".gemini", "GEMINI.md"), scope: "user" },
+      claude: { path: resolve(homedir(), ".claude", "CLAUDE.md"), scope: "user" },
       codex: { path: resolve(homedir(), ".codex", "AGENTS.md"), scope: "user" },
       cursor: { path: resolve(homedir(), ".cursor"), scope: "user" },
+      forgecode: { path: resolve(homedir(), ".forge", "AGENTS.md"), scope: "user" },
+      gemini: { path: resolve(homedir(), ".gemini", "GEMINI.md"), scope: "user" },
+      kilo: { path: resolve(homedir(), ".kilo"), scope: "user" },
+      opencode: { path: resolve(homedir(), ".config", "opencode", "AGENTS.md"), scope: "user" },
+      qwen: { path: resolve(homedir(), ".qwen", "QWEN.md"), scope: "user" },
       windsurf: { path: resolve(homedir(), ".codeium", "windsurf", "global_rules.md"), scope: "user" },
     };
 

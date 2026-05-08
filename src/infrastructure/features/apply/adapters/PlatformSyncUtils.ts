@@ -299,6 +299,14 @@ export function renderOpencodeMcpConfig(
   return renderer.renderConfig(existing, servers);
 }
 
+export function renderForgeCodeMcpConfig(
+  existing: Record<string, unknown>,
+  servers: ApplyMcpServer[]
+): Record<string, unknown> {
+  const renderer = McpConfigRendererFactory.getRenderer("forgecode");
+  return renderer.renderConfig(existing, servers);
+}
+
 export function renderSettingsMcpConfig(
   existing: Record<string, unknown>,
   servers: ApplyMcpServer[]

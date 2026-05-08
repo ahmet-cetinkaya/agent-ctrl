@@ -2,6 +2,7 @@ import type { IMcpConfigRenderer } from "./IMcpConfigRenderer";
 import { OpenCodeMcpConfigRenderer } from "./OpenCodeMcpConfigRenderer";
 import { SettingsMcpConfigRenderer } from "./SettingsMcpConfigRenderer";
 import { CodexMcpConfigRenderer } from "./CodexMcpConfigRenderer";
+import { ForgeCodeMcpConfigRenderer } from "./ForgeCodeMcpConfigRenderer";
 
 /**
  * Factory for creating platform-specific MCP config renderers.
@@ -11,9 +12,10 @@ export class McpConfigRendererFactory {
 
   private static createDefaultRenderers(): Map<string, IMcpConfigRenderer> {
     return new Map<string, IMcpConfigRenderer>([
+      ["codex", new CodexMcpConfigRenderer()],
+      ["forgecode", new ForgeCodeMcpConfigRenderer()],
       ["opencode", new OpenCodeMcpConfigRenderer()],
       ["settings", new SettingsMcpConfigRenderer()],
-      ["codex", new CodexMcpConfigRenderer()],
     ]);
   }
 

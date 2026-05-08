@@ -2,6 +2,7 @@ import type { ICommandRenderer } from "./ICommandRenderer";
 import { OpenCodeCommandRenderer } from "./OpenCodeCommandRenderer";
 import { GeminiCommandRenderer } from "./GeminiCommandRenderer";
 import { WorkflowCommandRenderer } from "./WorkflowCommandRenderer";
+import { ForgeCodeCommandRenderer } from "./ForgeCodeCommandRenderer";
 
 /**
  * Factory for creating platform-specific command renderers.
@@ -11,8 +12,9 @@ export class CommandRendererFactory {
 
   private static createDefaultRenderers(): Map<string, ICommandRenderer> {
     return new Map<string, ICommandRenderer>([
-      ["opencode", new OpenCodeCommandRenderer()],
+      ["forgecode", new ForgeCodeCommandRenderer()],
       ["gemini", new GeminiCommandRenderer()],
+      ["opencode", new OpenCodeCommandRenderer()],
       ["workflow", new WorkflowCommandRenderer()],
     ]);
   }

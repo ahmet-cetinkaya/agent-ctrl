@@ -16,6 +16,14 @@ export abstract class BaseMcpConfigRenderer implements IMcpConfigRenderer {
   }
 
   /**
+   * Filter and return only HTTP-based servers.
+   * Some platforms support HTTP transport for MCP servers.
+   */
+  protected filterHttpServers(servers: ApplyMcpServer[]): ApplyMcpServer[] {
+    return servers.filter((s): s is ApplyMcpServer & { transport: "http" } => s.transport === "http");
+  }
+
+  /**
    * Check if a value is a plain object.
    */
   protected isObject(value: unknown): value is Record<string, unknown> {

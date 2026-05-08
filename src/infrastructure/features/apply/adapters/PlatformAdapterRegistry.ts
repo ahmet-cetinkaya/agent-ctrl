@@ -1,4 +1,4 @@
-import type { IAppyPlatformAdapter } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import type { IApplyPlatformAdapter } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { OpenCodeAdapter } from "@/infrastructure/features/opencode/adapters/OpenCodeAdapter";
 import { ClaudeApplyAdapter } from "@/infrastructure/features/claude/adapters/ClaudeApplyAdapter";
@@ -9,6 +9,7 @@ import { AntigravityAdapter } from "@/infrastructure/features/antigravity/adapte
 import { CodexAdapter } from "@/infrastructure/features/codex/adapters/CodexAdapter";
 import { CursorAdapter } from "@/infrastructure/features/cursor/adapters/CursorAdapter";
 import { WindsurfAdapter } from "@/infrastructure/features/windsurf/adapters/WindsurfAdapter";
+import { ForgeCodeAdapter } from "@/infrastructure/features/forgecode/adapters/ForgeCodeAdapter";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 import { SUPPORTED_APPLY_PLATFORMS } from "@/core/domain/shared/types/SupportedApplyPlatform";
@@ -24,6 +25,7 @@ export class PlatformAdapterRegistry {
     claude: () => new ClaudeApplyAdapter(),
     codex: () => new CodexAdapter(),
     cursor: () => new CursorAdapter(),
+    forgecode: () => new ForgeCodeAdapter(),
     gemini: () => new GeminiAdapter(),
     kilo: () => new KiloAdapter(),
     opencode: () => new OpenCodeAdapter(),
