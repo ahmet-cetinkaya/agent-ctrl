@@ -106,9 +106,18 @@ update_version "$NEW_VERSION"
 
 echo "Bumped version: $CURRENT_VERSION -> $NEW_VERSION"
 
+# Run format script
+echo "Running format script..."
+if [ -f "$SCRIPT_DIR/format.sh" ]; then
+	bash "$SCRIPT_DIR/format.sh"
+else
+	bun run format
+fi
+
 # Commit the change
 git add "$PACKAGE_JSON"
 git add CHANGELOG.md 2>/dev/null || true
+git add . # Add any other files changed by format
 
 # Show what will happen and ask for confirmation
 echo "Version bump: $CURRENT_VERSION -> $NEW_VERSION"
