@@ -32,13 +32,14 @@ vite.config.ts.timestamp-*
 !.env.example
 
 # Development
-.agent-ctrl
-.agents
-.claude
-.codex
-.opencode
-.serena
-.specify
+.agent-ctrl/
+.agents/
+.claude/
+.codex/
+.forge/
+.opencode/
+.serena/
+.specify/
 AGENTS.md
 CLAUDE.md
 
