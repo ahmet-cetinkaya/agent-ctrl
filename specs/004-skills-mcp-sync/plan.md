@@ -1,6 +1,6 @@
 # Implementation Plan: Skills and MCP Sync
 
-**Branch**: `[004-skills-mcp-sync]` | **Date**: 2026-03-08 | **Spec**: [/home/ac/Code/ahmet-cetinkaya/agent-ctrl/specs/004-skills-mcp-sync/spec.md](/home/ac/Code/ahmet-cetinkaya/agent-ctrl/specs/004-skills-mcp-sync/spec.md)
+**Branch**: `[004-skills-mcp-sync]` | **Date**: 2026-03-08 | **Spec**: [specs/004-skills-mcp-sync/spec.md](specs/004-skills-mcp-sync/spec.md)
 **Input**: Feature specification from `/specs/004-skills-mcp-sync/spec.md`
 
 ## Summary

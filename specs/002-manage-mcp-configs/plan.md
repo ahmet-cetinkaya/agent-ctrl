@@ -1,7 +1,7 @@
 # Implementation Plan: Dynamic MCP Config Management
 
-**Branch**: `[002-manage-mcp-configs]` | **Date**: 2026-03-05 | **Spec**: [/home/ac/Code/ahmet-cetinkaya/agent-ctrl/specs/002-manage-mcp-configs/spec.md](/home/ac/Code/ahmet-cetinkaya/agent-ctrl/specs/002-manage-mcp-configs/spec.md)
-**Input**: Feature specification from `/specs/002-manage-mcp-configs/spec.md`
+**Branch**: `[002-manage-mcp-configs]` | **Date**: 2026-03-05 | **Spec**: [./spec.md](./spec.md)
+**Input**: Feature specification from `./spec.md`
 
 ## Summary
 

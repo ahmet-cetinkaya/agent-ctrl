@@ -1,6 +1,6 @@
 # Implementation Plan: Apply Platform Apply Integration
 
-**Branch**: `[003-integrate-apply-platforms]` | **Date**: 2026-03-06 | **Spec**: [/home/ac/Code/ahmet-cetinkaya/agent-ctrl/specs/003-integrate-apply-platforms/spec.md](/home/ac/Code/ahmet-cetinkaya/agent-ctrl/specs/003-integrate-apply-platforms/spec.md)
+**Branch**: `[003-integrate-apply-platforms]` | **Date**: 2026-03-06 | **Spec**: [specs/003-integrate-apply-platforms/spec.md](specs/003-integrate-apply-platforms/spec.md)
 **Input**: Feature specification from `/specs/003-integrate-apply-platforms/spec.md`
 
 ## Summary
