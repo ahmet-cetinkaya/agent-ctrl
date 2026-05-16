@@ -13,12 +13,12 @@ export const SUPPORTED_APPLY_PLATFORMS = [
 
 export const PLATFORM_DISPLAY_NAMES: Record<SupportedApplyPlatform, string> = {
   antigravity: "Antigravity",
-  claude: "Claude Desktop",
+  claude: "Claude Code",
   codex: "Codex",
   cursor: "Cursor",
-  forgecode: "ForgeCode",
-  gemini: "Gemini",
-  kilo: "Kilo",
+  forgecode: "Forge Code",
+  gemini: "Gemini CLI",
+  kilo: "Kilo Code",
   opencode: "OpenCode",
   qwen: "Qwen",
   windsurf: "Windsurf",
