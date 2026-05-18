@@ -11,6 +11,7 @@ import { createCommandCommand } from "@/presentation/cli/features/command/comman
 import { createMcpCommand } from "@/presentation/cli/features/mcp/commands/mcp";
 import { createApplyCommand } from "@/presentation/cli/features/apply/commands/apply";
 import { ErrorHandler } from "@/presentation/cli/shared/middleware/errorHandler";
+import { LogService } from "@/presentation/cli/shared/utils/LogService";
 
 const VERSION = "0.1.0";
 
@@ -31,6 +32,34 @@ program.addCommand(createAgentCommand());
 program.addCommand(createCommandCommand());
 program.addCommand(createMcpCommand());
 program.addCommand(createApplyCommand());
+
+program.configureHelp({
+  showGlobalOptions: true,
+  formatHelp: (cmd, helper) => {
+    const commands = cmd.commands.map((c) => ({
+      name: c.name(),
+      description: c.description() || "",
+    }));
+
+    const options = [
+      { flag: "-V, --version", description: "Output the version number" },
+      { flag: "-v, --verbose", description: "Enable verbose output" },
+      { flag: "-q, --quiet", description: "Suppress warnings" },
+      { flag: "-h, --help", description: "Display help for command" },
+    ];
+
+    LogService.help(
+      cmd.description() || "A centralized CLI tool for managing AI agent configurations",
+      cmd.usage() || "agent-ctrl [options] [command]",
+      commands,
+      options
+    );
+
+    outro(color.cyan("Run agent-ctrl <command> --help for more information"));
+
+    return "";
+  },
+});
 
 // Global error handling
 process.on("uncaughtException", (error) => {

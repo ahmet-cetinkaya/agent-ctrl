@@ -54,4 +54,40 @@ export class LogService {
       clackLog.info(`  ${v}`);
     }
   }
+
+  static help(
+    description: string,
+    usage: string,
+    commands: { name: string; description: string }[],
+    options: { flag: string; description: string }[]
+  ): void {
+    const sections: string[] = [];
+
+    sections.push(color.bold(description));
+    sections.push("");
+    sections.push(color.bold("Usage:"));
+    sections.push(`  ${usage}`);
+
+    if (commands.length > 0) {
+      sections.push("");
+      sections.push(color.bold("Commands:"));
+      const maxNameLen = Math.max(...commands.map((c) => c.name.length));
+      for (const cmd of commands) {
+        const padded = cmd.name.padEnd(maxNameLen + 2);
+        sections.push(`  ${color.cyan(padded)}${cmd.description}`);
+      }
+    }
+
+    if (options.length > 0) {
+      sections.push("");
+      sections.push(color.bold("Options:"));
+      const maxFlagLen = Math.max(...options.map((o) => o.flag.length));
+      for (const opt of options) {
+        const padded = opt.flag.padEnd(maxFlagLen + 2);
+        sections.push(`  ${color.yellow(padded)}${opt.description}`);
+      }
+    }
+
+    this.note(sections.join("\n"));
+  }
 }
