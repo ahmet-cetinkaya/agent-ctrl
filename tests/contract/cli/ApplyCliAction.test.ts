@@ -232,9 +232,14 @@ describe("Apply CLI action behavior", () => {
     try {
       await createApplyCommand().parseAsync(["node", "test", "codex", "--no-prompt"]);
       const allOutput = consoleCapture.logs.join(" ");
-      expect(allOutput.includes("Artifacts:")).toBe(true);
-      expect(allOutput.includes("5 rules, 10 commands, 15 skills, 3 agents, 2 MCP servers")).toBe(true);
-      expect(allOutput.includes("Warnings:")).toBe(false);
+      const plainText = allOutput.replace(/\x1b\[[0-9;]*m/g, "").replace(/\s+/g, " ");
+      expect(plainText).toContain("Artifacts:");
+      expect(plainText).toContain("5 rules");
+      expect(plainText).toContain("10 commands");
+      expect(plainText).toContain("15 skills");
+      expect(plainText).toContain("3 agents");
+      expect(plainText).toContain("2 MCP servers");
+      expect(plainText).not.toContain("Warnings:");
     } finally {
       ApplyCommand.prototype.execute = originalExecute;
       process.argv = originalArgv;

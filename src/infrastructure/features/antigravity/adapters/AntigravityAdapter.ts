@@ -13,7 +13,7 @@ import {
   mergeJsonObjectFile,
   renderSettingsMcpConfig,
   resolveApplyScope,
-  syncCommandsAsWorkflows,
+  syncCommandsAsSkills,
   syncRulesAsFiles,
   syncSkills,
   toStatus,
@@ -35,7 +35,7 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
     return {
       configPath: scope === "project" ? resolve(projectPath, ".agent", "rules") : resolve(userRoot, "GEMINI.md"),
       scope,
-      surface: scope === "project" ? "rules-workflows-skills-mcp" : "gemini-md-skills-mcp",
+      surface: scope === "project" ? "rules-skills-mcp" : "gemini-md-skills-mcp",
     };
   }
 
@@ -53,7 +53,6 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
       if (target.scope === "project") {
         const projectScopeSkillsPath = resolve(projectRoot, ".agent", "skills");
         const projectScopeRulesPath = resolve(projectRoot, ".agent", "rules");
-        const projectScopeWorkflowsPath = resolve(projectRoot, ".agent", "workflows");
 
         await Promise.all([
           rm(projectScopeSkillsPath, { recursive: true, force: true }).catch((error) => {
@@ -62,11 +61,6 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
             }
           }),
           rm(projectScopeRulesPath, { recursive: true, force: true }).catch((error) => {
-            if (error.code !== "ENOENT") {
-              throw error;
-            }
-          }),
-          rm(projectScopeWorkflowsPath, { recursive: true, force: true }).catch((error) => {
             if (error.code !== "ENOENT") {
               throw error;
             }
@@ -95,13 +89,13 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
       changed = rulesResult.changed || changed;
       fileChanges.push(...rulesResult.paths);
 
-      const workflowsResult = await syncCommandsAsWorkflows(
+      const commandsResult = await syncCommandsAsSkills(
         source.commands,
-        resolve(request.projectPath, ".agent", "workflows"),
+        resolve(request.projectPath, ".agent", "skills"),
         Boolean(request.dryRun)
       );
-      changed = workflowsResult.changed || changed;
-      fileChanges.push(...workflowsResult.paths);
+      changed = commandsResult.changed || changed;
+      fileChanges.push(...commandsResult.paths);
 
       const skillsResult = await syncSkills(
         source.skills,
@@ -154,7 +148,7 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
       status: toStatus(changed),
       message:
         target.scope === "project"
-          ? "Applied Antigravity workspace rules, workflows, skills, and MCP servers."
+          ? "Applied Antigravity workspace rules, skills, and MCP servers."
           : "Applied Antigravity global guidance, skills, and MCP servers.",
       fileChanges,
       warnings: [...source.warnings, ...countUnsupportedArtifacts("Antigravity", source, ["agents"])],

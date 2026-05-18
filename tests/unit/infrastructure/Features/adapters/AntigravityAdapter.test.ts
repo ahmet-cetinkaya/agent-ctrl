@@ -22,14 +22,14 @@ describe("AntigravityAdapter", () => {
     await rm(userRootPath, { recursive: true, force: true });
   });
 
-  it("writes workspace rules and workflows", async () => {
+  it("writes workspace rules and skills", async () => {
     const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
     expect(result.configPath).toContain(".agent/rules");
-    expect(result.surface).toBe("rules-workflows-skills-mcp");
+    expect(result.surface).toBe("rules-skills-mcp");
     await expect(access(resolve(projectPath, ".agent", "rules", "coding-style.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".agent", "workflows", "dev", "fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".agent", "skills", "dev-fix-lint", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agent", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agent", "mcp_config.json"))).resolves.toBeNull();
     expect(result.warnings).not.toContain("Antigravity does not have a documented apply target for skills.");
@@ -63,10 +63,6 @@ describe("AntigravityAdapter", () => {
     const tempRulePath = resolve(projectPath, ".agent", "rules", "_temp_mock.md");
     await writeFile(tempRulePath, "# Temp Mock Rule\n");
 
-    // Create a temp workflow that should be cleaned (project scope - syncs to .agent/workflows/)
-    const tempWorkflowPath = resolve(projectPath, ".agent", "workflows", "_temp_mock.md");
-    await writeFile(tempWorkflowPath, "# Temp Mock Workflow\n");
-
     // Create a temp skill that should be cleaned (project scope - syncs to .agent/skills/)
     const tempSkillPath = resolve(projectPath, ".agent", "skills", "_temp_mock", "SKILL.md");
     await mkdir(resolve(projectPath, ".agent", "skills", "_temp_mock"), { recursive: true });
@@ -74,7 +70,6 @@ describe("AntigravityAdapter", () => {
 
     // Verify temp files exist
     await expect(access(tempRulePath)).resolves.toBeNull();
-    await expect(access(tempWorkflowPath)).resolves.toBeNull();
     await expect(access(tempSkillPath)).resolves.toBeNull();
 
     // Apply with override
@@ -91,20 +86,16 @@ describe("AntigravityAdapter", () => {
     const ruleExists = await access(tempRulePath)
       .then(() => true)
       .catch(() => false);
-    const workflowExists = await access(tempWorkflowPath)
-      .then(() => true)
-      .catch(() => false);
     const skillExists = await access(tempSkillPath)
       .then(() => true)
       .catch(() => false);
 
     expect(ruleExists).toBe(false);
-    expect(workflowExists).toBe(false);
     expect(skillExists).toBe(false);
 
     // Verify project artifacts still exist in .agent/ directory
     await expect(access(resolve(projectPath, ".agent", "rules", "coding-style.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".agent", "workflows", "dev", "fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".agent", "skills", "dev-fix-lint", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agent", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
   });
 });
