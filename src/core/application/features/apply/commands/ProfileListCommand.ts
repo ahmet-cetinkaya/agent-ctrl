@@ -1,8 +1,8 @@
+import { directoryExists } from "@/core/domain/shared/utils/fsUtils";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { resolve } from "node:path";
 import { readdir } from "node:fs/promises";
-import { stat } from "node:fs/promises";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 
 export interface ProfileListCommandResult {
@@ -14,7 +14,7 @@ export class ProfileListCommand {
     const configRoot = resolve(projectPath, ".agent-ctrl");
     const profilesPath = resolve(configRoot, "profiles");
 
-    if (!(await this.directoryExists(configRoot))) {
+    if (!(await directoryExists(configRoot))) {
       return err(
         new UserError(
           `No .agent-ctrl directory found in ${projectPath}. Initialize the project first.`,
@@ -23,7 +23,7 @@ export class ProfileListCommand {
       );
     }
 
-    if (!(await this.directoryExists(profilesPath))) {
+    if (!(await directoryExists(profilesPath))) {
       return ok({ profiles: [] });
     }
 
@@ -38,19 +38,6 @@ export class ProfileListCommand {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return err(new UserError(`Failed to read profiles directory: ${message}`, ERROR_IDS.DIRECTORY_ACCESS_FAILED));
-    }
-  }
-
-  private async directoryExists(path: string): Promise<boolean> {
-    try {
-      const stats = await stat(path);
-      return stats.isDirectory();
-    } catch (error) {
-      const nodeError = error as NodeJS.ErrnoException;
-      if (nodeError.code === "ENOENT" || nodeError.code === "ENOTDIR") {
-        return false;
-      }
-      throw error;
     }
   }
 }

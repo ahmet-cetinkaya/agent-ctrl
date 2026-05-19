@@ -1,3 +1,4 @@
+import { directoryExists } from "@/core/domain/shared/utils/fsUtils";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
@@ -11,7 +12,6 @@ import { PlatformAdapterRegistry } from "@/infrastructure/features/apply/adapter
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 import { resolve } from "node:path";
-import { stat } from "node:fs/promises";
 
 export interface ApplyProfileCommandOptions {
   projectPath: string;
@@ -78,7 +78,7 @@ export class ApplyProfileCommand {
     const configRoot = providedConfigRoot ?? resolve(projectPath, ".agent-ctrl");
     const profilePath = resolve(configRoot, "profiles", profileName);
 
-    if (!(await this.directoryExists(configRoot))) {
+    if (!(await directoryExists(configRoot))) {
       return err(
         new UserError(
           `No .agent-ctrl directory found at ${configRoot}. Initialize the project first.`,
@@ -87,7 +87,7 @@ export class ApplyProfileCommand {
       );
     }
 
-    if (!(await this.directoryExists(profilePath))) {
+    if (!(await directoryExists(profilePath))) {
       return err(
         new ProfileError(
           `Profile '${profileName}' not found in .agent-ctrl/profiles/`,
@@ -168,19 +168,6 @@ export class ApplyProfileCommand {
       }
 
       return err(new SystemError(message, ERROR_IDS.PLATFORM_CONFIG_WRITE_FAILED));
-    }
-  }
-
-  private async directoryExists(path: string): Promise<boolean> {
-    try {
-      const stats = await stat(path);
-      return stats.isDirectory();
-    } catch (error) {
-      const nodeError = error as NodeJS.ErrnoException;
-      if (nodeError.code === "ENOENT" || nodeError.code === "ENOTDIR") {
-        return false;
-      }
-      throw error;
     }
   }
 }

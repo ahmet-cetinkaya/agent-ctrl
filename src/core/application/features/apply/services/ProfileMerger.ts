@@ -55,6 +55,9 @@ export class ProfileMerger {
   }
 
   private mergeSkills(base: Skill[], profile: Skill[]): Skill[] {
+    // Skills are fully overwritten by the profile if the profile provides any.
+    // This is because skills are structured as directories, and merging them file-by-file
+    // would lead to unpredictable states and residual files across profiles.
     if (profile.length > 0) {
       return [...profile];
     }
@@ -70,6 +73,8 @@ export class ProfileMerger {
   }
 
   private mergeCommands(base: CommandArtifact[], profile: CommandArtifact[]): CommandArtifact[] {
+    // Commands are fully overwritten by the profile if the profile provides any.
+    // This ensures command directories remain clean and avoid orphaned files from base.
     if (profile.length > 0) {
       return [...profile];
     }
