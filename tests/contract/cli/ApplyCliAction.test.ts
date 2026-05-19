@@ -200,7 +200,7 @@ describe("Apply CLI action behavior", () => {
     }
   });
 
-  it("prints file changes and suppresses warnings by default", async () => {
+  it("prints file changes and warnings by default", async () => {
     const originalArgv = process.argv;
     process.argv = ["node", "test", "opencode"];
 
@@ -217,7 +217,7 @@ describe("Apply CLI action behavior", () => {
           message: "ok",
           durationMs: 1,
           fileChanges: ["/tmp/config", "/tmp/skills/example/SKILL.md"],
-          warnings: ["hidden warning"],
+          warnings: ["example warning"],
           artifactCounts: {
             rules: 5,
             commands: 10,
@@ -239,14 +239,15 @@ describe("Apply CLI action behavior", () => {
       expect(plainText).toContain("15 skills");
       expect(plainText).toContain("3 agents");
       expect(plainText).toContain("2 MCP servers");
-      expect(plainText).not.toContain("Warnings:");
+      expect(plainText).toContain("Warnings:");
+      expect(plainText).toContain("example warning");
     } finally {
       ApplyCommand.prototype.execute = originalExecute;
       process.argv = originalArgv;
     }
   });
 
-  it("prints warnings only when verbose is enabled", async () => {
+  it("prints warnings", async () => {
     const originalArgv = process.argv;
     process.argv = ["node", "apply", "codex"];
 
@@ -270,7 +271,7 @@ describe("Apply CLI action behavior", () => {
 
     try {
       try {
-        await createApplyCommand().parseAsync(["node", "apply", "codex", "--verbose", "--no-prompt"]);
+        await createApplyCommand().parseAsync(["node", "apply", "codex", "--no-prompt"]);
       } catch (e: unknown) {
         console.log("ERROR:", e instanceof Error ? e.message : String(e));
       }

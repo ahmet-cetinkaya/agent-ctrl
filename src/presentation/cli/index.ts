@@ -10,13 +10,12 @@ import { createAgentCommand } from "@/presentation/cli/features/agent/commands/a
 import { createCommandCommand } from "@/presentation/cli/features/command/commands/command";
 import { createMcpCommand } from "@/presentation/cli/features/mcp/commands/mcp";
 import { createApplyCommand } from "@/presentation/cli/features/apply/commands/apply";
-import { ErrorHandler } from "@/presentation/cli/shared/middleware/errorHandler";
+import { createProfileCommand } from "@/presentation/cli/features/profile/commands/profile";
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
 
 const VERSION = "0.1.0";
 
 const program = new Command();
-const errorHandler = new ErrorHandler();
 
 program
   .name("agent-ctrl")
@@ -32,10 +31,11 @@ program.addCommand(createAgentCommand());
 program.addCommand(createCommandCommand());
 program.addCommand(createMcpCommand());
 program.addCommand(createApplyCommand());
+program.addCommand(createProfileCommand());
 
 program.configureHelp({
   showGlobalOptions: true,
-  formatHelp: (cmd, helper) => {
+  formatHelp: (cmd, _helper) => {
     const commands = cmd.commands.map((c) => ({
       name: c.name(),
       description: c.description() || "",
@@ -61,23 +61,15 @@ program.configureHelp({
   },
 });
 
-// Global error handling
-process.on("uncaughtException", (error) => {
-  errorHandler.handle(error);
-});
-
-process.on("unhandledRejection", (reason) => {
-  errorHandler.handle(reason);
-});
-
-// SIGINT handling (T075)
-process.on("SIGINT", () => {
-  outro(color.yellow("Operation cancelled by user"));
-  process.exit(0);
+program.action(() => {
+  program.outputHelp();
 });
 
 intro(color.inverse(" agent-ctrl "));
 
 await program.parseAsync(process.argv);
 
-outro(color.cyan("Execution completed"));
+const hasCommand = process.argv.slice(2).some((arg) => !arg.startsWith("-"));
+if (hasCommand) {
+  outro(color.green("✔ Ready for action!"));
+}

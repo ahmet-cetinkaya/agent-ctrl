@@ -17,13 +17,11 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
 
   async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
-    const claudeRoot =
-      scope === "project"
-        ? resolve(projectPath, ".claude")
-        : resolve(process.env.AGENT_CTRL_CLAUDE_HOME || homedir(), ".claude");
+    const claudeHome =
+      scope === "project" ? projectPath : resolve(process.env.AGENT_CTRL_CLAUDE_HOME || homedir(), ".claude");
 
     return {
-      configPath: resolve(claudeRoot, "CLAUDE.md"),
+      configPath: scope === "project" ? resolve(projectPath, "CLAUDE.md") : resolve(claudeHome, "CLAUDE.md"),
       scope,
       surface: "memory-skills-agents-commands-mcp",
     };
@@ -31,11 +29,25 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
 
   async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
-    const adapter = new ClaudeAdapter(
-      request.projectPath,
-      target.scope === "project" ? request.projectPath : process.env.AGENT_CTRL_CLAUDE_HOME || homedir()
-    );
-    const source = await this.sourceLoader.load(request.projectPath);
+    const claudeHome =
+      target.scope === "project" ? request.projectPath : process.env.AGENT_CTRL_CLAUDE_HOME || homedir();
+    const configPath =
+      target.scope === "project"
+        ? resolve(request.projectPath, "CLAUDE.md")
+        : resolve(claudeHome, ".claude", "CLAUDE.md");
+    const adapter = new ClaudeAdapter(request.projectPath, claudeHome, configPath);
+
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
+
     const desiredConfig = await adapter.generateConfig([...source.rules, ...source.skills, ...source.agents]);
     if (!desiredConfig.success) {
       throw desiredConfig.error;
@@ -57,6 +69,12 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
     }
 
     const claudeRoot = resolve(target.configPath, "..");
+    const fileChanges: string[] = [];
+
+    if (source.rules.length > 0) {
+      fileChanges.push(target.configPath);
+    }
+
     const skillPaths = (
       await Promise.all(
         source.skills.map(async (skill) => {
@@ -68,13 +86,11 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
     const agentPaths = source.agents.map((agent) => resolve(claudeRoot, "agents", `${agent.id}.md`));
     const commandPaths = source.commands.map((command) => resolve(claudeRoot, "commands", `${command.id}.md`));
 
-    const fileChanges = [
-      target.configPath,
-      ...skillPaths,
-      ...agentPaths,
-      ...commandPaths,
-      resolve(claudeRoot, "..", ".claude.json"),
-    ];
+    fileChanges.push(...skillPaths, ...agentPaths, ...commandPaths);
+
+    if (source.mcpServers.length > 0) {
+      fileChanges.push(resolve(claudeRoot, "..", ".claude.json"));
+    }
 
     return {
       platform: this.platformName,

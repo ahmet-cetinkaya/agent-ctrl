@@ -17,7 +17,7 @@ export const PLATFORM_DISPLAY_NAMES: Record<SupportedApplyPlatform, string> = {
   codex: "Codex",
   cursor: "Cursor",
   forgecode: "Forge Code",
-  gemini: "Gemini CLI",
+  gemini: "Gemini Query",
   kilo: "Kilo Code",
   opencode: "OpenCode",
   qwen: "Qwen",

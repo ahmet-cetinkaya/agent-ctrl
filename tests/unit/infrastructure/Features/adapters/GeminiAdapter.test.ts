@@ -19,19 +19,19 @@ describe("GeminiAdapter", () => {
     await rm(projectPath, { recursive: true, force: true });
   });
 
-  it("creates Gemini guidance and TOML commands", async () => {
+  it("creates Gemini guidance and skills", async () => {
     const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
     expect(result.configPath).toBe(resolve(projectPath, "GEMINI.md"));
-    expect(result.surface).toBe("gemini-md-commands-skills-settings");
+    expect(result.surface).toBe("gemini-md-skills-settings");
 
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain("<!-- agent-ctrl:gemini:start -->");
-    await expect(access(resolve(projectPath, ".gemini", "commands", "dev", "fix-lint.toml"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".gemini", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agents", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
-    expect(result.warnings).not.toContain("Gemini does not have a documented apply target for skills.");
+    // Commands are written as skills with warning
+    expect(result.warnings!.some((w) => w.includes("Commands are being written as skills"))).toBe(true);
   });
 
   it("reapplies deterministically", async () => {
@@ -44,10 +44,6 @@ describe("GeminiAdapter", () => {
     // Create initial artifacts
     await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
 
-    // Create a temp command that should be cleaned
-    const tempCommandPath = resolve(projectPath, ".gemini", "commands", "_temp_mock.md");
-    await writeFile(tempCommandPath, "# Temp Mock Command\n");
-
     // Create a temp skill that should be cleaned
     const tempSkillPath = resolve(projectPath, ".gemini", "skills", "_temp_mock", "SKILL.md");
     await mkdir(resolve(projectPath, ".gemini", "skills", "_temp_mock"), { recursive: true });
@@ -59,7 +55,6 @@ describe("GeminiAdapter", () => {
     await writeFile(tempAgentPath, "# Temp Mock Agent\n");
 
     // Verify temp files exist
-    await expect(access(tempCommandPath)).resolves.toBeNull();
     await expect(access(tempSkillPath)).resolves.toBeNull();
     await expect(access(tempAgentPath)).resolves.toBeNull();
 
@@ -70,13 +65,9 @@ describe("GeminiAdapter", () => {
       override: true,
     });
 
-    // The result should be either "success" or "unchanged" since we're syncing the same artifacts
     expect(["success", "unchanged"]).toContain(result.status);
 
-    // After override, verify temp files were cleaned by checking they no longer exist
-    const commandExists = await access(tempCommandPath)
-      .then(() => true)
-      .catch(() => false);
+    // After override, verify temp files were cleaned
     const skillExists = await access(tempSkillPath)
       .then(() => true)
       .catch(() => false);
@@ -84,12 +75,10 @@ describe("GeminiAdapter", () => {
       .then(() => true)
       .catch(() => false);
 
-    expect(commandExists).toBe(false);
     expect(skillExists).toBe(false);
     expect(agentExists).toBe(false);
 
     // Verify project artifacts still exist
-    await expect(access(resolve(projectPath, ".gemini", "commands", "dev", "fix-lint.toml"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".gemini", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agents", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
   });

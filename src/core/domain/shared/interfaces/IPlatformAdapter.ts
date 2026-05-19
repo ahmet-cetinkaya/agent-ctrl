@@ -2,6 +2,11 @@ import type { Artifact } from "@/core/domain/shared/types/Artifact";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import type { Result } from "@/core/domain/shared/value-objects/Result";
 import type { SystemError } from "@/core/domain/shared/errors/SystemError";
+import type { Rule } from "@/core/domain/shared/entities/Rule";
+import type { Skill } from "@/core/domain/shared/entities/Skill";
+import type { Agent } from "@/core/domain/shared/entities/Agent";
+import type { CommandArtifact } from "@/infrastructure/features/command/scanners/CommandScanner";
+import type { ApplyMcpServer } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 
 /**
  * Legacy platform adapter interface for artifact synchronization.
@@ -83,6 +88,14 @@ export interface ApplyIntegrationRequest {
   readonly override?: boolean;
   readonly targetScope?: ApplyPlatformScope;
   readonly userConfigRootPath?: string;
+  readonly mergedSnapshot?: {
+    readonly rules: Rule[];
+    readonly skills: Skill[];
+    readonly agents: Agent[];
+    readonly commands: CommandArtifact[];
+    readonly mcpServers: ApplyMcpServer[];
+    readonly warnings: string[];
+  };
 }
 
 /**

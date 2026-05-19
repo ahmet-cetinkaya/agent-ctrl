@@ -1,6 +1,5 @@
 import { Command } from "commander";
 import { ListSkillsQuery } from "@/core/application/features/skill/queries/ListSkillsQuery";
-import { homedir } from "node:os";
 import { resolve } from "node:path";
 import {
   handleDirectoryAccess,
@@ -8,6 +7,7 @@ import {
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
+import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 /**
  * Creates the 'skill ls' CLI subcommand for listing all skills in the project.
@@ -45,9 +45,7 @@ export function createSkillListCommand(): Command {
         }
       }
 
-      const configRootPath = targetPath
-        ? resolve(targetPath)
-        : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
+      const configRootPath = resolveConfigRoot(targetPath);
       const skillsPath = resolve(configRootPath, "skills");
 
       // Check directory access with specific error handling

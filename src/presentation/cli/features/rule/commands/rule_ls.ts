@@ -1,13 +1,13 @@
 import { Command } from "commander";
-import { ListRulesQuery } from "@/core/application/features/rule/queries/ListRulesQuery";
-import { homedir } from "node:os";
 import { resolve } from "node:path";
+import { ListRulesQuery } from "@/core/application/features/rule/queries/ListRulesQuery";
 import {
   handleDirectoryAccess,
   handleQueryResult,
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
+import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 export function createRuleListCommand(): Command {
   return new Command("ls")
@@ -24,9 +24,7 @@ export function createRuleListCommand(): Command {
         }
       }
 
-      const configRootPath = targetPath
-        ? resolve(targetPath)
-        : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
+      const configRootPath = resolveConfigRoot(targetPath);
       const rulesPath = resolve(configRootPath, "rules");
 
       // Check directory access with specific error handling

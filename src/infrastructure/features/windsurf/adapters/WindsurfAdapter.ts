@@ -8,24 +8,29 @@ import type {
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
+import type { Rule } from "@/core/domain/shared/entities/Rule";
 import {
-  mergeJsonObjectFile,
-  renderSettingsMcpConfig,
   resolveApplyScope,
-  syncAgentsAsMarkdown,
+  syncAgentsAsSkills,
   syncCommandsAsWorkflows,
+  syncRulesAsFiles,
   syncSkills,
   toStatus,
-  upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
+
+/** Renders a rule as a Windsurf rules file with YAML frontmatter for conditional activation. */
+function renderWindsurfRule(rule: Rule, content: string): { relativePath: string; content: string } {
+  const frontmatter = ["---", "alwaysApply: true", "---", ""].join("\n");
+
+  return {
+    relativePath: `${rule.id}.md`,
+    content: `${frontmatter}${content}`,
+  };
+}
 
 export class WindsurfAdapter implements IApplyPlatformAdapter {
   readonly platformName = "windsurf" as const;
   private readonly sourceLoader = new ApplySourceLoader();
-  private static readonly markers = {
-    start: "<!-- agent-ctrl:windsurf:start -->",
-    end: "<!-- agent-ctrl:windsurf:end -->",
-  };
 
   async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
@@ -33,9 +38,9 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
       ? resolve(request.userConfigRootPath)
       : resolve(homedir(), ".codeium", "windsurf");
     return {
-      configPath: scope === "project" ? resolve(projectPath, "AGENTS.md") : resolve(userRoot, "global_rules.md"),
+      configPath: scope === "project" ? resolve(projectPath, ".windsurf", "rules") : resolve(userRoot, "rules"),
       scope,
-      surface: scope === "project" ? "agents-md-workflows-skills-mcp" : "global-rules-workflows-skills-mcp",
+      surface: scope === "project" ? "windsurf-rules-workflows" : "windsurf-global-rules",
     };
   }
 
@@ -48,37 +53,57 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
       target.scope === "project"
         ? resolve(request.projectPath, ".windsurf", "workflows")
         : resolve(userRoot, "workflows");
-    const skillsRoot =
-      target.scope === "project" ? resolve(request.projectPath, ".windsurf", "skills") : resolve(userRoot, "skills");
-    const agentsRoot =
-      target.scope === "project" ? resolve(request.projectPath, ".windsurf", "agents") : resolve(userRoot, "agents");
-    const mcpPath =
-      target.scope === "project"
-        ? resolve(request.projectPath, ".windsurf", "mcp_config.json")
-        : resolve(userRoot, "mcp_config.json");
-    const source = await this.sourceLoader.load(request.projectPath);
+    const rulesRoot = target.configPath;
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
 
     let changed = false;
     const fileChanges: string[] = [];
 
+    // Windsurf does not natively support skills or agents — write them as skills with a warning.
+    const skillsRoot =
+      target.scope === "project" ? resolve(request.projectPath, ".windsurf", "skills") : resolve(userRoot, "skills");
+
+    if (source.skills.length > 0) {
+      const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
+      changed = skillsResult.changed || changed;
+      fileChanges.push(...skillsResult.paths);
+    }
+
+    if (source.agents.length > 0) {
+      source.warnings.push("Windsurf does not support custom agents. Agents are being written as skills instead.");
+      const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun));
+      changed = agentsResult.changed || changed;
+      fileChanges.push(...agentsResult.paths);
+    }
+
+    // MCP servers are not supported
+    if (source.mcpServers.length > 0) {
+      source.warnings.push("Windsurf does not support MCP server configuration. MCP servers will not be applied.");
+    }
+
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
-      const workflowsPath = workflowsRoot;
-      const skillsPath = skillsRoot;
-      const agentsPath = agentsRoot;
-
       await Promise.all([
-        rm(workflowsPath, { recursive: true, force: true }).catch((error) => {
+        rm(rulesRoot, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
         }),
-        rm(skillsPath, { recursive: true, force: true }).catch((error) => {
+        rm(workflowsRoot, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
         }),
-        rm(agentsPath, { recursive: true, force: true }).catch((error) => {
+        rm(skillsRoot, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
@@ -86,35 +111,32 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
       ]);
     }
 
-    const rulesResult = await upsertManagedRuleDocument(
-      target.configPath,
-      source.rules,
-      WindsurfAdapter.markers,
-      "No managed Windsurf rules were found.",
-      Boolean(request.dryRun)
-    );
-    changed = rulesResult.changed || changed;
-    fileChanges.push(...rulesResult.paths);
+    // Windsurf uses .windsurf/rules/ with YAML frontmatter for conditional activation.
+    if (source.rules.length > 0) {
+      if (target.scope === "user") {
+        source.warnings.push(
+          "Windsurf global rules should be configured via the Cascade Customizations UI. Writing to ~/.codeium/windsurf/rules/ as a fallback."
+        );
+      }
 
-    const workflowsResult = await syncCommandsAsWorkflows(source.commands, workflowsRoot, Boolean(request.dryRun));
-    changed = workflowsResult.changed || changed;
-    fileChanges.push(...workflowsResult.paths);
+      const rulesResult = await syncRulesAsFiles(
+        source.rules,
+        rulesRoot,
+        (rule, content) => renderWindsurfRule(rule, content),
+        Boolean(request.dryRun)
+      );
+      changed = rulesResult.changed || changed;
+      fileChanges.push(...rulesResult.paths);
+    }
 
-    const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
-    changed = skillsResult.changed || changed;
-    fileChanges.push(...skillsResult.paths);
+    // Windsurf supports workflows via .windsurf/workflows/.
+    if (source.commands.length > 0) {
+      const workflowsResult = await syncCommandsAsWorkflows(source.commands, workflowsRoot, Boolean(request.dryRun));
+      changed = workflowsResult.changed || changed;
+      fileChanges.push(...workflowsResult.paths);
+    }
 
-    const agentsResult = await syncAgentsAsMarkdown(source.agents, agentsRoot, Boolean(request.dryRun), true);
-    changed = agentsResult.changed || changed;
-    fileChanges.push(...agentsResult.paths);
-
-    const mcpResult = await mergeJsonObjectFile(
-      mcpPath,
-      (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
-      Boolean(request.dryRun)
-    );
-    changed = mcpResult.changed || changed;
-    fileChanges.push(...mcpResult.paths);
+    // Windsurf does not natively support skills or agents — write them as skills with a warning.
 
     return {
       platform: this.platformName,
@@ -124,8 +146,8 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
       status: toStatus(changed),
       message:
         target.scope === "project"
-          ? "Applied Windsurf guidance, workflows, skills, and MCP servers."
-          : "Applied Windsurf global rules, workflows, skills, and MCP servers.",
+          ? "Applied Windsurf rules and workflows."
+          : "Applied Windsurf global rules (via Cascade Customizations UI fallback).",
       fileChanges,
       warnings: source.warnings,
     };

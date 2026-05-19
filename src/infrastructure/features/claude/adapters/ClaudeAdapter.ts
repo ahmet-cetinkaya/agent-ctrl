@@ -28,11 +28,11 @@ export class ClaudeAdapter implements IPlatformAdapter {
   private static readonly MANAGED_START_MARKER = "<!-- agent-ctrl:start -->";
   private static readonly MANAGED_END_MARKER = "<!-- agent-ctrl:end -->";
 
-  constructor(projectPath: string, claudeHomeOverride?: string) {
+  constructor(projectPath: string, claudeHomeOverride?: string, configPathOverride?: string) {
     const claudeHome = claudeHomeOverride ?? process.env.AGENT_CTRL_CLAUDE_HOME ?? homedir();
     this.projectPath = projectPath;
     this.claudeRoot = resolve(claudeHome, ".claude");
-    this.configPath = resolve(this.claudeRoot, "CLAUDE.md");
+    this.configPath = configPathOverride ?? resolve(this.claudeRoot, "CLAUDE.md");
     // MCP local-scoped servers are stored in ~/.claude.json (home directory)
     this.claudeMcpConfigPath = resolve(claudeHome, ".claude.json");
   }
@@ -98,9 +98,11 @@ export class ClaudeAdapter implements IPlatformAdapter {
         await mkdir(this.claudeRoot, { recursive: true });
       }
 
-      const existingContent = await readFile(this.configPath, "utf-8").catch(() => "");
-      const mergedContent = this.upsertManagedSection(existingContent, config, await this.loadRuleContents(config));
-      await writeFile(this.configPath, mergedContent, "utf-8");
+      if (config.rules.length > 0) {
+        const existingContent = await readFile(this.configPath, "utf-8").catch(() => "");
+        const mergedContent = this.upsertManagedSection(existingContent, config, await this.loadRuleContents(config));
+        await writeFile(this.configPath, mergedContent, "utf-8");
+      }
 
       if (options?.cleanExistingArtifacts) {
         await this.cleanManagedArtifacts();
@@ -208,6 +210,8 @@ export class ClaudeAdapter implements IPlatformAdapter {
   }
 
   private async syncSkills(config: PlatformConfig): Promise<void> {
+    if (config.skills.length === 0) return;
+
     const skillsRoot = resolve(this.claudeRoot, "skills");
     await mkdir(skillsRoot, { recursive: true });
 
@@ -224,6 +228,8 @@ export class ClaudeAdapter implements IPlatformAdapter {
   }
 
   private async syncAgents(config: PlatformConfig): Promise<void> {
+    if (config.agents.length === 0) return;
+
     const agentsRoot = resolve(this.claudeRoot, "agents");
     await mkdir(agentsRoot, { recursive: true });
 
@@ -300,6 +306,8 @@ export class ClaudeAdapter implements IPlatformAdapter {
 
   private async writeClaudeMcpConfig(config: PlatformConfig, cleanExistingMcp?: boolean): Promise<void> {
     const mcpServers = config.mcpServers ?? [];
+    if (mcpServers.length === 0 && !cleanExistingMcp) return;
+
     // Build incoming MCP servers for both transport types
     const incomingMcpServers = Object.fromEntries(
       mcpServers.map((server) => {

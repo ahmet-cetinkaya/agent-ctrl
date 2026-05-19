@@ -33,3 +33,5 @@ export type { SyncReport, RegistryResult, SyncReportTotals, LifecycleOperationSu
 export { createEmptySyncReport } from "./SyncReport";
 export type { OperationLogEntry } from "./OperationLogEntry";
 export { createOperationLogEntry } from "./OperationLogEntry";
+export type { Profile, ProfileArtifactPaths } from "./Profile";
+export { createProfile } from "./Profile";

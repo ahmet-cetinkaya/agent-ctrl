@@ -70,7 +70,7 @@ describe("Adapter target resolution coverage", () => {
       });
       expect(projectTarget.scope).toBe("project");
       if (adapter.platformName === "claude") {
-        expect(projectTarget.configPath).toContain(resolve(projectPath, ".claude", "CLAUDE.md"));
+        expect(projectTarget.configPath).toBe(resolve(projectPath, "CLAUDE.md"));
       } else {
         expect(projectTarget.configPath).toContain(resolve(projectPath));
       }

@@ -10,11 +10,8 @@ import type {
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
   countUnsupportedArtifacts,
-  mergeJsonObjectFile,
-  renderSettingsMcpConfig,
   resolveApplyScope,
   syncCommandsAsSkills,
-  syncRulesAsFiles,
   syncSkills,
   toStatus,
   upsertManagedRuleDocument,
@@ -33,7 +30,7 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
     const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".gemini");
 
     return {
-      configPath: scope === "project" ? resolve(projectPath, ".agent", "rules") : resolve(userRoot, "GEMINI.md"),
+      configPath: scope === "project" ? resolve(projectPath, "GEMINI.md") : resolve(userRoot, "GEMINI.md"),
       scope,
       surface: scope === "project" ? "rules-skills-mcp" : "gemini-md-skills-mcp",
     };
@@ -43,7 +40,16 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
     const target = await this.resolveTarget(request.projectPath, request);
     const userRoot = request.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".gemini");
     const projectRoot = request.projectPath;
-    const source = await this.sourceLoader.load(request.projectPath);
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
 
     let changed = false;
     const fileChanges: string[] = [];
@@ -52,15 +58,9 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
     if (request.override) {
       if (target.scope === "project") {
         const projectScopeSkillsPath = resolve(projectRoot, ".agent", "skills");
-        const projectScopeRulesPath = resolve(projectRoot, ".agent", "rules");
 
         await Promise.all([
           rm(projectScopeSkillsPath, { recursive: true, force: true }).catch((error) => {
-            if (error.code !== "ENOENT") {
-              throw error;
-            }
-          }),
-          rm(projectScopeRulesPath, { recursive: true, force: true }).catch((error) => {
             if (error.code !== "ENOENT") {
               throw error;
             }
@@ -80,64 +80,67 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
     }
 
     if (target.scope === "project") {
-      const rulesResult = await syncRulesAsFiles(
-        source.rules,
-        target.configPath,
-        (rule, content) => ({ relativePath: `${rule.id}.md`, content: content.trimEnd() }),
-        Boolean(request.dryRun)
-      );
-      changed = rulesResult.changed || changed;
-      fileChanges.push(...rulesResult.paths);
-
-      const commandsResult = await syncCommandsAsSkills(
-        source.commands,
-        resolve(request.projectPath, ".agent", "skills"),
-        Boolean(request.dryRun)
-      );
-      changed = commandsResult.changed || changed;
-      fileChanges.push(...commandsResult.paths);
-
-      const skillsResult = await syncSkills(
-        source.skills,
-        resolve(request.projectPath, ".agent", "skills"),
-        Boolean(request.dryRun)
-      );
-      changed = skillsResult.changed || changed;
-      fileChanges.push(...skillsResult.paths);
-
-      const mcpResult = await mergeJsonObjectFile(
-        resolve(request.projectPath, ".agent", "mcp_config.json"),
-        (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
-        Boolean(request.dryRun)
-      );
-      changed = mcpResult.changed || changed;
-      fileChanges.push(...mcpResult.paths);
-    } else {
       const rulesResult = await upsertManagedRuleDocument(
         target.configPath,
         source.rules,
-        AntigravityAdapter.markers,
-        "No managed Antigravity global rules were found.",
+        { start: "<!-- agent-ctrl:antigravity:start -->", end: "<!-- agent-ctrl:antigravity:end -->" },
+        "No managed Antigravity rules were found.",
         Boolean(request.dryRun)
       );
       changed = rulesResult.changed || changed;
       fileChanges.push(...rulesResult.paths);
 
-      const skillsResult = await syncSkills(
-        source.skills,
-        resolve(userRoot, "antigravity", "skills"),
-        Boolean(request.dryRun)
-      );
-      changed = skillsResult.changed || changed;
-      fileChanges.push(...skillsResult.paths);
+      if (source.commands.length > 0) {
+        const commandsResult = await syncCommandsAsSkills(
+          source.commands,
+          resolve(projectRoot, ".agent", "skills"),
+          Boolean(request.dryRun)
+        );
+        changed = commandsResult.changed || changed;
+        fileChanges.push(...commandsResult.paths);
+      }
 
-      const mcpResult = await mergeJsonObjectFile(
-        resolve(userRoot, "antigravity", "mcp_config.json"),
-        (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
-        Boolean(request.dryRun)
-      );
-      changed = mcpResult.changed || changed;
-      fileChanges.push(...mcpResult.paths);
+      if (source.skills.length > 0) {
+        const skillsResult = await syncSkills(
+          source.skills,
+          resolve(projectRoot, ".agent", "skills"),
+          Boolean(request.dryRun)
+        );
+        changed = skillsResult.changed || changed;
+        fileChanges.push(...skillsResult.paths);
+      }
+
+      // Antigravity does not support a native MCP configuration file — emit warning instead.
+      if (source.mcpServers.length > 0) {
+        source.warnings.push("Antigravity does not support MCP configuration. MCP servers will not be applied.");
+      }
+    } else {
+      if (source.rules.length > 0) {
+        const rulesResult = await upsertManagedRuleDocument(
+          target.configPath,
+          source.rules,
+          AntigravityAdapter.markers,
+          "No managed Antigravity global rules were found.",
+          Boolean(request.dryRun)
+        );
+        changed = rulesResult.changed || changed;
+        fileChanges.push(...rulesResult.paths);
+      }
+
+      if (source.skills.length > 0) {
+        const skillsResult = await syncSkills(
+          source.skills,
+          resolve(userRoot, "antigravity", "skills"),
+          Boolean(request.dryRun)
+        );
+        changed = skillsResult.changed || changed;
+        fileChanges.push(...skillsResult.paths);
+      }
+
+      // Antigravity does not support a native MCP configuration file — emit warning instead.
+      if (source.mcpServers.length > 0) {
+        source.warnings.push("Antigravity does not support MCP configuration. MCP servers will not be applied.");
+      }
     }
 
     return {

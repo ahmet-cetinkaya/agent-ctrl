@@ -33,6 +33,9 @@ Sync `.agent-ctrl` artifacts into one selected platform's native configuration.
 # Apply to OpenCode
 agent-ctrl apply opencode
 
+# Apply to Claude Code
+agent-ctrl apply claude
+
 # Apply to Gemini CLI
 agent-ctrl apply gemini
 
@@ -53,6 +56,9 @@ agent-ctrl apply cursor
 
 # Apply to Windsurf
 agent-ctrl apply windsurf
+
+# Apply to Forge Code
+agent-ctrl apply forgecode
 ```
 
 **Behavior:**
@@ -196,6 +202,28 @@ agent-ctrl mcp update --all --refresh
 
 ---
 
+### Profile Management
+
+Profiles allow you to define and apply specific sets of artifacts to platforms.
+
+```bash
+# List available profiles
+agent-ctrl profile list
+
+# Apply a profile to a platform
+agent-ctrl profile apply default --platform opencode
+
+# Apply a profile with dry run
+agent-ctrl profile apply default --platform claude --dry-run
+
+# Apply a profile with override
+agent-ctrl profile apply production --platform cursor --override
+```
+
+**Location:** `profiles/`
+
+---
+
 ### `version`
 
 Display version information.
@@ -204,6 +232,8 @@ Display version information.
 agent-ctrl --version
 agent-ctrl -v
 ```
+
+**Note:** The CLI is installed as both `agent-ctrl` and `agent-ctrl-cli` binaries.
 
 ### `help`
 
@@ -240,11 +270,8 @@ agent-ctrl rule ls --json
 
 ## Exit Codes
 
-| Code | Meaning                                 |
-| ---- | --------------------------------------- |
-| 0    | Success                                 |
-| 1    | General error                           |
-| 2    | Validation error                        |
-| 3    | Network error (SkillsMP, Smithery, Git) |
-| 4    | File system error                       |
-| 5    | Configuration error                     |
+| Code | Meaning                                                         |
+| ---- | --------------------------------------------------------------- |
+| 0    | Success                                                         |
+| 1    | User error (invalid input, missing credentials, file not found) |
+| 2    | System/validation error (internal failure, unexpected state)    |

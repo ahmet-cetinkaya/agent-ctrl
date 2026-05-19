@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { ListMcpServersQuery } from "@/core/application/features/mcp/queries/ListMcpServersQuery";
 import {
@@ -8,6 +7,7 @@ import {
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
+import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 /**
  * Redacts sensitive values from environment variables for safe JSON output.
@@ -73,9 +73,7 @@ export function createMcpListCommand(): Command {
         }
       }
 
-      const configRootPath = targetPath
-        ? resolve(targetPath)
-        : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
+      const configRootPath = resolveConfigRoot(targetPath);
       const mcpDir = resolve(configRootPath, "mcps");
 
       // Check directory access with specific error handling

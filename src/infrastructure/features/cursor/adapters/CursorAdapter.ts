@@ -8,16 +8,25 @@ import type {
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
+import type { Rule } from "@/core/domain/shared/entities/Rule";
 import {
-  mergeJsonObjectFile,
-  renderSettingsMcpConfig,
   resolveApplyScope,
-  syncAgentsAsMarkdown,
-  syncCommandsAsMarkdown,
+  syncCommandsAsSkills,
+  syncAgentsAsSkills,
   syncRulesAsFiles,
   syncSkills,
   toStatus,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
+
+/** Renders a rule as a Cursor .mdc file with YAML frontmatter for conditional activation. */
+function renderCursorMdc(rule: Rule, content: string): { relativePath: string; content: string } {
+  const frontmatter = ["---", "alwaysApply: true", "---", ""].join("\n");
+
+  return {
+    relativePath: `${rule.id}.mdc`,
+    content: `${frontmatter}${content}`,
+  };
+}
 
 export class CursorAdapter implements IApplyPlatformAdapter {
   readonly platformName = "cursor" as const;
@@ -27,37 +36,71 @@ export class CursorAdapter implements IApplyPlatformAdapter {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
     const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".cursor");
     return {
-      configPath: scope === "project" ? resolve(projectPath, ".cursor") : userRoot,
+      configPath: scope === "project" ? resolve(projectPath, ".cursor", "rules") : resolve(userRoot, "rules"),
       scope,
-      surface: "rules-skills-commands-agents-mcp",
+      surface: "cursor-rules-mdc",
     };
   }
 
   async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
-    const source = await this.sourceLoader.load(request.projectPath);
+    const userRoot = request.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".cursor");
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
     let changed = false;
     const fileChanges: string[] = [];
 
+    // Cursor does not natively support skills, commands, agents, or MCP file configuration.
+    // Commands and agents are written as skills with a warning explaining the behavior change.
+    const artifactRoot = target.scope === "project" ? resolve(request.projectPath, ".cursor") : resolve(userRoot);
+    const skillsRoot = resolve(artifactRoot, "skills");
+
+    if (source.commands.length > 0) {
+      source.warnings.push("Cursor does not support custom commands. Commands are being written as skills instead.");
+      const commandsResult = await syncCommandsAsSkills(source.commands, skillsRoot, Boolean(request.dryRun));
+      changed = commandsResult.changed || changed;
+      fileChanges.push(...commandsResult.paths);
+    }
+
+    if (source.agents.length > 0) {
+      source.warnings.push("Cursor does not support custom agents. Agents are being written as skills instead.");
+      const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun));
+      changed = agentsResult.changed || changed;
+      fileChanges.push(...agentsResult.paths);
+    }
+
+    if (source.skills.length > 0) {
+      const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
+      changed = skillsResult.changed || changed;
+      fileChanges.push(...skillsResult.paths);
+    }
+
+    // MCP servers are not supported
+    if (source.mcpServers.length > 0) {
+      source.warnings.push("Cursor does not support MCP server configuration. MCP servers will not be applied.");
+    }
+
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
+      const rulesPath =
+        target.scope === "project" ? resolve(request.projectPath, ".cursor", "rules") : resolve(userRoot, "rules");
+      const skillsPath = skillsRoot;
+
       await Promise.all([
-        rm(resolve(target.configPath, "rules"), { recursive: true, force: true }).catch((error) => {
+        rm(rulesPath, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
         }),
-        rm(resolve(target.configPath, "skills"), { recursive: true, force: true }).catch((error) => {
-          if (error.code !== "ENOENT") {
-            throw error;
-          }
-        }),
-        rm(resolve(target.configPath, "commands"), { recursive: true, force: true }).catch((error) => {
-          if (error.code !== "ENOENT") {
-            throw error;
-          }
-        }),
-        rm(resolve(target.configPath, "agents"), { recursive: true, force: true }).catch((error) => {
+        rm(skillsPath, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
@@ -65,46 +108,26 @@ export class CursorAdapter implements IApplyPlatformAdapter {
       ]);
     }
 
-    const rulesResult = await syncRulesAsFiles(
-      source.rules,
-      resolve(target.configPath, "rules"),
-      (rule, content) => ({
-        relativePath: `${rule.id}.mdc`,
-        content: ["---", `description: ${rule.id}`, "---", "", content.trimEnd()].join("\n"),
-      }),
-      Boolean(request.dryRun)
-    );
-    changed = rulesResult.changed || changed;
-    fileChanges.push(...rulesResult.paths);
+    // Cursor uses .cursor/rules/*.mdc with YAML frontmatter for conditional activation.
+    if (source.rules.length > 0) {
+      const rulesRoot =
+        target.scope === "project" ? resolve(request.projectPath, ".cursor", "rules") : resolve(userRoot, "rules");
 
-    const skillsResult = await syncSkills(source.skills, resolve(target.configPath, "skills"), Boolean(request.dryRun));
-    changed = skillsResult.changed || changed;
-    fileChanges.push(...skillsResult.paths);
+      if (target.scope === "user") {
+        source.warnings.push(
+          "Cursor global rules should be configured via the Cursor Settings UI. Writing to ~/.cursor/rules/ as a fallback."
+        );
+      }
 
-    const commandsResult = await syncCommandsAsMarkdown(
-      source.commands,
-      resolve(target.configPath, "commands"),
-      Boolean(request.dryRun)
-    );
-    changed = commandsResult.changed || changed;
-    fileChanges.push(...commandsResult.paths);
-
-    const agentsResult = await syncAgentsAsMarkdown(
-      source.agents,
-      resolve(target.configPath, "agents"),
-      Boolean(request.dryRun),
-      true
-    );
-    changed = agentsResult.changed || changed;
-    fileChanges.push(...agentsResult.paths);
-
-    const mcpResult = await mergeJsonObjectFile(
-      resolve(target.configPath, "mcp.json"),
-      (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
-      Boolean(request.dryRun)
-    );
-    changed = mcpResult.changed || changed;
-    fileChanges.push(...mcpResult.paths);
+      const rulesResult = await syncRulesAsFiles(
+        source.rules,
+        rulesRoot,
+        (rule, content) => renderCursorMdc(rule, content),
+        Boolean(request.dryRun)
+      );
+      changed = rulesResult.changed || changed;
+      fileChanges.push(...rulesResult.paths);
+    }
 
     return {
       platform: this.platformName,
@@ -112,7 +135,7 @@ export class CursorAdapter implements IApplyPlatformAdapter {
       scope: target.scope,
       surface: target.surface,
       status: toStatus(changed),
-      message: "Applied Cursor rules, skills, commands, agents, and MCP servers.",
+      message: "Applied Cursor rules via .cursor/rules/*.mdc.",
       fileChanges,
       warnings: source.warnings,
     };

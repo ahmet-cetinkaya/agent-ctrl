@@ -1,6 +1,4 @@
 import { Command } from "commander";
-import { homedir } from "node:os";
-import { resolve } from "node:path";
 import { InitCommand } from "@/core/application/features/init/commands/InitCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
@@ -8,6 +6,7 @@ import { NodeFileSystem } from "@/infrastructure/shared/file-system/NodeFileSyst
 import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandler";
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
 import { PromptService } from "@/presentation/cli/shared/utils/PromptService";
+import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 export function createInitCommand(): Command {
   const command = new Command("init")
@@ -27,7 +26,7 @@ export function createInitCommand(): Command {
       }
 
       const initCommand = new InitCommand(new NodeFileSystem());
-      const resolvedTargetPath = targetPath ? resolve(targetPath) : resolve(homedir(), ".agent-ctrl");
+      const resolvedTargetPath = resolveConfigRoot(targetPath);
 
       try {
         if (options.dryRun) {

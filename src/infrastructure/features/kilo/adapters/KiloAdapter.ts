@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { resolve } from "node:path";
-import { mkdir, rm } from "node:fs/promises";
+import { rm } from "node:fs/promises";
 import type {
   ApplyConfigTarget,
   ApplyIntegrationRequest,
@@ -13,12 +13,11 @@ import {
   renderOpencodeMcpConfig,
   resolveApplyScope,
   syncAgentsAsMarkdown,
-  syncCommandsAsMarkdown,
-  syncRulesAsFiles,
+  syncCommandsAsSkills,
   syncSkills,
   toStatus,
+  upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
-import { CommandRendererFactory } from "@/infrastructure/features/apply/adapters/CommandRendererFactory";
 
 const KILO_VSCODE_DIR = ".kilo";
 const KILO_CLI_DIR = ".kilocode";
@@ -27,53 +26,51 @@ function getKiloConfigRoots(basePath: string): string[] {
   return [resolve(basePath, KILO_VSCODE_DIR), resolve(basePath, KILO_CLI_DIR)];
 }
 
-async function ensureDirExists(path: string): Promise<void> {
-  await mkdir(path, { recursive: true });
-}
-
 export class KiloAdapter implements IApplyPlatformAdapter {
   readonly platformName = "kilo" as const;
   private readonly sourceLoader = new ApplySourceLoader();
 
   async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
-    const targetPath = scope === "project" ? projectPath : (request?.userConfigRootPath ?? resolve(homedir()));
-
-    const [vscodeRoot, cliRoot] = getKiloConfigRoots(targetPath);
-
-    await ensureDirExists(vscodeRoot);
-    await ensureDirExists(cliRoot);
+    const targetPath =
+      scope === "project" ? projectPath : (request?.userConfigRootPath ?? resolve(homedir(), ".config", "kilo"));
 
     return {
-      configPath: vscodeRoot,
+      configPath: resolve(targetPath, "AGENTS.md"),
       scope,
-      surface: "rules-workflows-skills-agents-mcp",
+      surface: "rules-skills-agents-mcp",
     };
   }
 
   async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
-    const targetPath = scope === "project" ? request.projectPath : (request?.userConfigRootPath ?? resolve(homedir()));
+    const targetPath =
+      scope === "project"
+        ? request.projectPath
+        : (request?.userConfigRootPath ?? resolve(homedir(), ".config", "kilo"));
+    const configPath = resolve(targetPath, "AGENTS.md");
 
     const targetRoots = getKiloConfigRoots(targetPath);
-    const source = await this.sourceLoader.load(request.projectPath);
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
     let changed = false;
     const fileChanges: string[] = [];
 
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
-      // Clean both .kilo and .kilocode directories
       for (const targetRoot of targetRoots) {
-        const commandsPath = resolve(targetRoot, "commands");
         const skillsPath = resolve(targetRoot, "skills");
         const agentsPath = resolve(targetRoot, "agents");
 
         await Promise.all([
-          rm(commandsPath, { recursive: true, force: true }).catch((error) => {
-            if (error.code !== "ENOENT") {
-              throw error;
-            }
-          }),
           rm(skillsPath, { recursive: true, force: true }).catch((error) => {
             if (error.code !== "ENOENT") {
               throw error;
@@ -88,53 +85,64 @@ export class KiloAdapter implements IApplyPlatformAdapter {
       }
     }
 
+    const rulesResult = await upsertManagedRuleDocument(
+      configPath,
+      source.rules,
+      { start: "<!-- agent-ctrl:kilo:start -->", end: "<!-- agent-ctrl:kilo:end -->" },
+      "No managed Kilo rules were found.",
+      Boolean(request.dryRun)
+    );
+    changed = rulesResult.changed || changed;
+    fileChanges.push(...rulesResult.paths);
+
     for (const targetRoot of targetRoots) {
-      const rulesResult = await syncRulesAsFiles(
-        source.rules,
-        resolve(targetRoot, "rules"),
-        (rule, content) => ({ relativePath: `${rule.id}.md`, content: content.trimEnd() }),
-        Boolean(request.dryRun)
-      );
-      changed = rulesResult.changed || changed;
-      fileChanges.push(...rulesResult.paths);
+      // Kilo does not support a native commands directory — write commands as skills instead.
+      if (source.commands.length > 0) {
+        source.warnings.push(
+          "Kilo does not support a commands directory. Commands are being written as skills instead."
+        );
+        const commandsResult = await syncCommandsAsSkills(
+          source.commands,
+          resolve(targetRoot, "skills"),
+          Boolean(request.dryRun)
+        );
+        changed = commandsResult.changed || changed;
+        fileChanges.push(...commandsResult.paths);
+      }
 
-      const workflowsResult = await syncCommandsAsMarkdown(
-        source.commands,
-        resolve(targetRoot, "commands"),
-        Boolean(request.dryRun),
-        CommandRendererFactory.getRenderer("workflow"),
-        ":"
-      );
-      changed = workflowsResult.changed || changed;
-      fileChanges.push(...workflowsResult.paths);
+      if (source.skills.length > 0) {
+        const skillsResult = await syncSkills(source.skills, resolve(targetRoot, "skills"), Boolean(request.dryRun));
+        changed = skillsResult.changed || changed;
+        fileChanges.push(...skillsResult.paths);
+      }
 
-      const skillsResult = await syncSkills(source.skills, resolve(targetRoot, "skills"), Boolean(request.dryRun));
-      changed = skillsResult.changed || changed;
-      fileChanges.push(...skillsResult.paths);
+      if (source.agents.length > 0) {
+        const agentsResult = await syncAgentsAsMarkdown(
+          source.agents,
+          resolve(targetRoot, "agents"),
+          Boolean(request.dryRun),
+          true
+        );
+        changed = agentsResult.changed || changed;
+        fileChanges.push(...agentsResult.paths);
+      }
 
-      const agentsResult = await syncAgentsAsMarkdown(
-        source.agents,
-        resolve(targetRoot, "agents"),
-        Boolean(request.dryRun),
-        true
-      );
-      changed = agentsResult.changed || changed;
-      fileChanges.push(...agentsResult.paths);
-
-      const mcpResult = await mergeJsonObjectFile(
-        resolve(targetRoot, "kilo.json"),
-        (existing) => renderOpencodeMcpConfig(existing, source.mcpServers),
-        Boolean(request.dryRun)
-      );
-      changed = mcpResult.changed || changed;
-      fileChanges.push(...mcpResult.paths);
+      if (source.mcpServers.length > 0) {
+        const mcpResult = await mergeJsonObjectFile(
+          resolve(targetRoot, "kilo.jsonc"),
+          (existing) => renderOpencodeMcpConfig(existing, source.mcpServers),
+          Boolean(request.dryRun)
+        );
+        changed = mcpResult.changed || changed;
+        fileChanges.push(...mcpResult.paths);
+      }
     }
 
     return {
       platform: this.platformName,
-      configPath: targetRoots.join(", "),
+      configPath,
       scope,
-      surface: "rules-workflows-skills-agents-mcp",
+      surface: "rules-skills-agents-mcp",
       status: toStatus(changed),
       message:
         "Applied Kilo rules, workflows, skills, agents, and MCP servers to both .kilo and .kilocode directories.",

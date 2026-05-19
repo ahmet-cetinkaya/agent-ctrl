@@ -13,7 +13,7 @@ import {
   mergeJsonObjectFile,
   renderSettingsMcpConfig,
   resolveApplyScope,
-  syncCommandsAsToml,
+  syncCommandsAsSkills,
   syncSkills,
   toStatus,
   upsertManagedRuleDocument,
@@ -34,7 +34,7 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
     return {
       configPath: scope === "project" ? resolve(projectPath, "GEMINI.md") : resolve(userRoot, "GEMINI.md"),
       scope,
-      surface: "gemini-md-commands-skills-settings",
+      surface: "gemini-md-skills-settings",
     };
   }
 
@@ -46,24 +46,27 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
       : resolve(homedir(), ".agents");
     const scopeRoot = target.scope === "project" ? resolve(request.projectPath, ".gemini") : userRoot;
     const scopeAgentsRoot = target.scope === "project" ? resolve(request.projectPath, ".agents") : userAgentsRoot;
-    const source = await this.sourceLoader.load(request.projectPath);
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
 
     let changed = false;
     const fileChanges: string[] = [];
 
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
-      const commandsPath = resolve(scopeRoot, "commands");
       const skillsPath = resolve(scopeRoot, "skills");
       const agentsPath = scopeAgentsRoot;
       const mcpConfigPath = resolve(scopeRoot, ".mcp.json");
 
       await Promise.all([
-        rm(commandsPath, { recursive: true, force: true }).catch((error) => {
-          if (error.code !== "ENOENT") {
-            throw error;
-          }
-        }),
         rm(skillsPath, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
@@ -92,27 +95,35 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
-    const commandsResult = await syncCommandsAsToml(
-      source.commands,
-      resolve(scopeRoot, "commands"),
-      Boolean(request.dryRun)
-    );
-    changed = commandsResult.changed || changed;
-    fileChanges.push(...commandsResult.paths);
-
-    for (const skillsRoot of [resolve(scopeRoot, "skills"), resolve(scopeAgentsRoot, "skills")]) {
-      const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
-      changed = skillsResult.changed || changed;
-      fileChanges.push(...skillsResult.paths);
+    // Gemini CLI does not support a native commands directory — write commands as skills instead.
+    if (source.commands.length > 0) {
+      source.warnings.push(
+        "Gemini CLI does not support a commands directory. Commands are being written as skills instead."
+      );
+      for (const skillsRoot of [resolve(scopeRoot, "skills"), resolve(scopeAgentsRoot, "skills")]) {
+        const commandsResult = await syncCommandsAsSkills(source.commands, skillsRoot, Boolean(request.dryRun));
+        changed = commandsResult.changed || changed;
+        fileChanges.push(...commandsResult.paths);
+      }
     }
 
-    const settingsResult = await mergeJsonObjectFile(
-      resolve(scopeRoot, "settings.json"),
-      (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
-      Boolean(request.dryRun)
-    );
-    changed = settingsResult.changed || changed;
-    fileChanges.push(...settingsResult.paths);
+    if (source.skills.length > 0) {
+      for (const skillsRoot of [resolve(scopeRoot, "skills"), resolve(scopeAgentsRoot, "skills")]) {
+        const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
+        changed = skillsResult.changed || changed;
+        fileChanges.push(...skillsResult.paths);
+      }
+    }
+
+    if (source.mcpServers.length > 0) {
+      const settingsResult = await mergeJsonObjectFile(
+        resolve(scopeRoot, "settings.json"),
+        (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
+        Boolean(request.dryRun)
+      );
+      changed = settingsResult.changed || changed;
+      fileChanges.push(...settingsResult.paths);
+    }
 
     return {
       platform: this.platformName,
@@ -120,7 +131,7 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
       scope: target.scope,
       surface: target.surface,
       status: toStatus(changed),
-      message: "Applied Gemini guidance, commands, skills, and MCP servers.",
+      message: "Applied Gemini guidance, skills, and MCP servers.",
       fileChanges,
       warnings: [...source.warnings, ...countUnsupportedArtifacts("Gemini", source, ["agents"])],
     };

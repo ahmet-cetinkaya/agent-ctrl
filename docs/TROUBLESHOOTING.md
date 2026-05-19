@@ -8,7 +8,7 @@
 
 **Resolution**:
 
-1. Use one of: `opencode`, `gemini`, `qwen`, `kilo`, `antigravity`, `codex`, `cursor`, `windsurf`.
+1. Use one of: `opencode`, `claude`, `gemini`, `qwen`, `kilo`, `antigravity`, `codex`, `cursor`, `windsurf`, `forgecode`.
 2. Re-run with an explicit selected platform:
    `agent-ctrl apply <platform>`.
 
@@ -54,7 +54,7 @@
 
 1. Export `SKILLSMP_API_KEY` or `SKILLSMP_TOKEN`.
 2. Prefer storing the key in `.agent-ctrl/.env`.
-3. Or pass `--api-key <value>` to `skill sync`, `skill search --refresh`, `skill add --refresh`, or `skill update --refresh`.
+3. Or pass `--api-key <value>` to `skill sync`, `skill search`, `skill add`, or `skill update`.
 4. Re-run `agent-ctrl skill sync --query "<value>"`.
 5. Confirm cached results still appear for earlier successful syncs if the source remains unavailable.
 
@@ -66,7 +66,7 @@
 
 1. Export `SMITHERY_API_KEY` or `SMITHERY_TOKEN`.
 2. Prefer storing the key in `.agent-ctrl/.env`.
-3. Or pass `--api-key <value>` to `mcp sync`, `mcp search --refresh`, `mcp add --refresh`, or `mcp update --refresh`.
+3. Or pass `--api-key <value>` to `mcp sync`, `mcp search`, `mcp add`, or `mcp update`.
 4. Re-run `agent-ctrl mcp sync`.
 5. Use `agent-ctrl mcp search <query>` after a successful sync to confirm the cache is populated.
 
@@ -89,3 +89,4 @@
 1. Re-run `agent-ctrl skill sync --refresh --query "<value>"` for the affected SkillsMP scope.
 2. Re-run `agent-ctrl mcp sync --refresh` for the Smithery catalog.
 3. Use `agent-ctrl skill ls` or `agent-ctrl mcp ls` to confirm the last successful sync timestamp.
+4. Check `<config-root>/catalog/catalog.json` for the raw catalog state if needed.

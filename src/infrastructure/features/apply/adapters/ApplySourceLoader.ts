@@ -8,6 +8,7 @@ import { SkillScanner } from "@/infrastructure/features/skill/scanners/SkillScan
 import { AgentScanner } from "@/infrastructure/features/agent/scanners/AgentScanner";
 import { CommandScanner, type CommandArtifact } from "@/infrastructure/features/command/scanners/CommandScanner";
 import { McpServerAggregator } from "@/infrastructure/features/mcp/loaders/McpServerAggregator";
+import { ProfileScanner } from "@/infrastructure/features/apply/adapters/ProfileScanner";
 
 export interface ApplyMcpServer {
   name: string;
@@ -37,6 +38,7 @@ export class ApplySourceLoader {
   private readonly agentScanner = new AgentScanner();
   private readonly commandScanner = new CommandScanner();
   private readonly mcpLoader = new McpServerAggregator();
+  private readonly profileScanner = new ProfileScanner();
 
   async load(projectPath: string): Promise<ApplySourceSnapshot> {
     await this.assertProjectDirectory(projectPath);
@@ -135,6 +137,10 @@ export class ApplySourceLoader {
     }
 
     return this.commandScanner.scan(commandsPath);
+  }
+
+  async loadProfile(profilePath: string): Promise<ApplySourceSnapshot> {
+    return this.profileScanner.scan(profilePath);
   }
 
   private async assertProjectDirectory(projectPath: string): Promise<void> {
