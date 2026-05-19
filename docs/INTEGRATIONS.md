@@ -138,7 +138,7 @@ agent-ctrl mcp update --all --refresh
 - `agent-ctrl init` creates `.agent-ctrl/.env`, `.agent-ctrl/.env.example`, and `.agent-ctrl/.gitignore`.
 - Smithery registry access uses `SMITHERY_API_KEY` or `SMITHERY_TOKEN` from `.agent-ctrl/.env`.
 - `--api-key` overrides the configured value for the current command only.
-- agent-ctrl stores synchronized catalog state under `.agent-ctrl/.catalog/`.
+- agent-ctrl stores synchronized catalog state under `.agent-ctrl/catalog/`.
 - Managed MCP files remain materialized in `.agent-ctrl/mcps/` so existing MCP loading still works.
 
 ---
@@ -225,13 +225,15 @@ agent-ctrl init yourusername/my-agent-template
 
 ## MCP (Model Context Protocol)
 
-### Configuration File
+### Configuration Files
 
-`mcp.json` defines MCP server connections:
+MCP servers are configured by placing JSON files in `<config-root>/mcps/`. Each file should contain a top-level `mcpServers` object. The CLI discovers and merges all JSON files in this directory.
+
+**Example file** (`mcps/servers.json`):
 
 ```json
 {
-  "servers": {
+  "mcpServers": {
     "filesystem": {
       "command": "npx",
       "args": ["-y", "@anthropic/mcp-server-filesystem", "/path/to/allowed/files"]
@@ -244,27 +246,33 @@ agent-ctrl init yourusername/my-agent-template
 }
 ```
 
+### Environment Variables
+
+MCP configurations can reference environment variables using `${VAR}` syntax. Variables are loaded from `<config-root>/mcps/.env`:
+
+```json
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}
+```
+
 ### Validation
 
-The CLI validates `mcp.json` against a Zod schema:
+The CLI validates MCP configurations through a multi-phase pipeline:
 
-```bash
-agent-ctrl mcp validate
-```
-
-### Schema
-
-```typescript
-const McpConfigSchema = z.object({
-  servers: z.record(
-    z.object({
-      command: z.string(),
-      args: z.array(z.string()),
-      env: z.record(z.string()).optional(),
-    })
-  ),
-});
-```
+1. **Discovery** - Find all JSON files in `mcps/`
+2. **Environment Loading** - Load `.env` from `mcps/`
+3. **File Processing** - Parse and interpolate variables
+4. **Conflict Detection** - Detect duplicate server names
+5. **Report** - Generate validation summary
 
 ---
 
@@ -279,6 +287,7 @@ Sync `.agent-ctrl` artifacts into native platform configurations.
 | Platform    | Command                        |
 | ----------- | ------------------------------ |
 | OpenCode    | `agent-ctrl apply opencode`    |
+| Claude Code | `agent-ctrl apply claude`      |
 | Gemini CLI  | `agent-ctrl apply gemini`      |
 | Qwen Code   | `agent-ctrl apply qwen`        |
 | Kilo        | `agent-ctrl apply kilo`        |
@@ -286,6 +295,7 @@ Sync `.agent-ctrl` artifacts into native platform configurations.
 | Codex CLI   | `agent-ctrl apply codex`       |
 | Cursor      | `agent-ctrl apply cursor`      |
 | Windsurf    | `agent-ctrl apply windsurf`    |
+| Forge Code  | `agent-ctrl apply forgecode`   |
 
 ### Usage
 

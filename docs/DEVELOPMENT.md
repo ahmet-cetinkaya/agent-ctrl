@@ -65,11 +65,41 @@ bun run type-check
 agent-ctrl/
 ├── src/
 │   ├── core/
-│   │   ├── domain/          # Domain models
-│   │   └── application/     # Use cases
-│   ├── infrastructure/      # External integrations and remote catalog adapters
+│   │   ├── domain/          # Domain models, entities, interfaces, types, errors
+│   │   │   └── shared/
+│   │   │       ├── entities/    # Rule, Skill, Agent, CatalogItem, Profile, etc.
+│   │   │       ├── interfaces/  # IApplyPlatformAdapter, ISkillsMpClient, etc.
+│   │   │       ├── types/       # Artifact, SupportedApplyPlatform, Result
+│   │   │       ├── errors/      # BaseError, UserError, SystemError, ProfileError
+│   │   │       └── constants/   # Error IDs
+│   │   └── application/     # Use cases (features/)
+│   │       └── features/    # agent/, apply/, command/, init/, mcp/, rule/, skill/
+│   ├── infrastructure/      # External integrations and platform adapters
+│   │   ├── features/
+│   │   │   ├── agent/       # AgentScanner
+│   │   │   ├── apply/       # BaseTextApplyAdapter, PlatformAdapterRegistry, renderers
+│   │   │   ├── catalog/     # clients/, caching/, compatibility/, scopes/
+│   │   │   ├── command/     # CommandScanner
+│   │   │   ├── mcp/         # loaders/, parsers/, registries/, interpolation/
+│   │   │   ├── rule/        # RuleScanner
+│   │   │   ├── skill/       # scanners/, metadata/, registries/
+│   │   │   └── projects/    # DirectoryScanner
+│   │   │   # Platform adapters (each under features/<platform>/adapters/):
+│   │   │   ├── antigravity/ # AntigravityAdapter
+│   │   │   ├── claude/      # ClaudeAdapter, ClaudeApplyAdapter
+│   │   │   ├── codex/       # CodexAdapter
+│   │   │   ├── cursor/      # CursorAdapter
+│   │   │   ├── forgecode/   # ForgeCodeAdapter
+│   │   │   ├── gemini/      # GeminiAdapter
+│   │   │   ├── kilo/        # KiloAdapter
+│   │   │   ├── opencode/    # OpenCodeAdapter
+│   │   │   ├── qwen/        # QwenAdapter
+│   │   │   └── windsurf/    # WindsurfAdapter
+│   │   └── shared/          # file-system/, utils/, validation/
 │   └── presentation/
-│       └── cli/             # CLI interface
+│       └── cli/             # CLI interface (Commander.js)
+│           ├── features/    # Command registrations per artifact type
+│           └── shared/      # handlers/, middleware/, utils/
 ├── tests/                   # Test files
 └── docs/                    # Documentation
 ```
@@ -121,6 +151,7 @@ try {
 - Keep source-specific HTTP behavior in `src/infrastructure/features/catalog/clients/`.
 - Keep cache/state persistence in `src/infrastructure/features/catalog/caching/`.
 - Keep lifecycle orchestration in `src/core/application/features/skill/*` and `src/core/application/features/mcp/*`.
+- Catalog state is persisted to `<config-root>/catalog/catalog.json` via `CatalogStateFileStore`.
 - Do not persist raw credentials. Only persist sanitized auth state, cache metadata, and operation summaries.
 - Preserve the existing local `skill ls` and `mcp ls` flows when extending catalog behavior.
 
@@ -155,52 +186,70 @@ if (!result.success) {
 
 ### 1. Create Adapter Class
 
+Create the adapter under `src/infrastructure/features/<platform>/adapters/`:
+
 ```typescript
-// src/infrastructure/adapters/MyPlatformAdapter.ts
-import { Adapter, Artifacts, ConfigOutput } from "@/core/domain/Adapter";
+// src/infrastructure/features/myplatform/adapters/MyPlatformAdapter.ts
+import { BaseTextApplyAdapter } from "@/infrastructure/features/apply/adapters/BaseTextApplyAdapter";
+import { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 
-export class MyPlatformAdapter implements Adapter {
-  async apply(artifacts: Artifacts): Promise<ConfigOutput> {
-    // Transform artifacts to platform-specific format
+export class MyPlatformAdapter extends BaseTextApplyAdapter {
+  readonly platformName: SupportedApplyPlatform = "myplatform";
+
+  protected getManagedFileName(): string {
+    return "MYPLATFORM.md";
   }
 
-  validate(config: ConfigOutput): ValidationResult {
-    // Validate platform requirements
-  }
-
-  getPlatform(): string {
-    return "myplatform";
-  }
+  // Override other methods as needed for platform-specific behavior
 }
 ```
 
+For platforms with complex config (multiple files, JSON configs), implement `IApplyPlatformAdapter` directly instead of extending `BaseTextApplyAdapter`.
+
 ### 2. Register Adapter
 
+Register the adapter in `PlatformAdapterRegistry`:
+
 ```typescript
-// src/infrastructure/adapters/index.ts
-export { MyPlatformAdapter } from "./MyPlatformAdapter";
+// src/infrastructure/features/apply/adapters/PlatformAdapterRegistry.ts
+import { MyPlatformAdapter } from "@/infrastructure/features/myplatform/adapters/MyPlatformAdapter";
 
-// src/presentation/cli/index.ts
-import { MyPlatformAdapter } from "@/infrastructure/adapters";
+// Add to the registry map:
+myplatform: () => new MyPlatformAdapter(),
+```
 
-const adapters = {
-  claude: new ClaudeAdapter(),
-  myplatform: new MyPlatformAdapter(),
-};
+Also add the platform to `SupportedApplyPlatform` type:
+
+```typescript
+// src/core/domain/shared/types/SupportedApplyPlatform.ts
+export type SupportedApplyPlatform =
+  | "antigravity"
+  | "claude"
+  // ... existing platforms
+  | "myplatform";
 ```
 
 ### 3. Add Tests
 
 ```typescript
-// tests/infrastructure/adapters/MyPlatformAdapter.test.ts
+// tests/infrastructure/features/myplatform/adapters/MyPlatformAdapter.test.ts
 import { describe, it, expect } from "bun:test";
-import { MyPlatformAdapter } from "@/infrastructure/adapters/MyPlatformAdapter";
+import { MyPlatformAdapter } from "@/infrastructure/features/myplatform/adapters/MyPlatformAdapter";
 
 describe("MyPlatformAdapter", () => {
-  it("should transform artifacts correctly", async () => {
+  it("should resolve target correctly", async () => {
     const adapter = new MyPlatformAdapter();
-    const result = await adapter.apply(mockArtifacts);
-    expect(result).toMatchPlatformFormat();
+    const target = await adapter.resolveTarget("/test/project");
+    expect(target.scope).toBe("user");
+  });
+
+  it("should apply artifacts correctly", async () => {
+    const adapter = new MyPlatformAdapter();
+    const result = await adapter.applyApplyIntegration({
+      projectPath: "/test/project",
+      dryRun: true,
+    });
+    expect(result.status).toBe("success");
   });
 });
 ```

@@ -5,15 +5,21 @@
 When you run `agent-ctrl init`, it creates the following structure:
 
 ```
-.agent-ctrl/
-├── .env               # Your API keys (not committed)
-├── .env.example       # Template for .env
-├── .gitignore         # Git ignore patterns
-├── agents/            # Agent persona definitions
-├── commands/          # Reusable command definitions
-├── mcps/              # MCP server configurations
-├── rules/             # Rule files (coding standards, etc.)
-└── skills/            # Installed skills
+~/.agent-ctrl/               # Default config root (overridable via AGENT_CTRL_HOME)
+├── .env                     # API keys for remote catalogs (not committed)
+├── .env.example             # Template for .env
+├── .gitignore               # Git ignore patterns
+├── README.md                # Config root documentation
+├── agents/                  # Agent persona definitions (.md files)
+├── commands/                # Reusable command definitions (.md files, recursive)
+├── mcps/                    # MCP server configurations (JSON files)
+│   └── .env                 # MCP-specific environment variables
+├── rules/                   # Rule files (coding standards, etc.)
+├── skills/                  # Installed skills (SKILL.md directories)
+├── profiles/                # Configuration profiles (optional)
+│   └── default/             # Profile directory with artifact references
+└── catalog/                 # Cached catalog state (managed, do not edit)
+    └── catalog.json         # Sync cache, discovery scopes, managed integrations
 ```
 
 ## Environment Variables
@@ -24,6 +30,13 @@ Create `.agent-ctrl/.env` with your API keys:
 SKILLSMP_API_KEY=your_skillsmp_key
 SMITHERY_API_KEY=your_smithery_key
 ```
+
+### Configuration Root
+
+The config root is resolved in this order:
+
+1. `AGENT_CTRL_HOME` environment variable (highest priority)
+2. `~/.agent-ctrl` (default)
 
 ### Credential Precedence
 
@@ -185,4 +198,26 @@ Add your own MCP server configurations by creating JSON files in `.agent-ctrl/mc
     }
   }
 }
+```
+
+### Profiles (`profiles/`)
+
+Profiles allow you to define named configurations that bundle specific artifacts for targeted platform application.
+
+**Structure:**
+
+```
+profiles/
+└── default/              # Profile name (any directory name)
+    ├── rules/            # Optional: profile-specific rules
+    ├── skills/           # Optional: profile-specific skills
+    └── ...               # Other artifact subdirectories
+```
+
+```bash
+# List profiles
+agent-ctrl profile list
+
+# Apply a profile to a platform
+agent-ctrl profile apply default --platform opencode
 ```
