@@ -226,17 +226,8 @@ async function applyToPlatform(platform: string, options: any): Promise<void> {
       if (usePrompt) LogService.outro(`Applied to ${selectedPlatform}`);
     }
 
-    const criticalWarnings = warnings.filter((w) => w.includes("does not have a documented apply target for"));
-    const noiseWarnings = warnings.filter((w) => !w.includes("does not have a documented apply target for"));
-
-    if (criticalWarnings.length > 0) LogService.note(criticalWarnings.join("\n"), "Warnings:");
-
-    if (verbose && noiseWarnings.length > 0) {
-      const filteredNoiseWarnings = noiseWarnings.filter(
-        (w) => !w.includes("Skipped .gitkeep") && !w.includes("invalid extension")
-      );
-      if (filteredNoiseWarnings.length > 0 && criticalWarnings.length === 0)
-        LogService.note(filteredNoiseWarnings.join("\n"), "Warnings:");
+    if (warnings.length > 0) {
+      LogService.note(warnings.join("\n"), "Warnings:");
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

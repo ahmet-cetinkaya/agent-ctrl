@@ -71,5 +71,5 @@ await program.parseAsync(process.argv);
 
 const hasCommand = process.argv.slice(2).some((arg) => !arg.startsWith("-"));
 if (hasCommand) {
-  outro(color.cyan("Execution completed"));
+  outro(color.green("✔ Ready for action!"));
 }

@@ -203,7 +203,7 @@ async function applyProfileToPlatform(
       process.exit(2);
     }
 
-    const verbose = options.verbose ?? getLegacyGlobalOptions().verbose;
+    const verbose = options.verbose || getLegacyGlobalOptions().verbose;
     const {
       platform: selectedPlatform,
       status,
@@ -220,44 +220,44 @@ async function applyProfileToPlatform(
     if (options.dryRun) {
       if (usePrompt) PromptService.stopTask("Dry run complete");
 
-      LogService.info(`Selected platform: ${selectedPlatform}`);
-      LogService.info(`Result: ${status}`);
-      LogService.info(`Scope: ${scope}`);
-      LogService.info(`Surface: ${surface}`);
-      LogService.info(`Target path: ${configPath}`);
-      if (artifactCounts) displayArtifactCounts(artifactCounts);
-      if (verbose && fileChanges.length > 0) LogService.note(fileChanges.join("\n"), "Files:");
-      LogService.info(`Estimated duration: ${durationMs}ms`);
+      if (verbose) {
+        LogService.info(`Selected platform: ${selectedPlatform}`);
+        LogService.info(`Result: ${status}`);
+        LogService.info(`Scope: ${scope}`);
+        LogService.info(`Surface: ${surface}`);
+        LogService.info(`Target path: ${configPath}`);
+        if (artifactCounts) displayArtifactCounts(artifactCounts);
+        if (fileChanges.length > 0) LogService.note(fileChanges.join("\n"), "Files:");
+        LogService.info(`Estimated duration: ${durationMs}ms`);
+      } else {
+        LogService.info(`Selected platform: ${selectedPlatform}`);
+        LogService.info(`Result: ${status}`);
+        LogService.info(`Estimated duration: ${durationMs}ms`);
+      }
     } else {
-      if (status === "unchanged") LogService.info(`${selectedPlatform}: unchanged`);
-      else LogService.info(`${selectedPlatform}: success`);
+      const platformDisplay = getPlatformDisplayName(selectedPlatform);
+      if (status === "unchanged") LogService.note(`${platformDisplay} configuration is already up to date`, "Status:");
+      else LogService.success(`${profileName} profile applied to ${platformDisplay}`);
 
-      if (isEmpty) {
-        LogService.note(`Profile '${profileName}' contained no artifacts. Base configuration applied.`, "Note:");
+      if (verbose) {
+        if (isEmpty) {
+          LogService.note(`Profile '${profileName}' contained no artifacts. Base configuration applied.`, "Note:");
+        }
+
+        LogService.info(`Scope: ${scope}`);
+        LogService.info(`Surface: ${surface}`);
+        LogService.info(`Configuration path: ${configPath}`);
+        if (fileChanges.length > 0) LogService.note(fileChanges.join("\n"), "Files:");
+        LogService.info(`Duration: ${durationMs}ms`);
       }
 
-      LogService.info(`Scope: ${scope}`);
-      LogService.info(`Surface: ${surface}`);
-
-      LogService.info(`Configuration path: ${configPath}`);
       if (artifactCounts) displayArtifactCounts(artifactCounts);
-      if (verbose && fileChanges.length > 0) LogService.note(fileChanges.join("\n"), "Files:");
 
-      LogService.info(`Duration: ${durationMs}ms`);
-      if (usePrompt) LogService.outro(`Applied profile '${profileName}' to ${selectedPlatform}`);
-    }
+      if (warnings.length > 0) {
+        LogService.note(warnings.join("\n"), "Warnings:");
+      }
 
-    const criticalWarnings = warnings.filter((w) => w.includes("does not have a documented apply target for"));
-    const noiseWarnings = warnings.filter((w) => !w.includes("does not have a documented apply target for"));
-
-    if (criticalWarnings.length > 0) LogService.note(criticalWarnings.join("\n"), "Warnings:");
-
-    if (verbose && noiseWarnings.length > 0) {
-      const filteredNoiseWarnings = noiseWarnings.filter(
-        (w) => !w.includes("Skipped .gitkeep") && !w.includes("invalid extension")
-      );
-      if (filteredNoiseWarnings.length > 0 && criticalWarnings.length === 0)
-        LogService.note(filteredNoiseWarnings.join("\n"), "Warnings:");
+      if (usePrompt) LogService.outro(`Profile '${profileName}' successfully applied to ${platformDisplay}`);
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
