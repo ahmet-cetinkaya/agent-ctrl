@@ -57,8 +57,8 @@ describe("ForgeCodeAdapter", () => {
     await expect(access(resolve(userRootPath, "commands", "fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, "agents", "architect.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, ".mcp.json"))).resolves.toBeNull();
-    // Skills are not supported
-    expect(result.warnings!.some((w) => w.includes("skills"))).toBe(true);
+    // Skills are written as commands with warning
+    expect(result.warnings!.some((w) => w.includes("Skills are being written as commands"))).toBe(true);
   });
 
   it("cleans existing managed artifacts when override is enabled", async () => {

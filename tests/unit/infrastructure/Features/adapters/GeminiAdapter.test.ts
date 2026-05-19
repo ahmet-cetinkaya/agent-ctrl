@@ -30,8 +30,8 @@ describe("GeminiAdapter", () => {
     expect(content).toContain("<!-- agent-ctrl:gemini:start -->");
     await expect(access(resolve(projectPath, ".gemini", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agents", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
-    // Commands are not supported — warning should be present
-    expect(result.warnings!.some((w) => w.includes("commands"))).toBe(true);
+    // Commands are written as skills with warning
+    expect(result.warnings!.some((w) => w.includes("Commands are being written as skills"))).toBe(true);
   });
 
   it("reapplies deterministically", async () => {

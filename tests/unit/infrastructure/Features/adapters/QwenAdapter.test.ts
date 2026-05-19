@@ -31,8 +31,8 @@ describe("QwenAdapter", () => {
     expect(content).toContain("## Coding Style");
     await expect(access(resolve(projectPath, ".qwen", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agents", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
-    // Commands are not supported — warning should be present
-    expect(result.warnings!.some((w) => w.includes("commands"))).toBe(true);
+    // Commands are written as skills with warning
+    expect(result.warnings!.some((w) => w.includes("Commands are being written as skills"))).toBe(true);
   });
 
   it("returns unchanged when desired state already exists", async () => {

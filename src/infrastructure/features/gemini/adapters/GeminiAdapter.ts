@@ -13,6 +13,7 @@ import {
   mergeJsonObjectFile,
   renderSettingsMcpConfig,
   resolveApplyScope,
+  syncCommandsAsSkills,
   syncSkills,
   toStatus,
   upsertManagedRuleDocument,
@@ -94,9 +95,16 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
-    // Gemini CLI does not support a native commands directory — emit warning instead.
+    // Gemini CLI does not support a native commands directory — write commands as skills instead.
     if (source.commands.length > 0) {
-      source.warnings.push("Gemini CLI does not support a commands directory. Commands will not be applied.");
+      source.warnings.push(
+        "Gemini CLI does not support a commands directory. Commands are being written as skills instead."
+      );
+      for (const skillsRoot of [resolve(scopeRoot, "skills"), resolve(scopeAgentsRoot, "skills")]) {
+        const commandsResult = await syncCommandsAsSkills(source.commands, skillsRoot, Boolean(request.dryRun));
+        changed = commandsResult.changed || changed;
+        fileChanges.push(...commandsResult.paths);
+      }
     }
 
     if (source.skills.length > 0) {

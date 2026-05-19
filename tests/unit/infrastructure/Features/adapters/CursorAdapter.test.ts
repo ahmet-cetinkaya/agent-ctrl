@@ -29,11 +29,13 @@ describe("CursorAdapter", () => {
     expect(result.surface).toBe("cursor-rules-mdc");
     // Rules are written as .mdc files with YAML frontmatter
     await expect(access(resolve(projectPath, ".cursor", "rules"))).resolves.toBeNull();
-    // Warnings for unsupported artifact types
-    expect(result.warnings!.some((w) => w.includes("skills"))).toBe(true);
-    expect(result.warnings!.some((w) => w.includes("commands"))).toBe(true);
-    expect(result.warnings!.some((w) => w.includes("agents"))).toBe(true);
-    expect(result.warnings!.some((w) => w.includes("MCP"))).toBe(true);
+    // Commands and agents are written as skills with warnings
+    expect(result.warnings!.some((w) => w.includes("Commands are being written as skills"))).toBe(true);
+    expect(result.warnings!.some((w) => w.includes("Agents are being written as skills"))).toBe(true);
+    // MCP servers are not supported
+    expect(result.warnings!.some((w) => w.includes("MCP servers will not be applied"))).toBe(true);
+    // Skills are written to .cursor/skills/
+    await expect(access(resolve(projectPath, ".cursor", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
   });
 
   it("writes user-scope rules as a fallback with warning", async () => {

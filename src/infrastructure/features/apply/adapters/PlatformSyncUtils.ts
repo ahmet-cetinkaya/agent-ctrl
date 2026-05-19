@@ -132,6 +132,28 @@ export async function syncCommandsAsMarkdownFlattened(
   return syncRenderedFiles(targetRoot, rendered, dryRun);
 }
 
+export async function syncSkillsAsCommands(
+  skills: Skill[],
+  targetRoot: string,
+  dryRun: boolean,
+  renderer?: ICommandRenderer
+): Promise<FileSyncResult> {
+  const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("opencode");
+  const rendered = await Promise.all(
+    skills.map(async (skill) => {
+      const skillMdPath = resolve(skill.path, "SKILL.md");
+      const skillFile = await readFile(skillMdPath, "utf-8");
+      const relativePath = `${skill.id.split("/").pop()}${commandRenderer.fileExtension}`;
+
+      return {
+        relativePath,
+        content: commandRenderer.renderCommand(skillFile, skill.id),
+      };
+    })
+  );
+  return syncRenderedFiles(targetRoot, rendered, dryRun);
+}
+
 export async function syncCommandsAsToml(
   commands: CommandArtifact[],
   targetRoot: string,
@@ -248,6 +270,44 @@ export async function syncAgentsAsCodexToml(
     paths.push(targetPath);
     if (!dryRun) {
       await writeTextFile(targetPath, tomlContent);
+    }
+  }
+
+  return { changed, paths };
+}
+
+export async function syncAgentsAsSkills(
+  agents: Agent[],
+  targetRoot: string,
+  dryRun: boolean
+): Promise<FileSyncResult> {
+  let changed = false;
+  const paths: string[] = [];
+
+  for (const agent of agents) {
+    const source = await readFile(agent.path, "utf-8");
+    const skillName = agent.id.replaceAll("/", "-");
+    const skillMd = [
+      "---",
+      `name: ${skillName}`,
+      `description: Custom agent: ${agent.id}`,
+      "---",
+      "",
+      source.trim(),
+    ].join("\n");
+
+    const skillDir = resolve(targetRoot, skillName);
+    const targetPath = resolve(skillDir, "SKILL.md");
+    const existing = await readTextFileOrNull(targetPath);
+
+    if (normalizeText(existing ?? "") === normalizeText(skillMd)) {
+      continue;
+    }
+
+    changed = true;
+    paths.push(targetPath);
+    if (!dryRun) {
+      await writeTextFile(targetPath, skillMd);
     }
   }
 

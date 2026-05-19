@@ -32,10 +32,12 @@ describe("WindsurfAdapter", () => {
     await expect(access(resolve(projectPath, ".windsurf", "rules"))).resolves.toBeNull();
     // Workflows are supported
     await expect(access(resolve(projectPath, ".windsurf", "workflows", "dev", "fix-lint.md"))).resolves.toBeNull();
-    // Warnings for unsupported artifact types
-    expect(result.warnings!.some((w) => w.includes("skills"))).toBe(true);
-    expect(result.warnings!.some((w) => w.includes("agents"))).toBe(true);
-    expect(result.warnings!.some((w) => w.includes("MCP"))).toBe(true);
+    // Agents are written as skills with warning
+    expect(result.warnings!.some((w) => w.includes("Agents are being written as skills"))).toBe(true);
+    // MCP servers are not supported
+    expect(result.warnings!.some((w) => w.includes("MCP servers will not be applied"))).toBe(true);
+    // Skills are written to .windsurf/skills/
+    await expect(access(resolve(projectPath, ".windsurf", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
   });
 
   it("writes global rules as a fallback with warning", async () => {

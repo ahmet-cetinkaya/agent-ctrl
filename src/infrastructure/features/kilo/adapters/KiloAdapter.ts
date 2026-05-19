@@ -13,6 +13,7 @@ import {
   renderOpencodeMcpConfig,
   resolveApplyScope,
   syncAgentsAsMarkdown,
+  syncCommandsAsSkills,
   syncSkills,
   toStatus,
   upsertManagedRuleDocument,
@@ -95,9 +96,18 @@ export class KiloAdapter implements IApplyPlatformAdapter {
     fileChanges.push(...rulesResult.paths);
 
     for (const targetRoot of targetRoots) {
-      // Kilo does not support a native commands directory — emit warning instead.
+      // Kilo does not support a native commands directory — write commands as skills instead.
       if (source.commands.length > 0) {
-        source.warnings.push("Kilo does not support a commands directory. Commands will not be applied.");
+        source.warnings.push(
+          "Kilo does not support a commands directory. Commands are being written as skills instead."
+        );
+        const commandsResult = await syncCommandsAsSkills(
+          source.commands,
+          resolve(targetRoot, "skills"),
+          Boolean(request.dryRun)
+        );
+        changed = commandsResult.changed || changed;
+        fileChanges.push(...commandsResult.paths);
       }
 
       if (source.skills.length > 0) {

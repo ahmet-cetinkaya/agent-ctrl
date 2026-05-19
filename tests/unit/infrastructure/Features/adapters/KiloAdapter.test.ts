@@ -32,8 +32,8 @@ describe("KiloAdapter", () => {
     await expect(access(resolve(projectPath, ".kilocode", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "agents", "architect.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "kilo.jsonc"))).resolves.toBeNull();
-    // Commands are not supported — warning should be present
-    expect(result.warnings!.some((w) => w.includes("commands"))).toBe(true);
+    // Commands are written as skills with warning
+    expect(result.warnings!.some((w) => w.includes("Commands are being written as skills"))).toBe(true);
   });
 
   it("reapplies idempotently", async () => {

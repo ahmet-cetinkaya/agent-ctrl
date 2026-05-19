@@ -11,8 +11,10 @@ import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/Appl
 import type { Rule } from "@/core/domain/shared/entities/Rule";
 import {
   resolveApplyScope,
+  syncAgentsAsSkills,
   syncCommandsAsWorkflows,
   syncRulesAsFiles,
+  syncSkills,
   toStatus,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
@@ -66,6 +68,28 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
     let changed = false;
     const fileChanges: string[] = [];
 
+    // Windsurf does not natively support skills or agents — write them as skills with a warning.
+    const skillsRoot =
+      target.scope === "project" ? resolve(request.projectPath, ".windsurf", "skills") : resolve(userRoot, "skills");
+
+    if (source.skills.length > 0) {
+      const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
+      changed = skillsResult.changed || changed;
+      fileChanges.push(...skillsResult.paths);
+    }
+
+    if (source.agents.length > 0) {
+      source.warnings.push("Windsurf does not support custom agents. Agents are being written as skills instead.");
+      const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun));
+      changed = agentsResult.changed || changed;
+      fileChanges.push(...agentsResult.paths);
+    }
+
+    // MCP servers are not supported
+    if (source.mcpServers.length > 0) {
+      source.warnings.push("Windsurf does not support MCP server configuration. MCP servers will not be applied.");
+    }
+
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
       await Promise.all([
@@ -75,6 +99,11 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
           }
         }),
         rm(workflowsRoot, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(skillsRoot, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
@@ -107,14 +136,7 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
       fileChanges.push(...workflowsResult.paths);
     }
 
-    // Windsurf does not natively support skills, agents, or MCP file configuration.
-    const unsupported = ["skills", "agents", "mcpServers"] as const;
-    for (const type of unsupported) {
-      if (source[type].length > 0) {
-        const label = type === "mcpServers" ? "MCP servers" : type;
-        source.warnings.push(`Windsurf does not support ${label}. ${label} will not be applied.`);
-      }
-    }
+    // Windsurf does not natively support skills or agents — write them as skills with a warning.
 
     return {
       platform: this.platformName,

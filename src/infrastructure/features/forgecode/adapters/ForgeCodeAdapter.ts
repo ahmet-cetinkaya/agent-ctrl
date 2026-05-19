@@ -15,6 +15,7 @@ import {
   resolveApplyScope,
   syncAgentsAsMarkdown,
   syncCommandsAsMarkdownFlattened,
+  syncSkillsAsCommands,
   toStatus,
   upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
@@ -108,9 +109,19 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
       fileChanges.push(...commandsResult.paths);
     }
 
-    // Forge Code does not support a native skills directory — emit warning instead.
+    // Forge Code does not support a native skills directory — write skills as commands instead.
     if (source.skills.length > 0) {
-      source.warnings.push("Forge Code does not support a skills directory. Skills will not be applied.");
+      source.warnings.push(
+        "Forge Code does not support a skills directory. Skills are being written as commands instead."
+      );
+      const skillsResult = await syncSkillsAsCommands(
+        source.skills,
+        commandRoot,
+        Boolean(request.dryRun),
+        this.commandRenderer
+      );
+      changed = skillsResult.changed || changed;
+      fileChanges.push(...skillsResult.paths);
     }
 
     // Sync agents to .forge/agents/

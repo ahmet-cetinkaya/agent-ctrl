@@ -11,6 +11,8 @@ import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/Appl
 import type { Rule } from "@/core/domain/shared/entities/Rule";
 import {
   resolveApplyScope,
+  syncCommandsAsSkills,
+  syncAgentsAsSkills,
   syncRulesAsFiles,
   syncSkills,
   toStatus,
@@ -56,16 +58,54 @@ export class CursorAdapter implements IApplyPlatformAdapter {
     let changed = false;
     const fileChanges: string[] = [];
 
+    // Cursor does not natively support skills, commands, agents, or MCP file configuration.
+    // Commands and agents are written as skills with a warning explaining the behavior change.
+    const artifactRoot = target.scope === "project" ? resolve(request.projectPath, ".cursor") : resolve(userRoot);
+    const skillsRoot = resolve(artifactRoot, "skills");
+
+    if (source.commands.length > 0) {
+      source.warnings.push("Cursor does not support custom commands. Commands are being written as skills instead.");
+      const commandsResult = await syncCommandsAsSkills(source.commands, skillsRoot, Boolean(request.dryRun));
+      changed = commandsResult.changed || changed;
+      fileChanges.push(...commandsResult.paths);
+    }
+
+    if (source.agents.length > 0) {
+      source.warnings.push("Cursor does not support custom agents. Agents are being written as skills instead.");
+      const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun));
+      changed = agentsResult.changed || changed;
+      fileChanges.push(...agentsResult.paths);
+    }
+
+    if (source.skills.length > 0) {
+      const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
+      changed = skillsResult.changed || changed;
+      fileChanges.push(...skillsResult.paths);
+    }
+
+    // MCP servers are not supported
+    if (source.mcpServers.length > 0) {
+      source.warnings.push("Cursor does not support MCP server configuration. MCP servers will not be applied.");
+    }
+
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
       const rulesPath =
         target.scope === "project" ? resolve(request.projectPath, ".cursor", "rules") : resolve(userRoot, "rules");
+      const skillsPath = skillsRoot;
 
-      await rm(rulesPath, { recursive: true, force: true }).catch((error) => {
-        if (error.code !== "ENOENT") {
-          throw error;
-        }
-      });
+      await Promise.all([
+        rm(rulesPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(skillsPath, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+      ]);
     }
 
     // Cursor uses .cursor/rules/*.mdc with YAML frontmatter for conditional activation.
@@ -87,15 +127,6 @@ export class CursorAdapter implements IApplyPlatformAdapter {
       );
       changed = rulesResult.changed || changed;
       fileChanges.push(...rulesResult.paths);
-    }
-
-    // Cursor does not natively support skills, commands, agents, or MCP file configuration.
-    const unsupported = ["skills", "commands", "agents", "mcpServers"] as const;
-    for (const type of unsupported) {
-      if (source[type].length > 0) {
-        const label = type === "mcpServers" ? "MCP servers" : type;
-        source.warnings.push(`Cursor does not support ${label}. ${label} will not be applied.`);
-      }
     }
 
     return {
