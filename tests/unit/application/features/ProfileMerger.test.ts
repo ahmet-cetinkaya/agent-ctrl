@@ -195,6 +195,16 @@ describe("ProfileMerger", () => {
       expect(result.snapshot.agents).toHaveLength(1);
       expect(result.snapshot.agents[0].filename).toBe("architect.md");
     });
+
+    it("adds profile agents not in base", () => {
+      const base: ApplySourceSnapshot = { ...emptySnapshot(), agents: [makeAgent("architect.md")] };
+      const profile: ApplySourceSnapshot = { ...emptySnapshot(), agents: [makeAgent("reviewer.md")] };
+
+      const result = merger.merge(base, profile);
+
+      expect(result.snapshot.agents).toHaveLength(2);
+      expect(result.snapshot.agents.map((a) => a.filename)).toContain("reviewer.md");
+    });
   });
 
   describe("mergeMcpServers", () => {
@@ -234,6 +244,8 @@ describe("ProfileMerger", () => {
       const result = merger.merge(base, profile);
 
       expect(result.snapshot.mcpServers).toHaveLength(2);
+      expect(result.snapshot.mcpServers.map((s) => s.name)).toContain("context7");
+      expect(result.snapshot.mcpServers.map((s) => s.name)).toContain("new-server");
     });
   });
 

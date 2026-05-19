@@ -31,9 +31,13 @@ describe("ProfileScanner", () => {
     const result = await scanner.scan(profilePath);
 
     expect(result.rules).toHaveLength(1);
+    expect(result.rules[0].filename).toBe("test.md");
     expect(result.skills).toHaveLength(1);
+    expect(result.skills[0].id).toBe("test-skill");
     expect(result.agents).toHaveLength(1);
+    expect(result.agents[0].filename).toBe("test-agent.md");
     expect(result.commands).toHaveLength(1);
+    expect(result.commands[0].id).toBe("test-cmd/cmd");
   });
 
   it("scans profile with partial subdirectories", async () => {
