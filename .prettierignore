@@ -1,8 +1,9 @@
-node_modules/
-dist/
 build/
-coverage/
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
 bun.lock
+coverage/
+dist/
+node_modules/
+package-lock.json
+packages/
+pnpm-lock.yaml
+yarn.lock
