@@ -51,8 +51,8 @@ describe("ClaudeApplyAdapter", () => {
     });
 
     expect(result.status).toBe("success");
-    expect(result.configPath).toBe(resolve(projectPath, ".claude", "CLAUDE.md"));
-    await expect(access(resolve(projectPath, ".claude", "commands", "dev", "fix-lint.md"))).resolves.toBeNull();
+    expect(result.configPath).toBe(resolve(projectPath, "CLAUDE.md"));
+    await expect(access(resolve(projectPath, ".claude", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
   });
 
   it("reports concrete file changes instead of directory placeholders", async () => {

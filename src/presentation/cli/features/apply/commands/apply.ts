@@ -1,5 +1,6 @@
 import { Command, Option } from "commander";
 import { resolve } from "node:path";
+import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
@@ -13,7 +14,6 @@ import { validateUserPath } from "@/presentation/cli/shared/handlers/resultHandl
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
 import { PromptService } from "@/presentation/cli/shared/utils/PromptService";
 import { getLegacyGlobalOptions } from "@/presentation/cli/shared/utils/globalOptions";
-import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 /**
  * Creates the 'apply' CLI command for syncing native platform configuration.
@@ -48,8 +48,11 @@ import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 export function createApplyCommand(): Command {
   const supportedPlatformsDisplay = getSupportedApplyPlatformsDisplay();
 
-  return new Command("apply")
-    .description("Sync .agent-ctrl artifacts into one selected platform's native configuration")
+  const applyCommand = new Command("apply").description(
+    "Sync .agent-ctrl artifacts into one selected platform's native configuration"
+  );
+
+  applyCommand
     .argument("[platform]", `Target platform. Supported platforms: ${supportedPlatformsDisplay}`)
     .option("-d, --dry-run", "Show selected-platform changes without writing files", false)
     .option("-o, --override", "Replace conflicting managed configuration with agent-ctrl state", false)
@@ -68,7 +71,6 @@ export function createApplyCommand(): Command {
     .option("--path <path>", "Custom platform user configuration root path")
     .option("--no-prompt", "Skip confirmation prompt", false)
     .action(async (platform: string | undefined, options: any) => {
-      // Get global options that were parsed by Commander
       if (options.verbose) {
         process.env.DEBUG = "true";
       }
@@ -94,6 +96,8 @@ export function createApplyCommand(): Command {
 
       await applyToPlatform(platform, options);
     });
+
+  return applyCommand;
 }
 
 function displayArtifactCounts(counts: {

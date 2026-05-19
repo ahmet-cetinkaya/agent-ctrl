@@ -52,7 +52,16 @@ export class CodexAdapter implements IApplyPlatformAdapter {
       target.scope === "project"
         ? resolve(request.projectPath, ".codex", "config.toml")
         : resolve(userRoot, "config.toml");
-    const source = await this.sourceLoader.load(request.projectPath);
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
 
     let changed = false;
     const fileChanges: string[] = [];

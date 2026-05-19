@@ -14,9 +14,9 @@ import {
   resolveApplyScope,
   syncAgentsAsMarkdown,
   syncCommandsAsMarkdown,
-  syncRulesAsFiles,
   syncSkills,
   toStatus,
+  upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
 export class CursorAdapter implements IApplyPlatformAdapter {
@@ -27,7 +27,7 @@ export class CursorAdapter implements IApplyPlatformAdapter {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
     const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".cursor");
     return {
-      configPath: scope === "project" ? resolve(projectPath, ".cursor") : userRoot,
+      configPath: scope === "project" ? resolve(projectPath, "AGENTS.md") : resolve(userRoot, "AGENTS.md"),
       scope,
       surface: "rules-skills-commands-agents-mcp",
     };
@@ -35,29 +35,40 @@ export class CursorAdapter implements IApplyPlatformAdapter {
 
   async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
-    const source = await this.sourceLoader.load(request.projectPath);
+    const artifactRoot =
+      target.scope === "project" ? resolve(request.projectPath, ".cursor") : resolve(target.configPath, "..");
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
     let changed = false;
     const fileChanges: string[] = [];
 
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
       await Promise.all([
-        rm(resolve(target.configPath, "rules"), { recursive: true, force: true }).catch((error) => {
+        rm(resolve(artifactRoot, "rules"), { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
         }),
-        rm(resolve(target.configPath, "skills"), { recursive: true, force: true }).catch((error) => {
+        rm(resolve(artifactRoot, "skills"), { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
         }),
-        rm(resolve(target.configPath, "commands"), { recursive: true, force: true }).catch((error) => {
+        rm(resolve(artifactRoot, "commands"), { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
         }),
-        rm(resolve(target.configPath, "agents"), { recursive: true, force: true }).catch((error) => {
+        rm(resolve(artifactRoot, "agents"), { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
@@ -65,46 +76,52 @@ export class CursorAdapter implements IApplyPlatformAdapter {
       ]);
     }
 
-    const rulesResult = await syncRulesAsFiles(
+    const rulesResult = await upsertManagedRuleDocument(
+      target.configPath,
       source.rules,
-      resolve(target.configPath, "rules"),
-      (rule, content) => ({
-        relativePath: `${rule.id}.mdc`,
-        content: ["---", `description: ${rule.id}`, "---", "", content.trimEnd()].join("\n"),
-      }),
+      { start: "<!-- agent-ctrl:cursor:start -->", end: "<!-- agent-ctrl:cursor:end -->" },
+      "No managed Cursor rules were found.",
       Boolean(request.dryRun)
     );
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
-    const skillsResult = await syncSkills(source.skills, resolve(target.configPath, "skills"), Boolean(request.dryRun));
-    changed = skillsResult.changed || changed;
-    fileChanges.push(...skillsResult.paths);
+    if (source.skills.length > 0) {
+      const skillsResult = await syncSkills(source.skills, resolve(artifactRoot, "skills"), Boolean(request.dryRun));
+      changed = skillsResult.changed || changed;
+      fileChanges.push(...skillsResult.paths);
+    }
 
-    const commandsResult = await syncCommandsAsMarkdown(
-      source.commands,
-      resolve(target.configPath, "commands"),
-      Boolean(request.dryRun)
-    );
-    changed = commandsResult.changed || changed;
-    fileChanges.push(...commandsResult.paths);
+    if (source.commands.length > 0) {
+      const commandsResult = await syncCommandsAsMarkdown(
+        source.commands,
+        resolve(artifactRoot, "commands"),
+        Boolean(request.dryRun)
+      );
+      changed = commandsResult.changed || changed;
+      fileChanges.push(...commandsResult.paths);
+    }
 
-    const agentsResult = await syncAgentsAsMarkdown(
-      source.agents,
-      resolve(target.configPath, "agents"),
-      Boolean(request.dryRun),
-      true
-    );
-    changed = agentsResult.changed || changed;
-    fileChanges.push(...agentsResult.paths);
+    if (source.agents.length > 0) {
+      const agentsResult = await syncAgentsAsMarkdown(
+        source.agents,
+        resolve(artifactRoot, "agents"),
+        Boolean(request.dryRun),
+        true
+      );
+      changed = agentsResult.changed || changed;
+      fileChanges.push(...agentsResult.paths);
+    }
 
-    const mcpResult = await mergeJsonObjectFile(
-      resolve(target.configPath, "mcp.json"),
-      (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
-      Boolean(request.dryRun)
-    );
-    changed = mcpResult.changed || changed;
-    fileChanges.push(...mcpResult.paths);
+    if (source.mcpServers.length > 0) {
+      const mcpResult = await mergeJsonObjectFile(
+        resolve(artifactRoot, "mcp.json"),
+        (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
+        Boolean(request.dryRun)
+      );
+      changed = mcpResult.changed || changed;
+      fileChanges.push(...mcpResult.paths);
+    }
 
     return {
       platform: this.platformName,

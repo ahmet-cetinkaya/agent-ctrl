@@ -8,31 +8,32 @@ agent-ctrl apply profile <profile_name> <platform> [options]
 
 ### Arguments
 
-| Name | Type | Required | Description |
-| ---- | ---- | -------- | ----------- |
-| `profile_name` | string | Yes | Name of the profile directory under `.agent-ctrl/profiles/` |
-| `platform` | string | Yes | Target platform (same as `apply <platform>`) |
+| Name           | Type   | Required | Description                                                 |
+| -------------- | ------ | -------- | ----------------------------------------------------------- |
+| `profile_name` | string | Yes      | Name of the profile directory under `.agent-ctrl/profiles/` |
+| `platform`     | string | Yes      | Target platform (same as `apply <platform>`)                |
 
 ### Options
 
-| Flag | Type | Default | Description |
-| ---- | ---- | ------- | ----------- |
-| `-d, --dry-run` | boolean | false | Show changes without writing files |
-| `-o, --override` | boolean | false | Replace conflicting managed configuration |
-| `-v, --verbose` | boolean | false | Show detailed output including warnings |
-| `--no-prompt` | boolean | false | Skip confirmation prompt |
+| Flag             | Type    | Default | Description                               |
+| ---------------- | ------- | ------- | ----------------------------------------- |
+| `-d, --dry-run`  | boolean | false   | Show changes without writing files        |
+| `-o, --override` | boolean | false   | Replace conflicting managed configuration |
+| `-v, --verbose`  | boolean | false   | Show detailed output including warnings   |
+| `--no-prompt`    | boolean | false   | Skip confirmation prompt                  |
 
 ### Exit Codes
 
-| Code | Meaning |
-| ---- | ------- |
-| 0 | Profile applied successfully |
-| 1 | User error (profile not found, invalid platform, no `.agent-ctrl` directory) |
-| 2 | System error (permission denied, disk full, unexpected failure) |
+| Code | Meaning                                                                      |
+| ---- | ---------------------------------------------------------------------------- |
+| 0    | Profile applied successfully                                                 |
+| 1    | User error (profile not found, invalid platform, no `.agent-ctrl` directory) |
+| 2    | System error (permission denied, disk full, unexpected failure)              |
 
 ### Output Format
 
 **Success**:
+
 ```
 Applying to <platform>
   ✓ Syncing configuration
@@ -44,6 +45,7 @@ Applying to <platform>
 ```
 
 **Empty Profile**:
+
 ```
 Applying to <platform>
   ✓ Syncing configuration
@@ -53,6 +55,7 @@ Applying to <platform>
 ```
 
 **Profile Not Found**:
+
 ```
 Error: Profile '<name>' not found in .agent-ctrl/profiles/
 ```

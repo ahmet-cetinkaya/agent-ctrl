@@ -1,7 +1,6 @@
 import { Command } from "commander";
 import { ListAgentsQuery } from "@/core/application/features/agent/queries/ListAgentsQuery";
 import { AgentScanner } from "@/infrastructure/features/agent/scanners/AgentScanner";
-import { homedir } from "node:os";
 import { resolve } from "node:path";
 import {
   handleDirectoryAccess,
@@ -9,6 +8,7 @@ import {
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
+import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 export function createAgentListCommand(): Command {
   return new Command("ls")
@@ -25,9 +25,7 @@ export function createAgentListCommand(): Command {
         }
       }
 
-      const configRootPath = targetPath
-        ? resolve(targetPath)
-        : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
+      const configRootPath = resolveConfigRoot(targetPath);
       const agentsPath = resolve(configRootPath, "agents");
 
       // Check directory access with specific error handling

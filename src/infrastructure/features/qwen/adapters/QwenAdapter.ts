@@ -45,7 +45,16 @@ export class QwenAdapter implements IApplyPlatformAdapter {
       : resolve(homedir(), ".agents");
     const scopeRoot = target.scope === "project" ? resolve(request.projectPath, ".qwen") : userRoot;
     const scopeAgentsRoot = target.scope === "project" ? resolve(request.projectPath, ".agents") : userAgentsRoot;
-    const source = await this.sourceLoader.load(request.projectPath);
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
 
     let changed = false;
     const fileChanges: string[] = [];
@@ -91,27 +100,33 @@ export class QwenAdapter implements IApplyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
-    const commandsResult = await syncCommandsAsToml(
-      source.commands,
-      resolve(scopeRoot, "commands"),
-      Boolean(request.dryRun)
-    );
-    changed = commandsResult.changed || changed;
-    fileChanges.push(...commandsResult.paths);
-
-    for (const skillsRoot of [resolve(scopeRoot, "skills"), resolve(scopeAgentsRoot, "skills")]) {
-      const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
-      changed = skillsResult.changed || changed;
-      fileChanges.push(...skillsResult.paths);
+    if (source.commands.length > 0) {
+      const commandsResult = await syncCommandsAsToml(
+        source.commands,
+        resolve(scopeRoot, "commands"),
+        Boolean(request.dryRun)
+      );
+      changed = commandsResult.changed || changed;
+      fileChanges.push(...commandsResult.paths);
     }
 
-    const settingsResult = await mergeJsonObjectFile(
-      resolve(scopeRoot, "settings.json"),
-      (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
-      Boolean(request.dryRun)
-    );
-    changed = settingsResult.changed || changed;
-    fileChanges.push(...settingsResult.paths);
+    if (source.skills.length > 0) {
+      for (const skillsRoot of [resolve(scopeRoot, "skills"), resolve(scopeAgentsRoot, "skills")]) {
+        const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
+        changed = skillsResult.changed || changed;
+        fileChanges.push(...skillsResult.paths);
+      }
+    }
+
+    if (source.mcpServers.length > 0) {
+      const settingsResult = await mergeJsonObjectFile(
+        resolve(scopeRoot, "settings.json"),
+        (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
+        Boolean(request.dryRun)
+      );
+      changed = settingsResult.changed || changed;
+      fileChanges.push(...settingsResult.paths);
+    }
 
     return {
       platform: this.platformName,

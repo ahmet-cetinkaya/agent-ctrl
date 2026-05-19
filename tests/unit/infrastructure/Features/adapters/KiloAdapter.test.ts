@@ -23,14 +23,13 @@ describe("KiloAdapter", () => {
     const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
-    expect(result.configPath).toContain(resolve(projectPath, ".kilo"));
+    expect(result.configPath).toBe(resolve(projectPath, "AGENTS.md"));
     expect(result.surface).toBe("rules-workflows-skills-agents-mcp");
-    await expect(access(resolve(projectPath, ".kilo", "rules", "coding-style.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, "AGENTS.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "commands", "dev:fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "agents", "architect.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "kilo.json"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".kilocode", "rules", "coding-style.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "commands", "dev:fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "agents", "architect.md"))).resolves.toBeNull();
@@ -78,8 +77,7 @@ describe("KiloAdapter", () => {
     // The result should be either "success" or "unchanged" since we're syncing the same artifacts
     expect(["success", "unchanged"]).toContain(result.status);
 
-    // After override, verify temp files were cleaned by checking they no longer exist
-    // Use a try/catch approach since the files should NOT exist
+    // After override, verify temp files were cleaned
     const commandExists = await access(tempCommandPath)
       .then(() => true)
       .catch(() => false);
@@ -95,6 +93,7 @@ describe("KiloAdapter", () => {
     expect(agentExists).toBe(false);
 
     // Verify project artifacts still exist
+    await expect(access(resolve(projectPath, "AGENTS.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "commands", "dev:fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "agents", "architect.md"))).resolves.toBeNull();

@@ -7,6 +7,7 @@
 A named collection of agent configuration artifacts stored under `.agent-ctrl/profiles/<name>/`.
 
 **Fields**:
+
 - `name` (string): Profile directory name (e.g., "debug", "production")
 - `path` (string): Absolute path to profile directory
 - `configRoot` (string): Absolute path to `.agent-ctrl/` parent directory
@@ -18,11 +19,13 @@ A named collection of agent configuration artifacts stored under `.agent-ctrl/pr
   - `mcps` (string | null): Path to `mcps/` subdirectory or null if absent
 
 **Validation rules**:
+
 - `name` must be a non-empty string matching `[a-zA-Z0-9_-]+`
 - `path` must resolve to an existing directory
 - Profile is scoped to a single project (no global profiles)
 
 **Relationships**:
+
 - Belongs to: Base Configuration (`.agent-ctrl/`)
 - Contains: Zero or more of each artifact type (rules, skills, agents, commands, MCPs)
 
@@ -31,6 +34,7 @@ A named collection of agent configuration artifacts stored under `.agent-ctrl/pr
 The result of merging a profile's artifacts with the base configuration.
 
 **Fields**:
+
 - `rules` (Rule[]): Base rules with profile rules overriding same-named files
 - `skills` (Skill[]): Base skills with profile skill directories replacing base skill directories of the same ID
 - `agents` (Agent[]): Base agents with profile agents overriding same-named files
@@ -39,6 +43,7 @@ The result of merging a profile's artifacts with the base configuration.
 - `warnings` (string[]): Combined warnings from base and profile loading
 
 **Merge rules**:
+
 - File-based artifacts (rules, agents): Same filename → profile wins
 - Directory-based artifacts (skills, commands): Same directory name → entire profile directory replaces base
 - MCP configs: Same server key → field-level merge (profile fields override, unspecified fields retained from base)
@@ -48,6 +53,7 @@ The result of merging a profile's artifacts with the base configuration.
 Error type for profile-specific failures.
 
 **Fields**:
+
 - `code` (string): Error identifier from `ERROR_IDS`
   - `PROFILE_NOT_FOUND`: Specified profile does not exist
   - `PROFILE_NOT_DIRECTORY`: Profile path exists but is not a directory

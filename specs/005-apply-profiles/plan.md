@@ -23,13 +23,13 @@ Add a `profile` subcommand to the existing `apply` command (`agent-ctrl apply pr
 
 _GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Principle | Status | Notes |
-| --------- | ------ | ----- |
-| I. Layered Architecture | PASS | New code follows `core → infrastructure → presentation` layers. `core/application/` contains `ApplyProfileCommand` and `ProfileMerger`; `infrastructure/` contains `ProfileScanner`; `presentation/cli/` wires the CLI subcommand. |
-| II. Deterministic Behavior | PASS | Merge strategy is deterministic: profile overrides base for same-name files, directory-level override for skills/commands, field-level merge for MCP configs. No silent overrides — empty profiles produce explicit info message. |
-| III. Test & Type Safety | PASS | Unit tests for `ProfileMerger`, `ProfileScanner`, `ApplyProfileCommand`; integration test for end-to-end flow. TypeScript strict mode preserved throughout. |
-| IV. Security & Secrets | PASS | No new secret handling introduced. Profile loading uses same filesystem patterns as base config loading. |
-| V. CLI Observability | PASS | Clear success/failure messages. Empty profile produces informational message. Error messages identify missing profile name without revealing filesystem paths beyond `.agent-ctrl/profiles/`. |
+| Principle                  | Status | Notes                                                                                                                                                                                                                              |
+| -------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| I. Layered Architecture    | PASS   | New code follows `core → infrastructure → presentation` layers. `core/application/` contains `ApplyProfileCommand` and `ProfileMerger`; `infrastructure/` contains `ProfileScanner`; `presentation/cli/` wires the CLI subcommand. |
+| II. Deterministic Behavior | PASS   | Merge strategy is deterministic: profile overrides base for same-name files, directory-level override for skills/commands, field-level merge for MCP configs. No silent overrides — empty profiles produce explicit info message.  |
+| III. Test & Type Safety    | PASS   | Unit tests for `ProfileMerger`, `ProfileScanner`, `ApplyProfileCommand`; integration test for end-to-end flow. TypeScript strict mode preserved throughout.                                                                        |
+| IV. Security & Secrets     | PASS   | No new secret handling introduced. Profile loading uses same filesystem patterns as base config loading.                                                                                                                           |
+| V. CLI Observability       | PASS   | Clear success/failure messages. Empty profile produces informational message. Error messages identify missing profile name without revealing filesystem paths beyond `.agent-ctrl/profiles/`.                                      |
 
 _Post-design re-evaluation: All gates pass. No violations to document in Complexity Tracking._
 

@@ -25,9 +25,9 @@ describe("CursorAdapter", () => {
   it("writes project-scope artifacts when explicitly requested", async () => {
     const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.scope).toBe("project");
-    expect(result.configPath).toBe(resolve(projectPath, ".cursor"));
+    expect(result.configPath).toBe(resolve(projectPath, "AGENTS.md"));
     expect(result.surface).toBe("rules-skills-commands-agents-mcp");
-    await expect(access(resolve(projectPath, ".cursor", "rules", "coding-style.mdc"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, "AGENTS.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".cursor", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".cursor", "commands", "dev", "fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".cursor", "agents", "architect.md"))).resolves.toBeNull();
@@ -40,8 +40,8 @@ describe("CursorAdapter", () => {
       userConfigRootPath: userRootPath,
     });
     expect(result.scope).toBe("user");
-    expect(result.configPath).toBe(resolve(userRootPath));
-    await expect(access(resolve(userRootPath, "rules", "coding-style.mdc"))).resolves.toBeNull();
+    expect(result.configPath).toBe(resolve(userRootPath, "AGENTS.md"));
+    await expect(access(resolve(userRootPath, "AGENTS.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, "commands", "dev", "fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(userRootPath, "agents", "architect.md"))).resolves.toBeNull();
@@ -51,10 +51,6 @@ describe("CursorAdapter", () => {
   it("cleans existing managed artifacts when override is enabled", async () => {
     // Create initial artifacts
     await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
-
-    // Create a temp rule that should be cleaned
-    const tempRulePath = resolve(projectPath, ".cursor", "rules", "_temp_mock.md");
-    await writeFile(tempRulePath, "# Temp Mock Rule\n");
 
     // Create a temp skill that should be cleaned
     const tempSkillPath = resolve(projectPath, ".cursor", "skills", "_temp_mock", "SKILL.md");
@@ -72,7 +68,6 @@ describe("CursorAdapter", () => {
     await writeFile(tempAgentPath, "# Temp Mock Agent\n");
 
     // Verify temp files exist
-    await expect(access(tempRulePath)).resolves.toBeNull();
     await expect(access(tempSkillPath)).resolves.toBeNull();
     await expect(access(tempCommandPath)).resolves.toBeNull();
     await expect(access(tempAgentPath)).resolves.toBeNull();
@@ -88,18 +83,14 @@ describe("CursorAdapter", () => {
     expect(["success", "unchanged"]).toContain(result.status);
 
     // Verify temp files are gone
-    const ruleExists = await access(tempRulePath)
-      .then(() => true)
-      .catch(() => false);
     const skillExists = await access(tempSkillPath)
       .then(() => true)
       .catch(() => false);
 
-    expect(ruleExists).toBe(false);
     expect(skillExists).toBe(false);
 
-    // Verify project artifacts exist in .cursor/rules and .cursor/skills
-    await expect(access(resolve(projectPath, ".cursor", "rules", "coding-style.mdc"))).resolves.toBeNull();
+    // Verify project artifacts exist
+    await expect(access(resolve(projectPath, "AGENTS.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".cursor", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
   });
 });

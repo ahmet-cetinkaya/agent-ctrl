@@ -55,7 +55,16 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
       target.scope === "project" ? resolve(request.projectPath, ".opencode", "agents") : resolve(userRoot, "agents");
     const mcpConfigPath =
       target.scope === "project" ? resolve(request.projectPath, "opencode.json") : resolve(userRoot, "opencode.json");
-    const source = await this.sourceLoader.load(request.projectPath);
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
 
     let changed = false;
     const fileChanges: string[] = [];
@@ -95,25 +104,33 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
-    const commandsResult = await syncCommandsAsMarkdown(source.commands, commandRoot, Boolean(request.dryRun));
-    changed = commandsResult.changed || changed;
-    fileChanges.push(...commandsResult.paths);
+    if (source.commands.length > 0) {
+      const commandsResult = await syncCommandsAsMarkdown(source.commands, commandRoot, Boolean(request.dryRun));
+      changed = commandsResult.changed || changed;
+      fileChanges.push(...commandsResult.paths);
+    }
 
-    const skillsResult = await syncSkills(source.skills, skillRoot, Boolean(request.dryRun), "opencode");
-    changed = skillsResult.changed || changed;
-    fileChanges.push(...skillsResult.paths);
+    if (source.skills.length > 0) {
+      const skillsResult = await syncSkills(source.skills, skillRoot, Boolean(request.dryRun), "opencode");
+      changed = skillsResult.changed || changed;
+      fileChanges.push(...skillsResult.paths);
+    }
 
-    const agentsResult = await syncAgentsAsMarkdown(source.agents, agentRoot, Boolean(request.dryRun), true);
-    changed = agentsResult.changed || changed;
-    fileChanges.push(...agentsResult.paths);
+    if (source.agents.length > 0) {
+      const agentsResult = await syncAgentsAsMarkdown(source.agents, agentRoot, Boolean(request.dryRun), true);
+      changed = agentsResult.changed || changed;
+      fileChanges.push(...agentsResult.paths);
+    }
 
-    const mcpResult = await mergeJsonObjectFile(
-      mcpConfigPath,
-      (existing) => renderOpencodeMcpConfig(existing, source.mcpServers),
-      Boolean(request.dryRun)
-    );
-    changed = mcpResult.changed || changed;
-    fileChanges.push(...mcpResult.paths);
+    if (source.mcpServers.length > 0) {
+      const mcpResult = await mergeJsonObjectFile(
+        mcpConfigPath,
+        (existing) => renderOpencodeMcpConfig(existing, source.mcpServers),
+        Boolean(request.dryRun)
+      );
+      changed = mcpResult.changed || changed;
+      fileChanges.push(...mcpResult.paths);
+    }
 
     return {
       platform: this.platformName,

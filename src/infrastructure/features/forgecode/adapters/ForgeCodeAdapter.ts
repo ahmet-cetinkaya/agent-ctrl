@@ -55,7 +55,16 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
     const mcpConfigPath =
       target.scope === "project" ? resolve(request.projectPath, ".mcp.json") : resolve(userRoot, ".mcp.json");
 
-    const source = await this.sourceLoader.load(request.projectPath);
+    const source = request.mergedSnapshot
+      ? {
+          rules: request.mergedSnapshot.rules,
+          skills: request.mergedSnapshot.skills,
+          agents: request.mergedSnapshot.agents,
+          commands: request.mergedSnapshot.commands,
+          mcpServers: request.mergedSnapshot.mcpServers,
+          warnings: request.mergedSnapshot.warnings,
+        }
+      : await this.sourceLoader.load(request.projectPath);
 
     let changed = false;
     const fileChanges: string[] = [];
@@ -97,39 +106,47 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
     fileChanges.push(...rulesResult.paths);
 
     // Sync commands to .forge/commands/
-    const commandsResult = await syncCommandsAsMarkdownFlattened(
-      source.commands,
-      commandRoot,
-      Boolean(request.dryRun),
-      this.commandRenderer
-    );
-    changed = commandsResult.changed || changed;
-    fileChanges.push(...commandsResult.paths);
+    if (source.commands.length > 0) {
+      const commandsResult = await syncCommandsAsMarkdownFlattened(
+        source.commands,
+        commandRoot,
+        Boolean(request.dryRun),
+        this.commandRenderer
+      );
+      changed = commandsResult.changed || changed;
+      fileChanges.push(...commandsResult.paths);
+    }
 
     // Sync skills to .forge/skills/
-    const skillsResult = await syncSkills(source.skills, skillRoot, Boolean(request.dryRun), "forgecode");
-    changed = skillsResult.changed || changed;
-    fileChanges.push(...skillsResult.paths);
+    if (source.skills.length > 0) {
+      const skillsResult = await syncSkills(source.skills, skillRoot, Boolean(request.dryRun), "forgecode");
+      changed = skillsResult.changed || changed;
+      fileChanges.push(...skillsResult.paths);
+    }
 
     // Sync agents to .forge/agents/
-    const agentsResult = await syncAgentsAsMarkdown(
-      source.agents,
-      agentRoot,
-      Boolean(request.dryRun),
-      true,
-      this.agentRenderer
-    );
-    changed = agentsResult.changed || changed;
-    fileChanges.push(...agentsResult.paths);
+    if (source.agents.length > 0) {
+      const agentsResult = await syncAgentsAsMarkdown(
+        source.agents,
+        agentRoot,
+        Boolean(request.dryRun),
+        true,
+        this.agentRenderer
+      );
+      changed = agentsResult.changed || changed;
+      fileChanges.push(...agentsResult.paths);
+    }
 
     // Sync MCP servers to .mcp.json
-    const mcpResult = await mergeJsonObjectFile(
-      mcpConfigPath,
-      (existing) => renderForgeCodeMcpConfig(existing, source.mcpServers),
-      Boolean(request.dryRun)
-    );
-    changed = mcpResult.changed || changed;
-    fileChanges.push(...mcpResult.paths);
+    if (source.mcpServers.length > 0) {
+      const mcpResult = await mergeJsonObjectFile(
+        mcpConfigPath,
+        (existing) => renderForgeCodeMcpConfig(existing, source.mcpServers),
+        Boolean(request.dryRun)
+      );
+      changed = mcpResult.changed || changed;
+      fileChanges.push(...mcpResult.paths);
+    }
 
     return {
       platform: this.platformName,

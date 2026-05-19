@@ -1,5 +1,4 @@
 import { Command } from "commander";
-import { homedir } from "node:os";
 import { resolve } from "node:path";
 import { ListCommandsQuery } from "@/core/application/features/command/queries/ListCommandsQuery";
 import {
@@ -8,6 +7,7 @@ import {
   validateUserPath,
 } from "@/presentation/cli/shared/handlers/resultHandler";
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
+import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 /**
  * Creates the 'command ls' CLI subcommand for listing all commands in the project.
@@ -45,9 +45,7 @@ export function createCommandListCommand(): Command {
         }
       }
 
-      const configRootPath = targetPath
-        ? resolve(targetPath)
-        : resolve(process.env.AGENT_CTRL_HOME ?? homedir(), ".agent-ctrl");
+      const configRootPath = resolveConfigRoot(targetPath);
       const commandsPath = resolve(configRootPath, "commands");
 
       // Check directory access with specific error handling
