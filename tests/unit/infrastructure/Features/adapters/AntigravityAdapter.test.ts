@@ -22,18 +22,17 @@ describe("AntigravityAdapter", () => {
     await rm(userRootPath, { recursive: true, force: true });
   });
 
-  it("writes workspace rules and skills", async () => {
+  it("writes workspace rules and skills to GEMINI.md", async () => {
     const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
-    expect(result.configPath).toBe(resolve(projectPath, "AGENTS.md"));
+    expect(result.configPath).toBe(resolve(projectPath, "GEMINI.md"));
     expect(result.surface).toBe("rules-skills-mcp");
-    await expect(access(resolve(projectPath, "AGENTS.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, "GEMINI.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agent", "skills", "dev-fix-lint", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agent", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".agent", "mcp_config.json"))).resolves.toBeNull();
-    expect(result.warnings).not.toContain("Antigravity does not have a documented apply target for skills.");
-    expect(result.warnings).not.toContain("Antigravity does not have a documented apply target for MCP servers.");
+    // MCP is not supported — warning should be present
+    expect(result.warnings!.some((w) => w.includes("MCP"))).toBe(true);
   });
 
   it("writes managed global Antigravity guidance into GEMINI.md", async () => {
@@ -50,9 +49,8 @@ describe("AntigravityAdapter", () => {
     await expect(
       access(resolve(userRootPath, "antigravity", "skills", "git-workflow", "SKILL.md"))
     ).resolves.toBeNull();
-    await expect(access(resolve(userRootPath, "antigravity", "mcp_config.json"))).resolves.toBeNull();
-    expect(result.warnings).not.toContain("Antigravity does not have a documented apply target for skills.");
-    expect(result.warnings).not.toContain("Antigravity does not have a documented apply target for MCP servers.");
+    // MCP is not supported — warning should be present
+    expect(result.warnings!.some((w) => w.includes("MCP"))).toBe(true);
   });
 
   it("cleans existing managed artifacts when override is enabled", async () => {
@@ -74,7 +72,6 @@ describe("AntigravityAdapter", () => {
       override: true,
     });
 
-    // The result should be either "success" or "unchanged" since we're syncing the same artifacts
     expect(["success", "unchanged"]).toContain(result.status);
 
     // After override, verify temp files were cleaned
@@ -85,7 +82,7 @@ describe("AntigravityAdapter", () => {
     expect(skillExists).toBe(false);
 
     // Verify project artifacts still exist
-    await expect(access(resolve(projectPath, "AGENTS.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, "GEMINI.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agent", "skills", "dev-fix-lint", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agent", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
   });

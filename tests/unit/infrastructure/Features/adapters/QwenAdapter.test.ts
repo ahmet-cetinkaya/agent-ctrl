@@ -19,21 +19,20 @@ describe("QwenAdapter", () => {
     await rm(projectPath, { recursive: true, force: true });
   });
 
-  it("creates managed QWEN.md guidance for qwen", async () => {
+  it("creates managed AGENTS.md guidance for qwen", async () => {
     const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
-    expect(result.configPath).toBe(resolve(projectPath, "QWEN.md"));
-    expect(result.surface).toBe("qwen-md-commands-skills-settings");
+    expect(result.configPath).toBe(resolve(projectPath, "AGENTS.md"));
+    expect(result.surface).toBe("qwen-md-skills-settings");
 
     const content = await readFile(result.configPath, "utf-8");
     expect(content).toContain("<!-- agent-ctrl:qwen:start -->");
     expect(content).toContain("## Coding Style");
-    await expect(access(resolve(projectPath, ".qwen", "commands", "dev", "fix-lint.toml"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".qwen", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agents", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
-    expect(result.warnings).not.toContain("Qwen does not have a documented apply target for commands.");
-    expect(result.warnings).not.toContain("Qwen does not have a documented apply target for skills.");
+    // Commands are not supported — warning should be present
+    expect(result.warnings!.some((w) => w.includes("commands"))).toBe(true);
   });
 
   it("returns unchanged when desired state already exists", async () => {
@@ -50,16 +49,12 @@ describe("QwenAdapter", () => {
       userConfigRootPath: userRoot,
     });
     expect(result.scope).toBe("user");
-    expect(result.configPath).toBe(resolve(userRoot, "QWEN.md"));
+    expect(result.configPath).toBe(resolve(userRoot, "AGENTS.md"));
   });
 
   it("cleans existing managed artifacts when override is enabled", async () => {
     // Create initial artifacts
     await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
-
-    // Create a temp command that should be cleaned
-    const tempCommandPath = resolve(projectPath, ".qwen", "commands", "_temp_mock.md");
-    await writeFile(tempCommandPath, "# Temp Mock Command\n");
 
     // Create a temp skill that should be cleaned
     const tempSkillPath = resolve(projectPath, ".qwen", "skills", "_temp_mock", "SKILL.md");
@@ -72,7 +67,6 @@ describe("QwenAdapter", () => {
     await writeFile(tempAgentPath, "# Temp Mock Agent\n");
 
     // Verify temp files exist
-    await expect(access(tempCommandPath)).resolves.toBeNull();
     await expect(access(tempSkillPath)).resolves.toBeNull();
     await expect(access(tempAgentPath)).resolves.toBeNull();
 
@@ -83,13 +77,9 @@ describe("QwenAdapter", () => {
       override: true,
     });
 
-    // The result should be either "success" or "unchanged" since we're syncing the same artifacts
     expect(["success", "unchanged"]).toContain(result.status);
 
-    // After override, verify temp files were cleaned by checking they no longer exist
-    const commandExists = await access(tempCommandPath)
-      .then(() => true)
-      .catch(() => false);
+    // After override, verify temp files were cleaned
     const skillExists = await access(tempSkillPath)
       .then(() => true)
       .catch(() => false);
@@ -97,12 +87,10 @@ describe("QwenAdapter", () => {
       .then(() => true)
       .catch(() => false);
 
-    expect(commandExists).toBe(false);
     expect(skillExists).toBe(false);
     expect(agentExists).toBe(false);
 
     // Verify project artifacts still exist
-    await expect(access(resolve(projectPath, ".qwen", "commands", "dev", "fix-lint.toml"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".qwen", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".agents", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
   });

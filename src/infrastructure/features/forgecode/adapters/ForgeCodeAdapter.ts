@@ -15,7 +15,6 @@ import {
   resolveApplyScope,
   syncAgentsAsMarkdown,
   syncCommandsAsMarkdownFlattened,
-  syncSkills,
   toStatus,
   upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
@@ -33,7 +32,7 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
 
   async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
-    const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".forge");
+    const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), "forge");
 
     return {
       configPath: scope === "project" ? resolve(projectPath, "AGENTS.md") : resolve(userRoot, "AGENTS.md"),
@@ -44,12 +43,10 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
 
   async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
-    const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".forge");
+    const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), "forge");
 
     const commandRoot =
       target.scope === "project" ? resolve(request.projectPath, ".forge", "commands") : resolve(userRoot, "commands");
-    const skillRoot =
-      target.scope === "project" ? resolve(request.projectPath, ".forge", "skills") : resolve(userRoot, "skills");
     const agentRoot =
       target.scope === "project" ? resolve(request.projectPath, ".forge", "agents") : resolve(userRoot, "agents");
     const mcpConfigPath =
@@ -72,16 +69,10 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
       const commandsPath = commandRoot;
-      const skillsPath = skillRoot;
       const agentsPath = agentRoot;
 
       await Promise.all([
         rm(commandsPath, { recursive: true, force: true }).catch((error) => {
-          if (error.code !== "ENOENT") {
-            throw error;
-          }
-        }),
-        rm(skillsPath, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
@@ -117,11 +108,9 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
       fileChanges.push(...commandsResult.paths);
     }
 
-    // Sync skills to .forge/skills/
+    // Forge Code does not support a native skills directory — emit warning instead.
     if (source.skills.length > 0) {
-      const skillsResult = await syncSkills(source.skills, skillRoot, Boolean(request.dryRun), "forgecode");
-      changed = skillsResult.changed || changed;
-      fileChanges.push(...skillsResult.paths);
+      source.warnings.push("Forge Code does not support a skills directory. Skills will not be applied.");
     }
 
     // Sync agents to .forge/agents/
@@ -154,7 +143,7 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
       scope: target.scope,
       surface: target.surface,
       status: toStatus(changed),
-      message: "Applied ForgeCode AGENTS.md, commands, skills, agents, and MCP servers.",
+      message: "Applied ForgeCode AGENTS.md, commands, agents, and MCP servers.",
       artifactCounts: {
         rules: source.rules.length,
         commands: source.commands.length,

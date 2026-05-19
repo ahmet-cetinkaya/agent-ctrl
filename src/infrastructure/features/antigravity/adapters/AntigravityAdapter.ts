@@ -10,8 +10,6 @@ import type {
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
   countUnsupportedArtifacts,
-  mergeJsonObjectFile,
-  renderSettingsMcpConfig,
   resolveApplyScope,
   syncCommandsAsSkills,
   syncSkills,
@@ -32,7 +30,7 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
     const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".gemini");
 
     return {
-      configPath: scope === "project" ? resolve(projectPath, "AGENTS.md") : resolve(userRoot, "GEMINI.md"),
+      configPath: scope === "project" ? resolve(projectPath, "GEMINI.md") : resolve(userRoot, "GEMINI.md"),
       scope,
       surface: scope === "project" ? "rules-skills-mcp" : "gemini-md-skills-mcp",
     };
@@ -112,14 +110,9 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
         fileChanges.push(...skillsResult.paths);
       }
 
+      // Antigravity does not support a native MCP configuration file — emit warning instead.
       if (source.mcpServers.length > 0) {
-        const mcpResult = await mergeJsonObjectFile(
-          resolve(projectRoot, ".agent", "mcp_config.json"),
-          (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
-          Boolean(request.dryRun)
-        );
-        changed = mcpResult.changed || changed;
-        fileChanges.push(...mcpResult.paths);
+        source.warnings.push("Antigravity does not support MCP configuration. MCP servers will not be applied.");
       }
     } else {
       if (source.rules.length > 0) {
@@ -144,14 +137,9 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
         fileChanges.push(...skillsResult.paths);
       }
 
+      // Antigravity does not support a native MCP configuration file — emit warning instead.
       if (source.mcpServers.length > 0) {
-        const mcpResult = await mergeJsonObjectFile(
-          resolve(userRoot, "antigravity", "mcp_config.json"),
-          (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
-          Boolean(request.dryRun)
-        );
-        changed = mcpResult.changed || changed;
-        fileChanges.push(...mcpResult.paths);
+        source.warnings.push("Antigravity does not support MCP configuration. MCP servers will not be applied.");
       }
     }
 

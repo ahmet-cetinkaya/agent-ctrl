@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { access, mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
+import { access, mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { WindsurfAdapter } from "@/infrastructure/features/windsurf/adapters/WindsurfAdapter";
@@ -22,57 +22,52 @@ describe("WindsurfAdapter", () => {
     await rm(userRootPath, { recursive: true, force: true });
   });
 
-  it("writes project AGENTS guidance when explicitly requested", async () => {
+  it("writes project rules as .md files with YAML frontmatter", async () => {
     const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.scope).toBe("project");
-    expect(result.configPath).toBe(resolve(projectPath, "AGENTS.md"));
-    expect(result.surface).toBe("agents-md-workflows-skills-mcp");
+    expect(result.configPath).toBe(resolve(projectPath, ".windsurf", "rules"));
+    expect(result.surface).toBe("windsurf-rules-workflows");
 
-    const content = await readFile(result.configPath, "utf-8");
-    expect(content).toContain("<!-- agent-ctrl:windsurf:start -->");
-    expect(content).toContain("## Coding Style");
+    // Rules are written as .md files with YAML frontmatter
+    await expect(access(resolve(projectPath, ".windsurf", "rules"))).resolves.toBeNull();
+    // Workflows are supported
     await expect(access(resolve(projectPath, ".windsurf", "workflows", "dev", "fix-lint.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".windsurf", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".windsurf", "agents", "architect.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".windsurf", "mcp_config.json"))).resolves.toBeNull();
+    // Warnings for unsupported artifact types
+    expect(result.warnings!.some((w) => w.includes("skills"))).toBe(true);
+    expect(result.warnings!.some((w) => w.includes("agents"))).toBe(true);
+    expect(result.warnings!.some((w) => w.includes("MCP"))).toBe(true);
   });
 
-  it("writes global Windsurf rules/workflows/skills by default", async () => {
+  it("writes global rules as a fallback with warning", async () => {
     const result = await adapter.applyApplyIntegration({
       projectPath,
+      targetScope: "user",
       userConfigRootPath: userRootPath,
     });
     expect(result.scope).toBe("user");
-    expect(result.configPath).toBe(resolve(userRootPath, "global_rules.md"));
-    expect(result.surface).toBe("global-rules-workflows-skills-mcp");
-    await expect(access(resolve(userRootPath, "workflows", "dev", "fix-lint.md"))).resolves.toBeNull();
-    await expect(access(resolve(userRootPath, "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
-    await expect(access(resolve(userRootPath, "agents", "architect.md"))).resolves.toBeNull();
-    await expect(access(resolve(userRootPath, "mcp_config.json"))).resolves.toBeNull();
+    expect(result.configPath).toBe(resolve(userRootPath, "rules"));
+    expect(result.surface).toBe("windsurf-global-rules");
+    // Warning about global rules being via Cascade Customizations UI
+    expect(result.warnings!.some((w) => w.includes("Cascade Customizations UI"))).toBe(true);
   });
 
-  it("cleans existing managed artifacts when override is enabled", async () => {
+  it("cleans existing managed rules and workflows when override is enabled", async () => {
     // Create initial artifacts
     await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
 
+    // Create a temp rule that should be cleaned
+    const tempRulePath = resolve(projectPath, ".windsurf", "rules", "_temp_mock.md");
+    await mkdir(resolve(projectPath, ".windsurf", "rules"), { recursive: true });
+    await writeFile(tempRulePath, "---\nalwaysApply: true\n---\n# Temp Mock Rule\n");
+
     // Create a temp workflow that should be cleaned
     const tempWorkflowPath = resolve(projectPath, ".windsurf", "workflows", "_temp_mock.md");
+    await mkdir(resolve(projectPath, ".windsurf", "workflows"), { recursive: true });
     await writeFile(tempWorkflowPath, "# Temp Mock Workflow\n");
 
-    // Create a temp skill that should be cleaned
-    const tempSkillPath = resolve(projectPath, ".windsurf", "skills", "_temp_mock", "SKILL.md");
-    await mkdir(resolve(projectPath, ".windsurf", "skills", "_temp_mock"), { recursive: true });
-    await writeFile(tempSkillPath, "# Temp Mock Skill\n");
-
-    // Create a temp agent that should be cleaned
-    const tempAgentPath = resolve(projectPath, ".windsurf", "agents", "_temp_mock.md");
-    await mkdir(resolve(projectPath, ".windsurf", "agents"), { recursive: true });
-    await writeFile(tempAgentPath, "# Temp Mock Agent\n");
-
     // Verify temp files exist
+    await expect(access(tempRulePath)).resolves.toBeNull();
     await expect(access(tempWorkflowPath)).resolves.toBeNull();
-    await expect(access(tempSkillPath)).resolves.toBeNull();
-    await expect(access(tempAgentPath)).resolves.toBeNull();
 
     // Apply with override
     const result = await adapter.applyApplyIntegration({
@@ -81,27 +76,20 @@ describe("WindsurfAdapter", () => {
       override: true,
     });
 
-    // The result should be either "success" or "unchanged" since we're syncing the same artifacts
     expect(["success", "unchanged"]).toContain(result.status);
 
-    // After override, verify temp files were cleaned by checking they no longer exist
+    // Verify temp files are gone
+    const ruleExists = await access(tempRulePath)
+      .then(() => true)
+      .catch(() => false);
     const workflowExists = await access(tempWorkflowPath)
       .then(() => true)
       .catch(() => false);
-    const skillExists = await access(tempSkillPath)
-      .then(() => true)
-      .catch(() => false);
-    const agentExists = await access(tempAgentPath)
-      .then(() => true)
-      .catch(() => false);
-
+    expect(ruleExists).toBe(false);
     expect(workflowExists).toBe(false);
-    expect(skillExists).toBe(false);
-    expect(agentExists).toBe(false);
 
-    // Verify project artifacts still exist
-    await expect(access(resolve(projectPath, ".windsurf", "workflows", "dev", "fix-lint.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".windsurf", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".windsurf", "agents", "architect.md"))).resolves.toBeNull();
+    // Verify rules and workflows directories exist
+    await expect(access(resolve(projectPath, ".windsurf", "rules"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".windsurf", "workflows"))).resolves.toBeNull();
   });
 });

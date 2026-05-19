@@ -22,13 +22,13 @@ describe("Platform customization surface contract", () => {
       antigravity: { path: resolve(homedir(), ".gemini", "GEMINI.md"), scope: "user" },
       claude: { path: resolve(homedir(), ".claude", "CLAUDE.md"), scope: "user" },
       codex: { path: resolve(homedir(), ".codex", "AGENTS.md"), scope: "user" },
-      cursor: { path: resolve(homedir(), ".cursor", "AGENTS.md"), scope: "user" },
-      forgecode: { path: resolve(homedir(), ".forge", "AGENTS.md"), scope: "user" },
+      cursor: { path: resolve(homedir(), ".cursor", "rules"), scope: "user" },
+      forgecode: { path: resolve(homedir(), "forge", "AGENTS.md"), scope: "user" },
       gemini: { path: resolve(homedir(), ".gemini", "GEMINI.md"), scope: "user" },
-      kilo: { path: resolve(homedir(), "AGENTS.md"), scope: "user" },
+      kilo: { path: resolve(homedir(), ".config", "kilo", "AGENTS.md"), scope: "user" },
       opencode: { path: resolve(homedir(), ".config", "opencode", "AGENTS.md"), scope: "user" },
-      qwen: { path: resolve(homedir(), ".qwen", "QWEN.md"), scope: "user" },
-      windsurf: { path: resolve(homedir(), ".codeium", "windsurf", "global_rules.md"), scope: "user" },
+      qwen: { path: resolve(homedir(), ".qwen", "AGENTS.md"), scope: "user" },
+      windsurf: { path: resolve(homedir(), ".codeium", "windsurf", "rules"), scope: "user" },
     };
 
     for (const platform of registry.listSupportedPlatforms()) {

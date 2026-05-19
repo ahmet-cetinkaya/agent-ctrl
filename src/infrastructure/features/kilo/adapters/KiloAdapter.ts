@@ -13,12 +13,10 @@ import {
   renderOpencodeMcpConfig,
   resolveApplyScope,
   syncAgentsAsMarkdown,
-  syncCommandsAsMarkdown,
   syncSkills,
   toStatus,
   upsertManagedRuleDocument,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
-import { CommandRendererFactory } from "@/infrastructure/features/apply/adapters/CommandRendererFactory";
 
 const KILO_VSCODE_DIR = ".kilo";
 const KILO_CLI_DIR = ".kilocode";
@@ -33,18 +31,22 @@ export class KiloAdapter implements IApplyPlatformAdapter {
 
   async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
-    const targetPath = scope === "project" ? projectPath : (request?.userConfigRootPath ?? resolve(homedir()));
+    const targetPath =
+      scope === "project" ? projectPath : (request?.userConfigRootPath ?? resolve(homedir(), ".config", "kilo"));
 
     return {
       configPath: resolve(targetPath, "AGENTS.md"),
       scope,
-      surface: "rules-workflows-skills-agents-mcp",
+      surface: "rules-skills-agents-mcp",
     };
   }
 
   async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
-    const targetPath = scope === "project" ? request.projectPath : (request?.userConfigRootPath ?? resolve(homedir()));
+    const targetPath =
+      scope === "project"
+        ? request.projectPath
+        : (request?.userConfigRootPath ?? resolve(homedir(), ".config", "kilo"));
     const configPath = resolve(targetPath, "AGENTS.md");
 
     const targetRoots = getKiloConfigRoots(targetPath);
@@ -64,16 +66,10 @@ export class KiloAdapter implements IApplyPlatformAdapter {
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
       for (const targetRoot of targetRoots) {
-        const commandsPath = resolve(targetRoot, "commands");
         const skillsPath = resolve(targetRoot, "skills");
         const agentsPath = resolve(targetRoot, "agents");
 
         await Promise.all([
-          rm(commandsPath, { recursive: true, force: true }).catch((error) => {
-            if (error.code !== "ENOENT") {
-              throw error;
-            }
-          }),
           rm(skillsPath, { recursive: true, force: true }).catch((error) => {
             if (error.code !== "ENOENT") {
               throw error;
@@ -99,16 +95,9 @@ export class KiloAdapter implements IApplyPlatformAdapter {
     fileChanges.push(...rulesResult.paths);
 
     for (const targetRoot of targetRoots) {
+      // Kilo does not support a native commands directory — emit warning instead.
       if (source.commands.length > 0) {
-        const workflowsResult = await syncCommandsAsMarkdown(
-          source.commands,
-          resolve(targetRoot, "commands"),
-          Boolean(request.dryRun),
-          CommandRendererFactory.getRenderer("workflow"),
-          ":"
-        );
-        changed = workflowsResult.changed || changed;
-        fileChanges.push(...workflowsResult.paths);
+        source.warnings.push("Kilo does not support a commands directory. Commands will not be applied.");
       }
 
       if (source.skills.length > 0) {
@@ -130,7 +119,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
 
       if (source.mcpServers.length > 0) {
         const mcpResult = await mergeJsonObjectFile(
-          resolve(targetRoot, "kilo.json"),
+          resolve(targetRoot, "kilo.jsonc"),
           (existing) => renderOpencodeMcpConfig(existing, source.mcpServers),
           Boolean(request.dryRun)
         );
@@ -143,7 +132,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
       platform: this.platformName,
       configPath,
       scope,
-      surface: "rules-workflows-skills-agents-mcp",
+      surface: "rules-skills-agents-mcp",
       status: toStatus(changed),
       message:
         "Applied Kilo rules, workflows, skills, agents, and MCP servers to both .kilo and .kilocode directories.",

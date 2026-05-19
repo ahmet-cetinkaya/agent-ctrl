@@ -13,7 +13,6 @@ import {
   mergeJsonObjectFile,
   renderSettingsMcpConfig,
   resolveApplyScope,
-  syncCommandsAsToml,
   syncSkills,
   toStatus,
   upsertManagedRuleDocument,
@@ -34,7 +33,7 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
     return {
       configPath: scope === "project" ? resolve(projectPath, "GEMINI.md") : resolve(userRoot, "GEMINI.md"),
       scope,
-      surface: "gemini-md-commands-skills-settings",
+      surface: "gemini-md-skills-settings",
     };
   }
 
@@ -62,17 +61,11 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
 
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
-      const commandsPath = resolve(scopeRoot, "commands");
       const skillsPath = resolve(scopeRoot, "skills");
       const agentsPath = scopeAgentsRoot;
       const mcpConfigPath = resolve(scopeRoot, ".mcp.json");
 
       await Promise.all([
-        rm(commandsPath, { recursive: true, force: true }).catch((error) => {
-          if (error.code !== "ENOENT") {
-            throw error;
-          }
-        }),
         rm(skillsPath, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
@@ -101,14 +94,9 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
+    // Gemini CLI does not support a native commands directory — emit warning instead.
     if (source.commands.length > 0) {
-      const commandsResult = await syncCommandsAsToml(
-        source.commands,
-        resolve(scopeRoot, "commands"),
-        Boolean(request.dryRun)
-      );
-      changed = commandsResult.changed || changed;
-      fileChanges.push(...commandsResult.paths);
+      source.warnings.push("Gemini CLI does not support a commands directory. Commands will not be applied.");
     }
 
     if (source.skills.length > 0) {
@@ -135,7 +123,7 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
       scope: target.scope,
       surface: target.surface,
       status: toStatus(changed),
-      message: "Applied Gemini guidance, commands, skills, and MCP servers.",
+      message: "Applied Gemini guidance, skills, and MCP servers.",
       fileChanges,
       warnings: [...source.warnings, ...countUnsupportedArtifacts("Gemini", source, ["agents"])],
     };

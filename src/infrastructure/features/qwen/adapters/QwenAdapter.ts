@@ -13,7 +13,6 @@ import {
   mergeJsonObjectFile,
   renderSettingsMcpConfig,
   resolveApplyScope,
-  syncCommandsAsToml,
   syncSkills,
   toStatus,
   upsertManagedRuleDocument,
@@ -31,9 +30,9 @@ export class QwenAdapter implements IApplyPlatformAdapter {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
     const userRoot = request?.userConfigRootPath ? resolve(request.userConfigRootPath) : resolve(homedir(), ".qwen");
     return {
-      configPath: scope === "project" ? resolve(projectPath, "QWEN.md") : resolve(userRoot, "QWEN.md"),
+      configPath: scope === "project" ? resolve(projectPath, "AGENTS.md") : resolve(userRoot, "AGENTS.md"),
       scope,
-      surface: "qwen-md-commands-skills-settings",
+      surface: "qwen-md-skills-settings",
     };
   }
 
@@ -61,17 +60,11 @@ export class QwenAdapter implements IApplyPlatformAdapter {
 
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
-      const commandsPath = resolve(scopeRoot, "commands");
       const skillsPath = resolve(scopeRoot, "skills");
       const agentsPath = scopeAgentsRoot;
       const mcpConfigPath = resolve(scopeRoot, ".mcp.json");
 
       await Promise.all([
-        rm(commandsPath, { recursive: true, force: true }).catch((error) => {
-          if (error.code !== "ENOENT") {
-            throw error;
-          }
-        }),
         rm(skillsPath, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
@@ -100,14 +93,9 @@ export class QwenAdapter implements IApplyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
+    // Qwen does not support a native commands directory — emit warning instead.
     if (source.commands.length > 0) {
-      const commandsResult = await syncCommandsAsToml(
-        source.commands,
-        resolve(scopeRoot, "commands"),
-        Boolean(request.dryRun)
-      );
-      changed = commandsResult.changed || changed;
-      fileChanges.push(...commandsResult.paths);
+      source.warnings.push("Qwen Code does not support a commands directory. Commands will not be applied.");
     }
 
     if (source.skills.length > 0) {
@@ -134,7 +122,7 @@ export class QwenAdapter implements IApplyPlatformAdapter {
       scope: target.scope,
       surface: target.surface,
       status: toStatus(changed),
-      message: "Applied Qwen guidance, commands, skills, and MCP servers.",
+      message: "Applied Qwen guidance, skills, and MCP servers.",
       fileChanges,
       warnings: [...source.warnings, ...countUnsupportedArtifacts("Qwen", source, ["agents"])],
     };

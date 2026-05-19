@@ -19,23 +19,21 @@ describe("KiloAdapter", () => {
     await rm(projectPath, { recursive: true, force: true });
   });
 
-  it("creates rules, workflows, and skills", async () => {
+  it("creates rules, skills, agents, and MCP config", async () => {
     const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
     expect(result.status).toBe("success");
     expect(result.scope).toBe("project");
     expect(result.configPath).toBe(resolve(projectPath, "AGENTS.md"));
-    expect(result.surface).toBe("rules-workflows-skills-agents-mcp");
+    expect(result.surface).toBe("rules-skills-agents-mcp");
     await expect(access(resolve(projectPath, "AGENTS.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".kilo", "commands", "dev:fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "agents", "architect.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".kilo", "kilo.json"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".kilocode", "commands", "dev:fix-lint.md"))).resolves.toBeNull();
+    await expect(access(resolve(projectPath, ".kilo", "kilo.jsonc"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilocode", "agents", "architect.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".kilocode", "kilo.json"))).resolves.toBeNull();
-    expect(result.warnings).not.toContain("Kilo does not have a documented apply target for agents.");
-    expect(result.warnings).not.toContain("Kilo does not have a documented apply target for MCP servers.");
+    await expect(access(resolve(projectPath, ".kilocode", "kilo.jsonc"))).resolves.toBeNull();
+    // Commands are not supported — warning should be present
+    expect(result.warnings!.some((w) => w.includes("commands"))).toBe(true);
   });
 
   it("reapplies idempotently", async () => {
@@ -48,10 +46,6 @@ describe("KiloAdapter", () => {
     // Create initial artifacts
     await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
 
-    // Create a temp command that should be cleaned
-    const tempCommandPath = resolve(projectPath, ".kilo", "commands", "_temp_mock.md");
-    await writeFile(tempCommandPath, "# Temp Mock Command\n");
-
     // Create a temp skill that should be cleaned
     const tempSkillPath = resolve(projectPath, ".kilo", "skills", "_temp_mock", "SKILL.md");
     await mkdir(resolve(projectPath, ".kilo", "skills", "_temp_mock"), { recursive: true });
@@ -63,7 +57,6 @@ describe("KiloAdapter", () => {
     await writeFile(tempAgentPath, "# Temp Mock Agent\n");
 
     // Verify temp files exist
-    await expect(access(tempCommandPath)).resolves.toBeNull();
     await expect(access(tempSkillPath)).resolves.toBeNull();
     await expect(access(tempAgentPath)).resolves.toBeNull();
 
@@ -74,13 +67,9 @@ describe("KiloAdapter", () => {
       override: true,
     });
 
-    // The result should be either "success" or "unchanged" since we're syncing the same artifacts
     expect(["success", "unchanged"]).toContain(result.status);
 
     // After override, verify temp files were cleaned
-    const commandExists = await access(tempCommandPath)
-      .then(() => true)
-      .catch(() => false);
     const skillExists = await access(tempSkillPath)
       .then(() => true)
       .catch(() => false);
@@ -88,13 +77,11 @@ describe("KiloAdapter", () => {
       .then(() => true)
       .catch(() => false);
 
-    expect(commandExists).toBe(false);
     expect(skillExists).toBe(false);
     expect(agentExists).toBe(false);
 
     // Verify project artifacts still exist
     await expect(access(resolve(projectPath, "AGENTS.md"))).resolves.toBeNull();
-    await expect(access(resolve(projectPath, ".kilo", "commands", "dev:fix-lint.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".kilo", "agents", "architect.md"))).resolves.toBeNull();
   });
