@@ -1,4 +1,4 @@
-import { directoryExists } from "@/core/domain/shared/utils/fsUtils";
+import { directoryExists } from "@/infrastructure/shared/utils/fsUtils";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { resolve } from "node:path";
@@ -11,23 +11,23 @@ export interface ProfileListCommandResult {
 
 export class ProfileListCommand {
   async execute(projectPath: string): Promise<Result<ProfileListCommandResult, Error>> {
-    const configRoot = resolve(projectPath, ".agent-ctrl");
-    const profilesPath = resolve(configRoot, "profiles");
-
-    if (!(await directoryExists(configRoot))) {
-      return err(
-        new UserError(
-          `No .agent-ctrl directory found in ${projectPath}. Initialize the project first.`,
-          ERROR_IDS.NO_SUCH_FILE_OR_DIRECTORY
-        )
-      );
-    }
-
-    if (!(await directoryExists(profilesPath))) {
-      return ok({ profiles: [] });
-    }
-
     try {
+      const configRoot = resolve(projectPath, ".agent-ctrl");
+      const profilesPath = resolve(configRoot, "profiles");
+
+      if (!(await directoryExists(configRoot))) {
+        return err(
+          new UserError(
+            `No .agent-ctrl directory found in ${projectPath}. Initialize the project first.`,
+            ERROR_IDS.NO_SUCH_FILE_OR_DIRECTORY
+          )
+        );
+      }
+
+      if (!(await directoryExists(profilesPath))) {
+        return ok({ profiles: [] });
+      }
+
       const entries = await readdir(profilesPath, { withFileTypes: true });
       const profiles = entries
         .filter((entry) => entry.isDirectory())

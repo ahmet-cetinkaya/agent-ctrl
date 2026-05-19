@@ -1,4 +1,4 @@
-import { directoryExists } from "@/core/domain/shared/utils/fsUtils";
+import { directoryExists } from "@/infrastructure/shared/utils/fsUtils";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
@@ -75,32 +75,32 @@ export class ApplyProfileCommand {
       );
     }
 
-    const configRoot = providedConfigRoot ?? resolve(projectPath, ".agent-ctrl");
-    const profilePath = resolve(configRoot, "profiles", profileName);
-
-    if (!(await directoryExists(configRoot))) {
-      return err(
-        new UserError(
-          `No .agent-ctrl directory found at ${configRoot}. Initialize the project first.`,
-          ERROR_IDS.NO_SUCH_FILE_OR_DIRECTORY
-        )
-      );
-    }
-
-    if (!(await directoryExists(profilePath))) {
-      return err(
-        new ProfileError(
-          `Profile '${profileName}' not found in .agent-ctrl/profiles/`,
-          profileName,
-          ERROR_IDS.PROFILE_NOT_FOUND
-        )
-      );
-    }
-
-    const adapter = this.adapterRegistry.resolve(selectedPlatform);
-    const startedAt = Date.now();
-
     try {
+      const configRoot = providedConfigRoot ?? resolve(projectPath, ".agent-ctrl");
+      const profilePath = resolve(configRoot, "profiles", profileName);
+
+      if (!(await directoryExists(configRoot))) {
+        return err(
+          new UserError(
+            `No .agent-ctrl directory found at ${configRoot}. Initialize the project first.`,
+            ERROR_IDS.NO_SUCH_FILE_OR_DIRECTORY
+          )
+        );
+      }
+
+      if (!(await directoryExists(profilePath))) {
+        return err(
+          new ProfileError(
+            `Profile '${profileName}' not found in .agent-ctrl/profiles/`,
+            profileName,
+            ERROR_IDS.PROFILE_NOT_FOUND
+          )
+        );
+      }
+
+      const adapter = this.adapterRegistry.resolve(selectedPlatform);
+      const startedAt = Date.now();
+
       const profileSnapshot = await this.sourceLoader.loadProfile(profilePath);
 
       const applyResult = await adapter.applyApplyIntegration({
