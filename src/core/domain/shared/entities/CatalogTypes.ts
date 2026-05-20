@@ -1,4 +1,4 @@
-export type RegistryId = "skillsmp" | "smithery";
+export type RegistryId = "skillsmp" | "smithery" | "git";
 export type ItemType = "skill" | "mcp";
 export type CompatibilityState = "compatible" | "incompatible" | "unknown";
 export type ActivationState = "inactive" | "active" | "update-available" | "activation-blocked";

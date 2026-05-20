@@ -8,7 +8,7 @@ import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 export function createSkillAddCommand(): Command {
   return new Command("add")
     .description("Activate a skill from the synchronized catalog")
-    .argument("<ref>", "Skill reference such as skillsmp:code-review")
+    .argument("<ref>", "Skill reference: skillsmp:<id> or git:https://github.com/owner/repo/tree/main/path/to/skill")
     .option("-j, --json", "Output as JSON")
     .option("--refresh", "Refresh source data before activation")
     .option("--version <value>", "Request a specific version when supported")
