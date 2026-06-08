@@ -84,18 +84,20 @@ Each artifact type has a dedicated subcommand group support `add`, `ls`, and `rm
 | **Skill**   | `agent-ctrl skill add <id>`   | Manage skills in `skills/`. Integrates with **SkillsMP**.          |
 | **Command** | `agent-ctrl command ls`       | specific commands/prompts in `commands/`. Supports subdirectories. |
 | **Agent**   | `agent-ctrl agent add <name>` | Manage agent personas in `agents/`.                                |
-| **MCP**     | `agent-ctrl mcp setup`        | Configure MCP servers in `mcp.json`.                               |
+| **MCP**     | `agent-ctrl mcp setup`        | Configure MCP servers (output path varies by platform).            |
 
 ### 6.3. Target Platforms & Adapters
 
 The tool uses specialized adapters to translate standard artifacts into agent-specific formats:
 
-| Platform                 | Handling Strategy                                                                | output                      |
-| :----------------------- | :------------------------------------------------------------------------------- | :-------------------------- |
-| **Claude Code**          | Symmetric mapping of `rules`, `skills`, and `commands`.                          | `~/.claude/config.json`     |
-| **Gemini / Antigravity** | Injects rules into System Instructions. Maps `skills/` to Function Declarations. | API Context / System Prompt |
-| **Codex**                | Injects `rules/` and `agents/` content into the active context or rules file.    | `.cursorrules`              |
-| **Generic (MCP)**        | Generates standardized MCP settings.                                             | `mcp_settings.json`         |
+| Platform                 | Handling Strategy                                                                | output                                 |
+| :----------------------- | :------------------------------------------------------------------------------- | :------------------------------------- |
+| **Claude Code**          | Rules→CLAUDE.md, Skills→skills/, Commands→commands/, MCP→.claude.json            | `~/.claude/` (shared by CLI & Desktop) |
+| **Gemini / Antigravity** | Injects rules into System Instructions. Maps `skills/` to Function Declarations. | API Context / System Prompt            |
+| **Codex**                | Injects `rules/` and `agents/` content into the active context or rules file.    | `.cursorrules`                         |
+| **Generic (MCP)**        | Generates standardized MCP settings.                                             | `mcp_settings.json`                    |
+
+> **Platform-Specific Details:** See `docs/platforms/` for detailed implementation docs for each platform (e.g., `docs/platforms/CLAUDE_CODE.md`).
 
 ### 6.4. Integrations
 

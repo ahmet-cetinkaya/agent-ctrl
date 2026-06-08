@@ -145,6 +145,125 @@ _Example `.mcp.json`:_
 
 ---
 
+---
+
+## agent-ctrl Integration
+
+`agent-ctrl` can automatically apply rules, skills, commands, and MCP servers to Claude Code via the `apply claude` command. This bridges the standardized `.agent-ctrl/` directory structure with Claude Code's native configuration locations.
+
+### How agent-ctrl Applies Artifacts
+
+When you run `agent-ctrl apply claude`, the following transformations occur:
+
+| Artifact Type   | Source (`.agent-ctrl/`)  | Target (`~/.claude/` or `.claude/`) | Transformation                         |
+| --------------- | ------------------------ | ----------------------------------- | -------------------------------------- |
+| **Rules**       | `rules/*.md`             | `CLAUDE.md` (managed section)       | Injected between HTML comment markers  |
+| **Skills**      | `skills/<name>/SKILL.md` | `skills/<name>/`                    | Full directory copy (filesystem-based) |
+| **Commands**    | `commands/*.md`          | `commands/<name>/`                  | Rendered as markdown files             |
+| **MCP Servers** | `mcps/*.json`            | `.claude.json`                      | Merged into `mcpServers` object        |
+| **Agents**      | `agents/*.md`            | `agents/<name>/`                    | Converted with YAML frontmatter        |
+
+### Shared Architecture
+
+**Important:** Claude Code CLI and Desktop App share the same `~/.claude/` configuration directory. When agent-ctrl applies artifacts, they become available to both surfaces.
+
+- Skills placed in `~/.claude/skills/` are loadable via `/skill-name` in CLI and the **Code tab** of the Desktop App
+- Rules injected into `~/.claude/CLAUDE.md` apply to all sessions
+- MCP servers configured in `~/.claude.json` are accessible to both CLI and Desktop
+
+### Desktop App Limitations
+
+The Claude Desktop App (Chat/Cowork/Code) has a known issue that affects how filesystem skills are displayed:
+
+| Feature               | Code Tab | Chat/Cowork | Customize > Skills Panel           |
+| --------------------- | -------- | ----------- | ---------------------------------- |
+| `/` slash commands    | ✅ Works | ❌ N/A      | ❌ Does not list filesystem skills |
+| Auto-invocation       | ✅ Works | ❌ N/A      | ❌ Does not list filesystem skills |
+| Type `/name` manually | ✅ Works | ❌ N/A      | ❌ Does not list filesystem skills |
+
+**Root cause (GitHub issue #31597):** The Customize > Skills panel uses a separate code path that only queries plugin skills and built-in skills — it skips filesystem sources (`~/.claude/skills/` and `.claude/skills/`). Skills are loaded into the runtime and work correctly in the Code tab, but are invisible in the panel.
+
+**Note:** Skills loaded via `~/.claude/skills/` are only available in the **Code tab** of the Desktop App. The Chat and Cowork tabs do not load filesystem-based skills. Skills in those tabs require installation through the Customize > Skills UI (which uploads them to the cloud).
+
+### Output Locations
+
+| Scope   | Config Path          | Description                                       |
+| ------- | -------------------- | ------------------------------------------------- |
+| User    | `~/.claude/`         | Global configuration (shared by all projects)     |
+| Project | `<project>/.claude/` | Project-specific configuration (overrides global) |
+
+### Managed Sections in CLAUDE.md
+
+Rules injected by agent-ctrl are wrapped in HTML comment markers:
+
+```markdown
+<!-- agent-ctrl:start -->
+
+[Injected rules content here]
+
+<!-- agent-ctrl:end -->
+```
+
+This allows agent-ctrl to update the managed section without affecting manually added content outside the markers.
+
+### MCP Server Configuration
+
+MCP servers are configured in `~/.claude.json` (user scope) or `.claude/.claude.json` (project scope):
+
+```json
+{
+  "mcpServers": {
+    "exa": {
+      "transport": {
+        "type": "http",
+        "url": "https://mcp.exa.ai/mcp"
+      }
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/mcp-server-github"]
+    }
+  }
+}
+```
+
+**Note:** The PRD previously referenced `~/.claude/config.json` which does not exist. The correct path is `~/.claude.json`.
+
+### Example Workflow
+
+```bash
+# 1. Initialize agent-ctrl in your project
+agent-ctrl init
+
+# 2. Add skills from SkillsMP
+agent-ctrl skill add skillsmp:web-search
+
+# 3. Configure MCP servers
+agent-ctrl mcp setup
+
+# 4. Apply to Claude Code
+agent-ctrl apply claude
+
+# Artifacts are now available in:
+# - ~/.claude/skills/web-search/
+# - ~/.claude/CLAUDE.md (rules)
+# - ~/.claude.json (MCP servers)
+```
+
+> **⚠️ Important:** After running `agent-ctrl apply claude`, you must **restart Claude Code Desktop App** for new skills to be discovered. The file watcher does not detect new skill directories created mid-session — it only watches for modifications to existing skills. This is a known limitation of Claude Code's hot-reload mechanism.
+
+### Known Limitations
+
+1. **Customize > Skills panel:** The Desktop App's skills panel only shows plugin and built-in skills — filesystem skills from `~/.claude/skills/` are not listed there (GitHub issue #31597). They **do work** in the Code tab via `/` slash commands.
+
+2. **Chat/Cowork tabs:** Filesystem skills (`~/.claude/skills/`) are only available in the Code tab. They aren't loaded in Chat or Cowork tabs.
+
+3. **New directories require restart:** If `~/.claude/skills/` didn't exist before starting the Desktop App, newly added skills won't be discovered until restart.
+
+4. **Workaround:** To add skills to Chat/Cowork tabs, upload them through **Customize > Skills** in the Desktop App UI.
+
+---
+
 ## Source Documentation References
 
 - [Claude Code Settings Overview](https://docs.anthropic.com/en/docs/claude-code/settings)
