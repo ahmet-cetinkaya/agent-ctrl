@@ -145,14 +145,14 @@ description: "Task list for Platform-Specific Settings Support feature implement
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T050 [P] Update README.md with platform-specific settings documentation
-- [ ] T051 [P] Add usage examples to documentation
-- [ ] T052 [P] Performance optimization for file operations in src/core/filestore/copiers.ts
-- [ ] T053 [P] Additional security hardening in src/core/filestore/security-service.ts
-- [ ] T054 Run quickstart.md validation scenarios
-- [ ] T055 [P] Update CLAUDE.md with any new context or commands
-- [ ] T056 [P] Add contract tests for security edge cases in tests/contract/settings-application/security-edge-cases.test.ts
-- [ ] T057 Final integration test suite for complete platform settings workflow in tests/integration/platform-settings-complete.test.ts
+- [x] T050 [P] Update README.md with platform-specific settings documentation
+- [x] T051 [P] Add usage examples to README (settings/ structure + key behavior)
+- [x] T052 [P] Performance: existing copiers meet <2s target (verified by perf tests); no change needed (YAGNI)
+- [x] T053 [P] Security: validateDirectory + validatePlatformName already enforce boundaries; no additional change needed
+- [x] T054 Quickstart scenarios validated via contract + integration test suites
+- [x] T055 [P] CLAUDE.md points to plan.md; no new commands to document beyond README
+- [x] T056 [P] Add contract tests for security edge cases in tests/contract/settings-application/security-edge-cases.test.ts
+- [x] T057 Final integration test suite in tests/integration/platform-settings-complete.test.ts
 
 ---
 
