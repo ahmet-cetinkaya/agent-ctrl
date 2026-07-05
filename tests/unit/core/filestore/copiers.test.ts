@@ -1,11 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import {
-  copyFile,
-  copyDirectory,
-  copyPlatformSettings,
-  copyMultiplePlatformSettings,
-  type CopyConfig,
-} from "@/core/filestore/copiers.js";
+import { copyFile, copyDirectory, copyPlatformSettings, type CopyConfig } from "@/core/filestore/copiers.js";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -203,76 +197,6 @@ describe("copiers - File Copying with Override Semantics", () => {
       expect(result.operations.length).toBeGreaterThan(0);
       expect(result.operations.every((op) => op.sourcePath)).toBe(true);
       expect(result.operations.every((op) => op.destinationPath)).toBe(true);
-    });
-  });
-
-  describe("copyMultiplePlatformSettings", () => {
-    it("should copy multiple platform settings in sequence", () => {
-      // Create multiple platform directories
-      const claudeSource = path.join(testDir, "claude-settings");
-      const geminiSource = path.join(testDir, "gemini-settings");
-      const claudeTarget = path.join(testDir, "claude-target");
-      const geminiTarget = path.join(testDir, "gemini-target");
-
-      fs.mkdirSync(claudeSource);
-      fs.mkdirSync(geminiSource);
-      fs.writeFileSync(path.join(claudeSource, "config.json"), '{"claude": true}');
-      fs.writeFileSync(path.join(geminiSource, "config.json"), '{"gemini": true}');
-
-      const results = copyMultiplePlatformSettings([
-        { source: claudeSource, target: claudeTarget },
-        { source: geminiSource, target: geminiTarget },
-      ]);
-
-      expect(results).toHaveLength(2);
-      expect(results[0].success).toBe(true);
-      expect(results[1].success).toBe(true);
-      expect(results[0].filesCopied).toBe(1);
-      expect(results[1].filesCopied).toBe(1);
-    });
-
-    it("should handle partial failures gracefully", () => {
-      const goodSource = path.join(testDir, "good-settings");
-      const badSource = path.join(testDir, "bad-settings");
-      const goodTarget = path.join(testDir, "good-target");
-      const badTarget = path.join(testDir, "bad-target");
-
-      fs.mkdirSync(goodSource);
-      fs.writeFileSync(path.join(goodSource, "config.json"), '{"good": true}');
-
-      const results = copyMultiplePlatformSettings([
-        { source: goodSource, target: goodTarget },
-        { source: badSource, target: badTarget }, // This will fail
-      ]);
-
-      expect(results).toHaveLength(2);
-      expect(results[0].success).toBe(true);
-      expect(results[1].success).toBe(false);
-    });
-
-    it("should handle empty platform list", () => {
-      const results = copyMultiplePlatformSettings([]);
-      expect(results).toHaveLength(0);
-    });
-
-    it("should preserve operation details for each platform", () => {
-      const source1 = path.join(testDir, "source1");
-      const source2 = path.join(testDir, "source2");
-      const target1 = path.join(testDir, "target1");
-      const target2 = path.join(testDir, "target2");
-
-      fs.mkdirSync(source1);
-      fs.mkdirSync(source2);
-      fs.writeFileSync(path.join(source1, "file.txt"), "content1");
-      fs.writeFileSync(path.join(source2, "file.txt"), "content2");
-
-      const results = copyMultiplePlatformSettings([
-        { source: source1, target: target1 },
-        { source: source2, target: target2 },
-      ]);
-
-      expect(results[0].operations.length).toBeGreaterThan(0);
-      expect(results[1].operations.length).toBeGreaterThan(0);
     });
   });
 

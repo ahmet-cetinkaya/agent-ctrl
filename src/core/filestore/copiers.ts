@@ -267,25 +267,3 @@ export function copyPlatformSettings(
     };
   }
 }
-
-/**
- * Copies multiple platform settings in a single operation.
- *
- * @param platformSettings - Array of {source, target} path pairs
- * @param config - Copy configuration
- * @returns Array of copy results (one per platform)
- *
- * @example
- * ```ts
- * const results = copyMultiplePlatformSettings([
- *   { source: '/project/settings/claude', target: '/home/user/.claude' },
- *   { source: '/project/settings/gemini', target: '/home/user/.gemini' }
- * ]);
- * ```
- */
-export function copyMultiplePlatformSettings(
-  platformSettings: Array<{ source: string; target: string }>,
-  config: CopyConfig = DEFAULT_COPY_CONFIG
-): CopyResult[] {
-  return platformSettings.map(({ source, target }) => copyPlatformSettings(source, target, config));
-}

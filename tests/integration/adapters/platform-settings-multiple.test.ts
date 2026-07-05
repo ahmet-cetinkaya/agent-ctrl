@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
 import { discoverPlatformSettings } from "@/config/scanner.js";
-import { copyMultiplePlatformSettings } from "@/core/filestore/copiers.js";
+import { copyPlatformSettings } from "@/core/filestore/copiers.js";
 
 describe("Multi-Platform Settings Application Integration", () => {
   const testDir = "/tmp/test-multi-platform";
@@ -38,10 +38,10 @@ describe("Multi-Platform Settings Application Integration", () => {
     fs.mkdirSync(claudeTarget, { recursive: true });
     fs.mkdirSync(geminiTarget, { recursive: true });
 
-    const results = copyMultiplePlatformSettings([
-      { source: discovered.settingsDirectories.claude.path, target: claudeTarget },
-      { source: discovered.settingsDirectories.gemini.path, target: geminiTarget },
-    ]);
+    const results = [
+      copyPlatformSettings(discovered.settingsDirectories.claude.path, claudeTarget),
+      copyPlatformSettings(discovered.settingsDirectories.gemini.path, geminiTarget),
+    ];
 
     expect(results).toHaveLength(2);
     expect(results.every((r) => r.success)).toBe(true);
@@ -63,10 +63,8 @@ describe("Multi-Platform Settings Application Integration", () => {
     fs.mkdirSync(claudeTarget, { recursive: true });
     fs.mkdirSync(geminiTarget, { recursive: true });
 
-    copyMultiplePlatformSettings([
-      { source: discovered.settingsDirectories.claude.path, target: claudeTarget },
-      { source: discovered.settingsDirectories.gemini.path, target: geminiTarget },
-    ]);
+    copyPlatformSettings(discovered.settingsDirectories.claude.path, claudeTarget);
+    copyPlatformSettings(discovered.settingsDirectories.gemini.path, geminiTarget);
 
     expect(fs.existsSync(path.join(claudeTarget, "claude-only.txt"))).toBe(true);
     expect(fs.existsSync(path.join(claudeTarget, "gemini-only.txt"))).toBe(false);
@@ -89,10 +87,10 @@ describe("Multi-Platform Settings Application Integration", () => {
     fs.mkdirSync(claudeTarget, { recursive: true });
     fs.mkdirSync(geminiTarget, { recursive: true });
 
-    const results = copyMultiplePlatformSettings([
-      { source: discovered.settingsDirectories.claude.path, target: claudeTarget },
-      { source: discovered.settingsDirectories.gemini.path, target: geminiTarget },
-    ]);
+    const results = [
+      copyPlatformSettings(discovered.settingsDirectories.claude.path, claudeTarget),
+      copyPlatformSettings(discovered.settingsDirectories.gemini.path, geminiTarget),
+    ];
 
     expect(results[0].filesCopied).toBe(1);
     expect(results[1].filesCopied).toBe(2);
