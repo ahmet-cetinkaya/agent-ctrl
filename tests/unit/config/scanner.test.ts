@@ -97,4 +97,49 @@ describe("discoverPlatformSettings", () => {
       expect(result.settingsDirectories.claude.fileCount).toBe(0);
     });
   });
+
+  describe("security errors", () => {
+    it("should have no security errors for a clean settings tree", async () => {
+      fs.mkdirSync(path.join(settingsDir, "claude"), { recursive: true });
+      fs.writeFileSync(path.join(settingsDir, "claude", "config.json"), "{}");
+
+      const result = await discoverPlatformSettings(testDir);
+      expect(result.securityErrors).toHaveLength(0);
+    });
+
+    it("should not classify a naming validation error as a security error", async () => {
+      fs.mkdirSync(path.join(settingsDir, "vscode"), { recursive: true });
+
+      const result = await discoverPlatformSettings(testDir);
+      expect(result.validationErrors.length).toBeGreaterThan(0);
+      expect(result.securityErrors).toHaveLength(0);
+    });
+  });
+
+  describe("incomplete file counts", () => {
+    it("should flag hasIncompleteFileCounts when a subdirectory cannot be read", async () => {
+      const claudeDir = path.join(settingsDir, "claude");
+      const restrictedDir = path.join(claudeDir, "restricted");
+      fs.mkdirSync(restrictedDir, { recursive: true });
+      fs.writeFileSync(path.join(restrictedDir, "secret.md"), "secret");
+      fs.writeFileSync(path.join(claudeDir, "config.json"), "{}");
+
+      fs.chmodSync(restrictedDir, 0o000);
+      try {
+        const result = await discoverPlatformSettings(testDir);
+        expect(result.hasIncompleteFileCounts).toBe(true);
+        expect(result.validationErrors.some((e) => e.includes("unreadable"))).toBe(true);
+      } finally {
+        fs.chmodSync(restrictedDir, 0o755);
+      }
+    });
+
+    it("should not flag hasIncompleteFileCounts when everything is readable", async () => {
+      fs.mkdirSync(path.join(settingsDir, "claude", "nested"), { recursive: true });
+      fs.writeFileSync(path.join(settingsDir, "claude", "nested", "a.md"), "a");
+
+      const result = await discoverPlatformSettings(testDir);
+      expect(result.hasIncompleteFileCounts).toBe(false);
+    });
+  });
 });

@@ -69,7 +69,16 @@ export class ApplyCommand {
     const startedAt = Date.now();
 
     const settingsResult = await discoverPlatformSettings(projectPath);
-    const settingsWarning = settingsResult.validationErrors.length > 0
+    if (settingsResult.securityErrors.length > 0) {
+      return err(
+        new SystemError(
+          `Platform settings security validation failed: ${settingsResult.securityErrors.join("; ")}`,
+          ERROR_IDS.PLATFORM_CONFIG_WRITE_FAILED
+        )
+      );
+    }
+
+    const namingWarnings = settingsResult.validationErrors.length > 0
       ? [`Settings validation: ${settingsResult.validationErrors.join("; ")}`]
       : [];
 
@@ -83,7 +92,7 @@ export class ApplyCommand {
       });
 
       const durationMs = Date.now() - startedAt;
-      const warnings: string[] = [...settingsWarning, ...(applyResult.warnings ?? [])];
+      const warnings: string[] = [...namingWarnings, ...(applyResult.warnings ?? [])];
       if (dryRun) {
         warnings.push("Dry run mode: no file system changes were written.");
       }
@@ -94,14 +103,19 @@ export class ApplyCommand {
         const platformSettingsDir = settingsResult.settingsDirectories[selectedPlatform];
         if (platformSettingsDir?.path) {
           const target = await adapter.resolveTarget(projectPath, { projectPath, dryRun, override, targetScope, userConfigRootPath });
-          const targetConfigDir = dirname(target.configPath);
+          const targetConfigDir = target.settingsDirectory ?? dirname(target.configPath);
           const copyResult = copyPlatformSettings(platformSettingsDir.path, targetConfigDir);
           if (copyResult.success) {
             appliedPlatform = selectedPlatform;
             settingsFilesCopied = copyResult.filesCopied;
             warnings.push(`Applied ${copyResult.filesCopied} platform-specific setting(s) for '${selectedPlatform}'`);
-          } else if (copyResult.error) {
-            warnings.push(`Platform settings copy failed: ${copyResult.error}`);
+          } else {
+            return err(
+              new SystemError(
+                `Failed to apply platform-specific settings for '${selectedPlatform}': ${copyResult.error ?? "unknown error"}`,
+                ERROR_IDS.PLATFORM_CONFIG_WRITE_FAILED
+              )
+            );
           }
         }
       }
@@ -139,7 +153,7 @@ export class ApplyCommand {
         message += `: ${String(error)}`;
       }
 
-      return err(new SystemError(message, ERROR_IDS.PLATFORM_CONFIG_WRITE_FAILED));
+      return err(new SystemError(message, ERROR_IDS.PLATFORM_CONFIG_WRITE_FAILED, { cause: error }));
     }
   }
 }

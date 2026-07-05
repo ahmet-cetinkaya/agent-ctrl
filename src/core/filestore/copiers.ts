@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { FileOperation, FileOperationStatus, FileSystemEntityType } from "../domain/shared/types/FileOperation.js";
+import type { FileOperation } from "../domain/shared/types/FileOperation.js";
 
 /**
  * File copying operations with override semantics.
@@ -21,18 +21,17 @@ export interface CopyConfig {
 
   /** Whether to create parent directories if they don't exist */
   createParentDirectories: boolean;
-
-  /** Whether to overwrite existing files (always true per requirements) */
-  overwriteExisting: true;
 }
 
 /**
  * Default copy configuration (secure defaults).
+ *
+ * Note: files are always overwritten deterministically (FR-005) - there is no
+ * config flag for this since agent-ctrl-managed destinations never need partial merges.
  */
 export const DEFAULT_COPY_CONFIG: CopyConfig = {
   followSymbolicLinks: true,
   createParentDirectories: true,
-  overwriteExisting: true,
 };
 
 /**
@@ -119,12 +118,12 @@ export function copyFile(
 export function copyDirectory(
   sourcePath: string,
   destinationPath: string,
-  config: CopyConfig = DEFAULT_COPY_CONFIG
+  config: CopyConfig = DEFAULT_COPY_CONFIG,
+  sourceRoot: string = sourcePath
 ): FileOperation[] {
   const operations: FileOperation[] = [];
 
   try {
-    // Create destination directory
     if (!fs.existsSync(destinationPath)) {
       fs.mkdirSync(destinationPath, { recursive: true });
       operations.push({
@@ -136,32 +135,7 @@ export function copyDirectory(
         error: null,
       });
     }
-
-    // Read directory contents
-    const entries = fs.readdirSync(sourcePath, { withFileTypes: true });
-
-    for (const entry of entries) {
-      const sourceEntry = path.join(sourcePath, entry.name);
-      const destEntry = path.join(destinationPath, entry.name);
-
-      if (entry.isDirectory()) {
-        // Recursive copy for subdirectories
-        const subOps = copyDirectory(sourceEntry, destEntry, config);
-        operations.push(...subOps);
-      } else if (entry.isSymbolicLink() && config.followSymbolicLinks) {
-        // Read symbolic link target and copy the target file
-        const targetPath = fs.realpathSync(sourceEntry);
-        const fileOp = copyFile(targetPath, destEntry, config);
-        operations.push(fileOp);
-      } else if (entry.isFile()) {
-        // Copy regular file
-        const fileOp = copyFile(sourceEntry, destEntry, config);
-        operations.push(fileOp);
-      }
-      // Symbolic links when followSymbolicLinks is false are skipped
-    }
   } catch (error) {
-    // Add failed operation for directory copy error
     operations.push({
       sourcePath,
       destinationPath,
@@ -170,6 +144,63 @@ export function copyDirectory(
       overrideAction: "replace",
       error: error instanceof Error ? error.message : String(error),
     });
+    return operations;
+  }
+
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(sourcePath, { withFileTypes: true });
+  } catch (error) {
+    operations.push({
+      sourcePath,
+      destinationPath,
+      operationType: "directory",
+      status: "failed",
+      overrideAction: "replace",
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return operations;
+  }
+
+  // Each entry is processed independently: one bad file/symlink must not
+  // prevent the remaining entries from being copied or reported.
+  for (const entry of entries) {
+    const sourceEntry = path.join(sourcePath, entry.name);
+    const destEntry = path.join(destinationPath, entry.name);
+
+    try {
+      if (entry.isDirectory()) {
+        const subOps = copyDirectory(sourceEntry, destEntry, config, sourceRoot);
+        operations.push(...subOps);
+      } else if (entry.isSymbolicLink() && config.followSymbolicLinks) {
+        const targetPath = fs.realpathSync(sourceEntry);
+        const relativeToRoot = path.relative(sourceRoot, targetPath);
+        if (relativeToRoot.startsWith("..")) {
+          operations.push({
+            sourcePath: sourceEntry,
+            destinationPath: destEntry,
+            operationType: "symlink",
+            status: "failed",
+            overrideAction: "replace",
+            error: `Symbolic link escapes settings root: ${sourceEntry} → ${targetPath}`,
+          });
+          continue;
+        }
+        operations.push(copyFile(targetPath, destEntry, config));
+      } else if (entry.isFile()) {
+        operations.push(copyFile(sourceEntry, destEntry, config));
+      }
+      // Symbolic links when followSymbolicLinks is false are skipped
+    } catch (error) {
+      operations.push({
+        sourcePath: sourceEntry,
+        destinationPath: destEntry,
+        operationType: entry.isDirectory() ? "directory" : "file",
+        status: "failed",
+        overrideAction: "replace",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   return operations;

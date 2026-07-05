@@ -99,6 +99,6 @@ export function validatePathTraversal(filePath: string, allowedRoot: string): Pa
  * @param allowedRoot - Root directory that paths must stay within
  * @returns Array of validation results in same order as input paths
  */
-export function validateMultiplePaths(filePaths: string[], allowedRoot: string): PathValidationResult[] {
+export function validatePathTraversalForPaths(filePaths: string[], allowedRoot: string): PathValidationResult[] {
   return filePaths.map((path) => validatePathTraversal(path, allowedRoot));
 }

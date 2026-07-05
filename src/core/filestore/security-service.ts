@@ -1,9 +1,4 @@
-import path from "node:path";
-import type {
-  SecurityValidationResult,
-  SecurityContext,
-  SecurityValidationType,
-} from "../domain/shared/types/SecurityValidationResult.js";
+import type { SecurityValidationResult } from "../domain/shared/types/SecurityValidationResult.js";
 import { validatePathTraversal } from "./validators.js";
 import { detectSymlink, findSymlinksInDirectory, filterExternalSymlinks } from "./symlink-handler.js";
 
@@ -174,9 +169,12 @@ export function validateDirectory(
   }
 
   // Scan for symbolic links recursively
-  const symlinks = findSymlinksInDirectory(directoryPath, config.projectRoot);
+  const { symlinks, scanErrors } = findSymlinksInDirectory(directoryPath, config.projectRoot);
   const externalSymlinks = filterExternalSymlinks(symlinks);
-  const warnings = externalSymlinks.map((s) => s.warning || "External symbolic link detected");
+  const warnings = [
+    ...externalSymlinks.map((s) => s.warning || "External symbolic link detected"),
+    ...scanErrors.map((e) => `Incomplete symlink scan: ${e}`),
+  ];
 
   // Check if we should fail on external symlinks
   if (externalSymlinks.length > 0 && config.failOnExternalSymlinks) {
@@ -208,45 +206,3 @@ export function validateDirectory(
   };
 }
 
-/**
- * Combines multiple security validation results into one aggregated result.
- *
- * @param results - Array of security validation results
- * @returns Aggregated validation result
- *
- * @example
- * ```ts
- * const combined = combineValidationResults([
- *   { isValid: true, error: null, warnings: ['Warning 1'], ... },
- *   { isValid: false, error: 'Critical error', warnings: ['Warning 2'], ... }
- * ]);
- * // { isValid: false, error: 'Critical error', warnings: ['Warning 1', 'Warning 2'], ... }
- * ```
- */
-export function combineValidationResults(results: SecurityValidationResult[]): SecurityValidationResult {
-  const timestamp = new Date().toISOString();
-
-  // If any result is invalid, the combined result is invalid
-  const firstInvalid = results.find((r) => !r.isValid);
-  const isValid = !firstInvalid;
-
-  // Collect all errors (only if invalid) and warnings
-  const error = firstInvalid?.error || null;
-  const warnings = results.flatMap((r) => r.warnings);
-
-  // Combine validation context
-  const validationContext: SecurityContext = {
-    originalPath: results.map((r) => r.validationContext.originalPath).join(", "),
-    resolvedPath: results.map((r) => r.validationContext.resolvedPath).join(", "),
-    hasSymbolicLinks: results.some((r) => r.validationContext.hasSymbolicLinks),
-    validationType: "boundary_check",
-    validatedAt: timestamp,
-  };
-
-  return {
-    isValid,
-    error,
-    warnings,
-    validationContext,
-  };
-}

@@ -125,7 +125,7 @@ describe("copiers - File Copying with Override Semantics", () => {
       fs.writeFileSync(sourceFile, "original content");
       fs.symlinkSync(sourceFile, symlinkPath);
 
-      const config: CopyConfig = { followSymbolicLinks: true, createParentDirectories: true, overwriteExisting: true };
+      const config: CopyConfig = { followSymbolicLinks: true, createParentDirectories: true };
       const operations = copyDirectory(sourceDir, targetDir, config);
 
       expect(operations.some((op) => op.operationType === "file")).toBe(true);
@@ -337,6 +337,63 @@ describe("copiers - File Copying with Override Semantics", () => {
       expect(result.filesCopied).toBe(fileCount);
       // Performance target: should complete within reasonable time
       expect(duration).toBeLessThan(10000); // 10 seconds max
+    });
+  });
+
+  describe("per-entry error isolation", () => {
+    it("should continue copying remaining entries after a broken symlink", () => {
+      fs.writeFileSync(path.join(sourceDir, "a.txt"), "a");
+      fs.symlinkSync("/non/existent/target", path.join(sourceDir, "broken-link"));
+      fs.writeFileSync(path.join(sourceDir, "c.txt"), "c");
+
+      const result = copyPlatformSettings(sourceDir, targetDir);
+
+      expect(fs.existsSync(path.join(targetDir, "a.txt"))).toBe(true);
+      expect(fs.existsSync(path.join(targetDir, "c.txt"))).toBe(true);
+      expect(result.success).toBe(false);
+      expect(result.filesCopied).toBe(2);
+      const brokenOp = result.operations.find((op) => op.sourcePath.endsWith("broken-link"));
+      expect(brokenOp?.status).toBe("failed");
+    });
+
+    it("should record every entry explicitly even when one throws mid-loop", () => {
+      fs.writeFileSync(path.join(sourceDir, "a.txt"), "a");
+      fs.symlinkSync("/non/existent/target", path.join(sourceDir, "broken-link"));
+      fs.writeFileSync(path.join(sourceDir, "z.txt"), "z");
+
+      const result = copyPlatformSettings(sourceDir, targetDir);
+
+      const recordedNames = result.operations.map((op) => path.basename(op.sourcePath));
+      expect(recordedNames).toContain("a.txt");
+      expect(recordedNames).toContain("broken-link");
+      expect(recordedNames).toContain("z.txt");
+    });
+  });
+
+  describe("symlink escape prevention", () => {
+    it("should reject symlinks that resolve outside the settings root", () => {
+      const outsideDir = path.join(testDir, "outside");
+      fs.mkdirSync(outsideDir, { recursive: true });
+      fs.writeFileSync(path.join(outsideDir, "secret.txt"), "secret");
+      fs.symlinkSync(path.join(outsideDir, "secret.txt"), path.join(sourceDir, "escape-link"));
+
+      const result = copyPlatformSettings(sourceDir, targetDir);
+
+      expect(result.success).toBe(false);
+      expect(fs.existsSync(path.join(targetDir, "escape-link"))).toBe(false);
+      const escapeOp = result.operations.find((op) => op.sourcePath.endsWith("escape-link"));
+      expect(escapeOp?.status).toBe("failed");
+      expect(escapeOp?.error).toContain("escapes settings root");
+    });
+
+    it("should still copy symlinks that resolve within the settings root", () => {
+      fs.writeFileSync(path.join(sourceDir, "real.txt"), "real content");
+      fs.symlinkSync(path.join(sourceDir, "real.txt"), path.join(sourceDir, "internal-link"));
+
+      const result = copyPlatformSettings(sourceDir, targetDir);
+
+      expect(result.success).toBe(true);
+      expect(fs.readFileSync(path.join(targetDir, "internal-link"), "utf-8")).toBe("real content");
     });
   });
 });

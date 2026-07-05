@@ -77,6 +77,12 @@ export interface ApplyConfigTarget {
   readonly configPath: string;
   readonly scope: ApplyPlatformScope;
   readonly surface: string;
+  /**
+   * Directory that should receive platform-specific settings (settings/<platform>/) files.
+   * Optional: when omitted, callers fall back to the parent directory of configPath.
+   * Adapters whose settings destination differs from configPath's parent should set this explicitly.
+   */
+  readonly settingsDirectory?: string;
 }
 
 /**

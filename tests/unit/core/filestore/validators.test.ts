@@ -1,7 +1,5 @@
-import { describe, it, expect, beforeEach } from "bun:test";
-import { validatePathTraversal, validateMultiplePaths } from "@/core/filestore/validators.js";
-import fs from "node:fs";
-import path from "node:path";
+import { describe, it, expect } from "bun:test";
+import { validatePathTraversal, validatePathTraversalForPaths } from "@/core/filestore/validators.js";
 
 describe("validators - Path Traversal Security", () => {
   describe("validatePathTraversal", () => {
@@ -56,10 +54,10 @@ describe("validators - Path Traversal Security", () => {
     });
   });
 
-  describe("validateMultiplePaths", () => {
+  describe("validatePathTraversalForPaths", () => {
     it("should validate multiple paths and return results in order", () => {
       const paths = ["settings/claude/config.json", "../etc/passwd", "settings/gemini/rules.json"];
-      const results = validateMultiplePaths(paths, "/project");
+      const results = validatePathTraversalForPaths(paths, "/project");
 
       expect(results).toHaveLength(3);
       expect(results[0].isValid).toBe(true);
@@ -69,7 +67,7 @@ describe("validators - Path Traversal Security", () => {
 
     it("should handle all safe paths", () => {
       const paths = ["settings/claude/config.json", "settings/gemini/rules.json", "settings/cursor/keybindings.json"];
-      const results = validateMultiplePaths(paths, "/project");
+      const results = validatePathTraversalForPaths(paths, "/project");
 
       expect(results.every((r) => r.isValid)).toBe(true);
       expect(results.every((r) => r.error === null)).toBe(true);
@@ -77,7 +75,7 @@ describe("validators - Path Traversal Security", () => {
 
     it("should handle all unsafe paths", () => {
       const paths = ["../etc/passwd", "../../bin/sh", "/etc/hosts"];
-      const results = validateMultiplePaths(paths, "/project");
+      const results = validatePathTraversalForPaths(paths, "/project");
 
       expect(results.every((r) => !r.isValid)).toBe(true);
       expect(results.every((r) => r.error !== null)).toBe(true);
@@ -85,7 +83,7 @@ describe("validators - Path Traversal Security", () => {
 
     it("should preserve order of input paths", () => {
       const paths = ["safe.json", "../unsafe.json", "another-safe.json"];
-      const results = validateMultiplePaths(paths, "/project");
+      const results = validatePathTraversalForPaths(paths, "/project");
 
       expect(results[0].isValid).toBe(true);
       expect(results[1].isValid).toBe(false);
@@ -93,7 +91,7 @@ describe("validators - Path Traversal Security", () => {
     });
 
     it("should handle empty path array", () => {
-      const results = validateMultiplePaths([], "/project");
+      const results = validatePathTraversalForPaths([], "/project");
       expect(results).toHaveLength(0);
     });
 
@@ -105,7 +103,7 @@ describe("validators - Path Traversal Security", () => {
         "/etc/unsafe",
         "settings/cursor/also-safe.json",
       ];
-      const results = validateMultiplePaths(paths, "/project");
+      const results = validatePathTraversalForPaths(paths, "/project");
 
       expect(results).toHaveLength(5);
       expect(results[0].isValid).toBe(true);

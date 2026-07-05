@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, mkdir, writeFile, chmod } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
+import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { writeApplyFixtures } from "@tests/helpers/writeApplyFixtures";
 
 describe("ApplyCommand", () => {
@@ -153,6 +154,58 @@ describe("ApplyCommand", () => {
       expect(
         result.data.warnings.some((w) => w.includes("Settings validation"))
       ).toBe(true);
+    });
+
+    it("fails the command when platform-specific settings copy fails", async () => {
+      const geminiSettingsDir = join(projectPath, "settings", "gemini");
+      await mkdir(geminiSettingsDir, { recursive: true });
+      await writeFile(join(geminiSettingsDir, "extra.md"), "# Extra\n", "utf-8");
+
+      // Make the user config root unwritable so the settings copy step fails.
+      await chmod(userRootPath, 0o444);
+      try {
+        const result = await command.execute({
+          projectPath,
+          platform: "gemini",
+          userConfigRootPath: userRootPath,
+        });
+
+        expect(result.success).toBe(false);
+        if (result.success) return;
+
+        expect(result.error).toBeInstanceOf(SystemError);
+        expect(result.error.message).toContain("gemini");
+      } finally {
+        await chmod(userRootPath, 0o755);
+      }
+    });
+
+    it("fails the command when a settings directory contains a symlink escaping the project", async () => {
+      const geminiSettingsDir = join(projectPath, "settings", "gemini");
+      await mkdir(geminiSettingsDir, { recursive: true });
+      const outsideFile = join(tmpdir(), `apply-command-outside-${Date.now()}.txt`);
+      await writeFile(outsideFile, "secret", "utf-8");
+
+      try {
+        const { symlink } = await import("node:fs/promises");
+        await symlink(outsideFile, join(geminiSettingsDir, "escape-link.txt"));
+
+        const result = await command.execute({
+          projectPath,
+          platform: "gemini",
+          userConfigRootPath: userRootPath,
+        });
+
+        // A symlink inside settings/gemini that escapes the project root must
+        // be rejected by discovery's security check, failing the command
+        // rather than silently proceeding without the settings applied.
+        expect(result.success).toBe(false);
+        if (result.success) return;
+        expect(result.error).toBeInstanceOf(SystemError);
+        expect(result.error.message).toContain("security");
+      } finally {
+        await rm(outsideFile, { force: true });
+      }
     });
   });
 });

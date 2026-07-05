@@ -106,11 +106,12 @@ describe("symlink-handler - Symbolic Link Detection", () => {
     });
 
     it("should find all symlinks in directory", () => {
-      const results = findSymlinksInDirectory(testDir, testDir);
-      expect(results).toHaveLength(2);
+      const { symlinks, scanErrors } = findSymlinksInDirectory(testDir, testDir);
+      expect(symlinks).toHaveLength(2);
+      expect(scanErrors).toHaveLength(0);
 
-      const internal = results.find((r) => r.warning === null);
-      const external = results.find((r) => r.warning !== null);
+      const internal = symlinks.find((r) => r.warning === null);
+      const external = symlinks.find((r) => r.warning !== null);
 
       expect(internal?.isSymlink).toBe(true);
       expect(external?.isSymlink).toBe(true);
@@ -122,8 +123,8 @@ describe("symlink-handler - Symbolic Link Detection", () => {
       const subdirSymlink = path.join(testDir, "subdir", "subdir-symlink.txt");
       fs.symlinkSync("/etc/passwd", subdirSymlink);
 
-      const results = findSymlinksInDirectory(testDir, testDir);
-      expect(results.length).toBeGreaterThanOrEqual(3);
+      const { symlinks } = findSymlinksInDirectory(testDir, testDir);
+      expect(symlinks.length).toBeGreaterThanOrEqual(3);
 
       // Cleanup
       fs.unlinkSync(subdirSymlink);
@@ -133,8 +134,9 @@ describe("symlink-handler - Symbolic Link Detection", () => {
       const emptyDir = "/tmp/test-empty-dir";
       fs.mkdirSync(emptyDir);
 
-      const results = findSymlinksInDirectory(emptyDir, emptyDir);
-      expect(results).toHaveLength(0);
+      const { symlinks, scanErrors } = findSymlinksInDirectory(emptyDir, emptyDir);
+      expect(symlinks).toHaveLength(0);
+      expect(scanErrors).toHaveLength(0);
 
       // Cleanup
       fs.rmdirSync(emptyDir);
@@ -145,12 +147,27 @@ describe("symlink-handler - Symbolic Link Detection", () => {
       fs.mkdirSync(regularOnlyDir);
       fs.writeFileSync(path.join(regularOnlyDir, "file.txt"), "content");
 
-      const results = findSymlinksInDirectory(regularOnlyDir, regularOnlyDir);
-      expect(results).toHaveLength(0);
+      const { symlinks } = findSymlinksInDirectory(regularOnlyDir, regularOnlyDir);
+      expect(symlinks).toHaveLength(0);
 
       // Cleanup
       fs.unlinkSync(path.join(regularOnlyDir, "file.txt"));
       fs.rmdirSync(regularOnlyDir);
+    });
+
+    it("should record a scan error instead of silently skipping an unreadable subdirectory", () => {
+      const restrictedDir = path.join(testDir, "restricted");
+      fs.mkdirSync(restrictedDir, { recursive: true });
+      fs.symlinkSync("/etc/hosts", path.join(restrictedDir, "hidden-symlink.txt"));
+
+      fs.chmodSync(restrictedDir, 0o000);
+      try {
+        const { scanErrors } = findSymlinksInDirectory(testDir, testDir);
+        expect(scanErrors.length).toBeGreaterThan(0);
+        expect(scanErrors.some((e) => e.includes(restrictedDir))).toBe(true);
+      } finally {
+        fs.chmodSync(restrictedDir, 0o755);
+      }
     });
   });
 

@@ -242,7 +242,7 @@ async function applyToPlatform(platform: string, options: any): Promise<void> {
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    LogService.error(`Error: ${errorMessage}`);
+    LogService.error(`[${platformDisplay}] Unexpected error: ${errorMessage} (Path: ${sourcePath})`);
     process.exit(2);
   }
 }

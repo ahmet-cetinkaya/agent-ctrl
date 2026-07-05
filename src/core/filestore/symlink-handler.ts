@@ -92,42 +92,58 @@ export function detectSymlink(filePath: string, projectRoot: string): SymlinkDet
 }
 
 /**
+ * Result of a recursive symlink scan.
+ */
+export interface SymlinkScanResult {
+  /** Symlinks found during the scan */
+  symlinks: SymlinkDetectionResult[];
+
+  /** Directories that could not be read (permission errors, races); scan may be incomplete. */
+  scanErrors: string[];
+}
+
+/**
  * Scans a directory recursively for symbolic links.
  *
  * @param directoryPath - Directory path to scan
  * @param projectRoot - Root directory of the project
- * @returns Array of symlink detection results for all symlinks found
+ * @returns Symlinks found plus any directories that could not be read
  *
  * @example
  * ```ts
- * const symlinks = findSymlinksInDirectory('/project/settings/claude', '/project');
- * // Returns array of detection results for each symlink found
+ * const { symlinks, scanErrors } = findSymlinksInDirectory('/project/settings/claude', '/project');
+ * // scanErrors is non-empty if any subdirectory could not be read (incomplete scan)
  * ```
  */
-export function findSymlinksInDirectory(directoryPath: string, projectRoot: string): SymlinkDetectionResult[] {
+export function findSymlinksInDirectory(directoryPath: string, projectRoot: string): SymlinkScanResult {
   const symlinks: SymlinkDetectionResult[] = [];
+  const scanErrors: string[] = [];
 
   function scanDirectory(currentPath: string): void {
+    let entries: fs.Dirent[];
     try {
-      const entries = fs.readdirSync(currentPath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        const fullPath = path.join(currentPath, entry.name);
-
-        if (entry.isSymbolicLink()) {
-          const result = detectSymlink(fullPath, projectRoot);
-          symlinks.push(result);
-        } else if (entry.isDirectory()) {
-          scanDirectory(fullPath); // Recursive scan
-        }
-      }
+      entries = fs.readdirSync(currentPath, { withFileTypes: true });
     } catch (error) {
-      // Skip directories we can't read
+      scanErrors.push(
+        `Could not read directory during symlink scan: ${currentPath} (${error instanceof Error ? error.message : String(error)})`
+      );
+      return;
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(currentPath, entry.name);
+
+      if (entry.isSymbolicLink()) {
+        const result = detectSymlink(fullPath, projectRoot);
+        symlinks.push(result);
+      } else if (entry.isDirectory()) {
+        scanDirectory(fullPath); // Recursive scan
+      }
     }
   }
 
   scanDirectory(directoryPath);
-  return symlinks;
+  return { symlinks, scanErrors };
 }
 
 /**
