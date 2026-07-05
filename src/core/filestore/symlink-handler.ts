@@ -67,12 +67,14 @@ export function detectSymlink(filePath: string, projectRoot: string): SymlinkDet
   }
 
   // Resolve the symbolic link target. Broken links (missing target) still count
-  // as symlinks; fall back to the raw link target when realpath fails.
+  // as symlinks; fall back to the raw link target when realpath fails. A
+  // relative link target is resolved relative to the directory containing
+  // the link itself, not the project root (matches POSIX symlink semantics).
   let resolvedTarget: string;
   try {
     resolvedTarget = path.resolve(fs.realpathSync(filePath));
   } catch {
-    resolvedTarget = path.resolve(projectRoot, fs.readlinkSync(filePath));
+    resolvedTarget = path.resolve(path.dirname(filePath), fs.readlinkSync(filePath));
   }
 
   // Check if target escapes project boundaries
