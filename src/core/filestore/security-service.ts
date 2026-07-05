@@ -111,28 +111,6 @@ export function validateFilePath(
 }
 
 /**
- * Validates multiple file paths for security compliance.
- *
- * @param filePaths - Paths to validate
- * @param config - Security validation configuration
- * @returns Array of security validation results
- *
- * @example
- * ```ts
- * const results = validateMultiplePaths(
- *   ['/project/settings/claude/config.json', '/project/settings/cursor/rules.json'],
- *   config
- * );
- * ```
- */
-export function validateMultiplePaths(
-  filePaths: string[],
-  config: SecurityValidationConfig = DEFAULT_SECURITY_CONFIG
-): SecurityValidationResult[] {
-  return filePaths.map((path) => validateFilePath(path, config));
-}
-
-/**
  * Validates a directory recursively for security compliance.
  *
  * @param directoryPath - Directory path to validate

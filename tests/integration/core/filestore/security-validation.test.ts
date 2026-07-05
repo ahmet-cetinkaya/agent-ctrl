@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import {
   validateFilePath,
-  validateMultiplePaths,
   validateDirectory,
   type SecurityValidationConfig,
 } from "@/core/filestore/security-service.js";
@@ -115,48 +114,6 @@ describe("Security Validation Integration Tests", () => {
 
       fs.unlinkSync(linkFile);
       fs.unlinkSync(targetFile);
-    });
-  });
-
-  describe("validateMultiplePaths - batch security validation", () => {
-    it("should validate multiple paths with mixed safety levels", () => {
-      const safeFile = path.join(testDir, "settings", "claude", "config.json");
-      fs.mkdirSync(path.dirname(safeFile), { recursive: true });
-      fs.writeFileSync(safeFile, '{"safe": true}');
-
-      const config: SecurityValidationConfig = {
-        projectRoot: testDir,
-        allowSymbolicLinks: true,
-        failOnExternalSymlinks: false,
-      };
-      const results = validateMultiplePaths([safeFile, "../../../etc/passwd", safeFile], config);
-
-      expect(results).toHaveLength(3);
-      expect(results[0].isValid).toBe(true);
-      expect(results[1].isValid).toBe(false);
-      expect(results[2].isValid).toBe(true);
-    });
-
-    it("should aggregate warnings from multiple files", () => {
-      const safeFile1 = path.join(testDir, "settings", "file1.json");
-      const safeFile2 = path.join(testDir, "settings", "file2.json");
-      const externalLink = path.join(testDir, "settings", "link.json");
-      fs.mkdirSync(path.dirname(safeFile1), { recursive: true });
-      fs.writeFileSync(safeFile1, "{}");
-      fs.writeFileSync(safeFile2, "{}");
-      fs.symlinkSync("/etc/hosts", externalLink);
-
-      const config: SecurityValidationConfig = {
-        projectRoot: testDir,
-        allowSymbolicLinks: true,
-        failOnExternalSymlinks: false,
-      };
-      const results = validateMultiplePaths([safeFile1, safeFile2, externalLink], config);
-
-      const totalWarnings = results.reduce((sum, r) => sum + r.warnings.length, 0);
-      expect(totalWarnings).toBeGreaterThan(0);
-
-      fs.unlinkSync(externalLink);
     });
   });
 
