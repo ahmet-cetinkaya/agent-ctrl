@@ -79,9 +79,7 @@ export function detectSymlink(filePath: string, projectRoot: string): SymlinkDet
   const relativePath = path.relative(projectRoot, resolvedTarget);
   const targetEscapesProject = relativePath.startsWith("..");
 
-  const warning = targetEscapesProject
-    ? `Symbolic link points outside project: ${filePath} → ${resolvedTarget}`
-    : null;
+  const warning = targetEscapesProject ? `Symbolic link points outside project: ${filePath} → ${resolvedTarget}` : null;
 
   return {
     isSymlink: true,

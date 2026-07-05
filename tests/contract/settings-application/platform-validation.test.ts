@@ -54,12 +54,7 @@ describe("Platform Validation Contract", () => {
     });
 
     it("should reject invalid platform names with clear error messages", () => {
-      const invalidNames = [
-        "invalid",
-        "platform",
-        "vscode",
-        "intellij",
-      ];
+      const invalidNames = ["invalid", "platform", "vscode", "intellij"];
 
       // Contract: Invalid names must be rejected with descriptive errors
       invalidNames.forEach((name) => {

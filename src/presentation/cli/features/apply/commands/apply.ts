@@ -232,7 +232,9 @@ async function applyToPlatform(platform: string, options: any): Promise<void> {
         `Discovered platforms: ${settingsDiscovery.discoveredPlatforms.length > 0 ? settingsDiscovery.discoveredPlatforms.join(", ") : "none"}`,
       ];
       if (settingsDiscovery.appliedPlatform) {
-        lines.push(`Applied settings for: ${settingsDiscovery.appliedPlatform} (${settingsDiscovery.filesCopied} file(s))`);
+        lines.push(
+          `Applied settings for: ${settingsDiscovery.appliedPlatform} (${settingsDiscovery.filesCopied} file(s))`
+        );
       }
       LogService.note(lines.join("\n"), "Settings discovery:");
     }

@@ -78,9 +78,10 @@ export class ApplyCommand {
       );
     }
 
-    const namingWarnings = settingsResult.validationErrors.length > 0
-      ? [`Settings validation: ${settingsResult.validationErrors.join("; ")}`]
-      : [];
+    const namingWarnings =
+      settingsResult.validationErrors.length > 0
+        ? [`Settings validation: ${settingsResult.validationErrors.join("; ")}`]
+        : [];
 
     try {
       const applyResult = await adapter.applyApplyIntegration({
@@ -102,7 +103,13 @@ export class ApplyCommand {
       if (!dryRun && settingsResult.platforms.includes(selectedPlatform)) {
         const platformSettingsDir = settingsResult.settingsDirectories[selectedPlatform];
         if (platformSettingsDir?.path) {
-          const target = await adapter.resolveTarget(projectPath, { projectPath, dryRun, override, targetScope, userConfigRootPath });
+          const target = await adapter.resolveTarget(projectPath, {
+            projectPath,
+            dryRun,
+            override,
+            targetScope,
+            userConfigRootPath,
+          });
           const targetConfigDir = target.settingsDirectory ?? dirname(target.configPath);
           const copyResult = copyPlatformSettings(platformSettingsDir.path, targetConfigDir);
           if (copyResult.success) {

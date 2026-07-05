@@ -116,9 +116,7 @@ describe("ApplyCommand", () => {
       expect(result.data.settingsDiscovery?.discoveredPlatforms).toContain("gemini");
       expect(result.data.settingsDiscovery?.appliedPlatform).toBe("gemini");
       expect(result.data.settingsDiscovery?.filesCopied).toBeGreaterThan(0);
-      expect(
-        result.data.warnings.some((w) => w.includes("platform-specific setting"))
-      ).toBe(true);
+      expect(result.data.warnings.some((w) => w.includes("platform-specific setting"))).toBe(true);
     });
 
     it("does not apply settings for a platform without a settings directory", async () => {
@@ -151,9 +149,7 @@ describe("ApplyCommand", () => {
       expect(result.success).toBe(true);
       if (!result.success) return;
 
-      expect(
-        result.data.warnings.some((w) => w.includes("Settings validation"))
-      ).toBe(true);
+      expect(result.data.warnings.some((w) => w.includes("Settings validation"))).toBe(true);
     });
 
     it("fails the command when platform-specific settings copy fails", async () => {

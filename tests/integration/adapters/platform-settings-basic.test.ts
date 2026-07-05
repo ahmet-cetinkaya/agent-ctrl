@@ -269,34 +269,38 @@ describe("Platform Settings Basic Application Integration", () => {
 
       expect(result.success).toBe(true);
       expect(result.filesCopied).toBe(10);
-      const nestedPath = path.join(targetConfigDir, Array.from({ length: 10 }, (_, i) => `level${i}`).join(path.sep), "file.txt");
+      const nestedPath = path.join(
+        targetConfigDir,
+        Array.from({ length: 10 }, (_, i) => `level${i}`).join(path.sep),
+        "file.txt"
+      );
       expect(fs.existsSync(nestedPath)).toBe(true);
     });
   });
 });
 
 function applyPlatformSettings(platform: string, projectRoot: string, targetConfigDir: string) {
-	const settingsPath = path.join(projectRoot, "settings", platform);
+  const settingsPath = path.join(projectRoot, "settings", platform);
 
-	if (!fs.existsSync(settingsPath)) {
-		return {
-			success: false,
-			filesCopied: 0,
-			error: "Settings directory not found",
-			operations: [],
-		};
-	}
+  if (!fs.existsSync(settingsPath)) {
+    return {
+      success: false,
+      filesCopied: 0,
+      error: "Settings directory not found",
+      operations: [],
+    };
+  }
 
-	const result = copyPlatformSettings(settingsPath, targetConfigDir);
+  const result = copyPlatformSettings(settingsPath, targetConfigDir);
 
-	return {
-		success: result.success,
-		filesCopied: result.filesCopied,
-		error: result.error,
-		operations: result.operations.map((op) => ({
-			source: op.sourcePath,
-			destination: op.destinationPath,
-			status: op.status,
-		})),
-	};
+  return {
+    success: result.success,
+    filesCopied: result.filesCopied,
+    error: result.error,
+    operations: result.operations.map((op) => ({
+      source: op.sourcePath,
+      destination: op.destinationPath,
+      status: op.status,
+    })),
+  };
 }
