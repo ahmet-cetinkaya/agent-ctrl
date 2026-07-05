@@ -38,6 +38,11 @@ export interface ApplyCommandResult {
   durationMs: number;
   fileChanges: string[];
   warnings: string[];
+  settingsDiscovery?: {
+    discoveredPlatforms: string[];
+    appliedPlatform: string | null;
+    filesCopied: number;
+  };
 }
 
 export class ApplyCommand {
@@ -83,6 +88,8 @@ export class ApplyCommand {
         warnings.push("Dry run mode: no file system changes were written.");
       }
 
+      let appliedPlatform: string | null = null;
+      let settingsFilesCopied = 0;
       if (!dryRun && settingsResult.platforms.includes(selectedPlatform)) {
         const platformSettingsDir = settingsResult.settingsDirectories[selectedPlatform];
         if (platformSettingsDir?.path) {
@@ -90,6 +97,8 @@ export class ApplyCommand {
           const targetConfigDir = dirname(target.configPath);
           const copyResult = copyPlatformSettings(platformSettingsDir.path, targetConfigDir);
           if (copyResult.success) {
+            appliedPlatform = selectedPlatform;
+            settingsFilesCopied = copyResult.filesCopied;
             warnings.push(`Applied ${copyResult.filesCopied} platform-specific setting(s) for '${selectedPlatform}'`);
           } else if (copyResult.error) {
             warnings.push(`Platform settings copy failed: ${copyResult.error}`);
@@ -108,6 +117,11 @@ export class ApplyCommand {
         durationMs,
         fileChanges: [...(applyResult.fileChanges ?? [])],
         warnings,
+        settingsDiscovery: {
+          discoveredPlatforms: settingsResult.platforms,
+          appliedPlatform,
+          filesCopied: settingsFilesCopied,
+        },
       });
     } catch (error) {
       const nodeErr = error as NodeJS.ErrnoException;

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
@@ -81,5 +81,78 @@ describe("ApplyCommand", () => {
     if (!result.success) return;
 
     expect(result.data.warnings).toContain("Dry run mode: no file system changes were written.");
+  });
+
+  describe("settings discovery", () => {
+    it("reports empty discovery when no settings directory exists", async () => {
+      const result = await command.execute({
+        projectPath,
+        platform: "gemini",
+        userConfigRootPath: userRootPath,
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      expect(result.data.settingsDiscovery).toBeDefined();
+      expect(result.data.settingsDiscovery?.discoveredPlatforms).toHaveLength(0);
+      expect(result.data.settingsDiscovery?.appliedPlatform).toBeNull();
+    });
+
+    it("discovers and applies platform-specific settings", async () => {
+      await mkdir(join(projectPath, "settings", "gemini"), { recursive: true });
+      await writeFile(join(projectPath, "settings", "gemini", "extra.md"), "# Extra\n", "utf-8");
+
+      const result = await command.execute({
+        projectPath,
+        platform: "gemini",
+        userConfigRootPath: userRootPath,
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      expect(result.data.settingsDiscovery?.discoveredPlatforms).toContain("gemini");
+      expect(result.data.settingsDiscovery?.appliedPlatform).toBe("gemini");
+      expect(result.data.settingsDiscovery?.filesCopied).toBeGreaterThan(0);
+      expect(
+        result.data.warnings.some((w) => w.includes("platform-specific setting"))
+      ).toBe(true);
+    });
+
+    it("does not apply settings for a platform without a settings directory", async () => {
+      await mkdir(join(projectPath, "settings", "claude"), { recursive: true });
+      await writeFile(join(projectPath, "settings", "claude", "x.md"), "x", "utf-8");
+
+      const result = await command.execute({
+        projectPath,
+        platform: "gemini",
+        userConfigRootPath: userRootPath,
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      expect(result.data.settingsDiscovery?.discoveredPlatforms).toContain("claude");
+      expect(result.data.settingsDiscovery?.appliedPlatform).toBeNull();
+    });
+
+    it("surfaces validation errors for invalid platform directories", async () => {
+      await mkdir(join(projectPath, "settings", "vscode"), { recursive: true });
+      await writeFile(join(projectPath, "settings", "vscode", "y.md"), "y", "utf-8");
+
+      const result = await command.execute({
+        projectPath,
+        platform: "gemini",
+        userConfigRootPath: userRootPath,
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+
+      expect(
+        result.data.warnings.some((w) => w.includes("Settings validation"))
+      ).toBe(true);
+    });
   });
 });
