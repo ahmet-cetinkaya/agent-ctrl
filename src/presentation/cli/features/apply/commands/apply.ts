@@ -196,6 +196,7 @@ async function applyToPlatform(platform: string, options: any): Promise<void> {
       fileChanges,
       warnings,
       durationMs,
+      settingsDiscovery,
     } = result.data;
 
     if (options.dryRun) {
@@ -226,12 +227,24 @@ async function applyToPlatform(platform: string, options: any): Promise<void> {
       if (usePrompt) LogService.outro(`Applied to ${selectedPlatform}`);
     }
 
+    if (verbose && settingsDiscovery) {
+      const lines = [
+        `Discovered platforms: ${settingsDiscovery.discoveredPlatforms.length > 0 ? settingsDiscovery.discoveredPlatforms.join(", ") : "none"}`,
+      ];
+      if (settingsDiscovery.appliedPlatform) {
+        lines.push(
+          `Applied settings for: ${settingsDiscovery.appliedPlatform} (${settingsDiscovery.filesCopied} file(s))`
+        );
+      }
+      LogService.note(lines.join("\n"), "Settings discovery:");
+    }
+
     if (warnings.length > 0) {
       LogService.note(warnings.join("\n"), "Warnings:");
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    LogService.error(`Error: ${errorMessage}`);
+    LogService.error(`[${platformDisplay}] Unexpected error: ${errorMessage} (Path: ${sourcePath})`);
     process.exit(2);
   }
 }

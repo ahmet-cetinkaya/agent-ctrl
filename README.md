@@ -110,6 +110,29 @@ Agent personas and identity definitions.
 - `agent-ctrl mcp update <id>` - Update a configured MCP server.
 - `agent-ctrl mcp rm <id>` - Remove an MCP server.
 
+### Platform-Specific Settings (`settings/`)
+
+Place a `settings/<platform>/` directory in your project to apply files that only
+one platform should receive. During `agent-ctrl apply <platform>`, the contents of
+the matching `settings/<platform>/` directory are copied into that platform's native
+configuration directory **after** the standard artifacts are synced.
+
+```text
+settings/
+├── claude/          # Applied only when running: agent-ctrl apply claude
+│   └── config.json
+└── gemini/          # Applied only when running: agent-ctrl apply gemini
+    └── settings.json
+```
+
+Key behavior:
+
+- **Opt-in:** Projects without a `settings/` directory are unaffected.
+- **Platform-scoped:** Only the directory matching the applied platform is copied; others are ignored.
+- **Override semantics:** Platform-specific files completely replace existing files (no merge, no backups — Git provides history).
+- **Validation:** Directory names must match a supported platform (`claude`, `gemini`, `cursor`, `codex`, `qwen`, `windsurf`, `opencode`, `kilo`, `forgecode`, `antigravity`). Invalid names are skipped with a warning.
+- **Verbose mode:** `agent-ctrl apply <platform> --verbose` prints a settings discovery summary.
+
 ---
 
 ## 📂 Project Structure
@@ -136,7 +159,7 @@ Agent personas and identity definitions.
 └── .env                    # Optional API credentials for catalog access
 ```
 
-**Note:** You can also use project-scoped configuration by placing `.agent-ctrl/` in your project directory.
+**Note:** You can also use project-scoped configuration by placing `.agent-ctrl/` in your project directory. To ship files that only a specific platform should receive, add a project-level `settings/<platform>/` directory (see [Platform-Specific Settings](#platform-specific-settings-settings)).
 
 ---
 

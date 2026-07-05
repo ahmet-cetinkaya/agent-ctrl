@@ -6,8 +6,8 @@ export class SystemError extends BaseError {
   readonly type = "SystemError";
   readonly errorId?: ErrorId;
 
-  constructor(message: string, errorId?: ErrorId) {
-    super(message);
+  constructor(message: string, errorId?: ErrorId, options?: { cause?: unknown }) {
+    super(message, options);
     this.errorId = errorId;
   }
 }

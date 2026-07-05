@@ -92,6 +92,15 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
       fileChanges.push(resolve(claudeRoot, "..", ".claude.json"));
     }
 
+    const warnings = [
+      ...source.warnings,
+      ...(source.skills.length > 0 && target.scope !== "project"
+        ? [
+            'Skills were applied to ~/.claude/skills/ but the Claude Desktop App (Chat/Cowork) does not load filesystem skills. They are only available in the Code tab via "/" slash commands. Upload skills through Customize > Skills for Chat/Cowork use, or use a project-local .claude/skills/ directory.',
+          ]
+        : []),
+    ];
+
     return {
       platform: this.platformName,
       configPath: target.configPath,
@@ -100,7 +109,7 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
       status: "success",
       message: "Applied Claude configuration, skills, agents, commands, and MCP servers.",
       fileChanges,
-      warnings: source.warnings,
+      warnings,
     };
   }
 }
