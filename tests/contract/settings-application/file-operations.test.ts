@@ -319,13 +319,14 @@ function simulateRecursiveCopyContract(structure: Record<string, unknown>): {
   fileCount: number;
   directoriesCreated: number;
 } {
-  const countKeys = (obj: Record<string, unknown>, depth = 0): { files: number; maxDepth: number } => {
+  const countKeys = (obj: Record<string, unknown>, depth = 1): { files: number; maxDepth: number } => {
     let files = 0;
     let maxDepth = depth;
 
     for (const value of Object.values(obj)) {
       if (typeof value === "string") {
         files++;
+        maxDepth = Math.max(maxDepth, depth);
       } else if (typeof value === "object" && value !== null) {
         const result = countKeys(value as Record<string, unknown>, depth + 1);
         files += result.files;
