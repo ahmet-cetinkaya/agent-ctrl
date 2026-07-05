@@ -56,6 +56,9 @@ describe("symlink-handler - Symbolic Link Detection", () => {
     it("should handle broken symlinks gracefully", () => {
       // Create symlink to non-existent target
       const symlinkPath = "/tmp/test-broken-symlink";
+      if (fs.existsSync(symlinkPath) || fs.lstatSync(symlinkPath, { throwIfNoEntry: false })) {
+        fs.unlinkSync(symlinkPath);
+      }
       fs.symlinkSync("/non/existent/path", symlinkPath);
 
       const result = detectSymlink(symlinkPath, "/tmp");

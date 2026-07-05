@@ -52,7 +52,7 @@ export function resolvePlatformConfigPath(platform: SupportedApplyPlatform): Pla
   switch (platform) {
     case "claude": {
       const envVar = process.env.CLAUDE_CONFIG_DIR;
-      if (envVar) {
+      if (envVar !== undefined) {
         return {
           platform: "claude",
           resolvedPath: envVar,
@@ -72,7 +72,7 @@ export function resolvePlatformConfigPath(platform: SupportedApplyPlatform): Pla
 
     case "codex": {
       const envVar = process.env.CODEX_HOME;
-      if (envVar) {
+      if (envVar !== undefined) {
         return {
           platform: "codex",
           resolvedPath: envVar,
@@ -92,7 +92,7 @@ export function resolvePlatformConfigPath(platform: SupportedApplyPlatform): Pla
 
     case "gemini": {
       const envVar = process.env.GEMINI_CONFIG_DIR;
-      if (envVar) {
+      if (envVar !== undefined) {
         return {
           platform: "gemini",
           resolvedPath: envVar,
@@ -127,7 +127,7 @@ export function resolvePlatformConfigPath(platform: SupportedApplyPlatform): Pla
 
     case "opencode": {
       const envVar = process.env.OPENCODE_CONFIG_DIR;
-      if (envVar) {
+      if (envVar !== undefined) {
         return {
           platform: "opencode",
           resolvedPath: envVar,
@@ -202,7 +202,7 @@ export function resolvePlatformConfigPath(platform: SupportedApplyPlatform): Pla
 
     case "forgecode": {
       const envVar = process.env.FORGE_CONFIG;
-      if (envVar) {
+      if (envVar !== undefined) {
         return {
           platform: "forgecode",
           resolvedPath: envVar,

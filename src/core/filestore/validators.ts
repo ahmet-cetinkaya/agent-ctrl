@@ -43,14 +43,34 @@ export interface PathValidationResult {
  * ```
  */
 export function validatePathTraversal(filePath: string, allowedRoot: string): PathValidationResult {
-  const normalized = path.normalize(filePath);
+  let decoded = filePath;
+  try {
+    decoded = decodeURIComponent(filePath);
+  } catch {
+    return {
+      isValid: false,
+      error: `Malformed percent-encoding in path: ${filePath}`,
+      resolvedPath: filePath,
+    };
+  }
+
+  const normalized = path.normalize(decoded);
   const resolved = path.resolve(allowedRoot, normalized);
 
-  // Check for path traversal attempts
-  if (filePath.includes("..")) {
+  // Check for path traversal attempts (raw and percent-decoded forms)
+  if (filePath.includes("..") || decoded.includes("..")) {
     return {
       isValid: false,
       error: `Path traversal detected: '..' component in path`,
+      resolvedPath: normalized,
+    };
+  }
+
+  // Reject home-directory references; they resolve outside the project boundary
+  if (decoded.startsWith("~")) {
+    return {
+      isValid: false,
+      error: `Home directory reference not allowed: ${decoded}`,
       resolvedPath: normalized,
     };
   }

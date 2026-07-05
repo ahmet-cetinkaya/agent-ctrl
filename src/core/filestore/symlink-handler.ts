@@ -43,39 +43,11 @@ export interface SymlinkDetectionResult {
  * ```
  */
 export function detectSymlink(filePath: string, projectRoot: string): SymlinkDetectionResult {
+  let stats: fs.Stats;
   try {
-    const stats = fs.lstatSync(filePath);
-
-    // Not a symbolic link
-    if (!stats.isSymbolicLink()) {
-      return {
-        isSymlink: false,
-        targetPath: null,
-        targetEscapesProject: false,
-        warning: null,
-      };
-    }
-
-    // Resolve the symbolic link target
-    const targetPath = fs.realpathSync(filePath);
-    const resolvedTarget = path.resolve(targetPath);
-
-    // Check if target escapes project boundaries
-    const relativePath = path.relative(projectRoot, resolvedTarget);
-    const targetEscapesProject = relativePath.startsWith("..");
-
-    const warning = targetEscapesProject
-      ? `Symbolic link points outside project: ${filePath} → ${resolvedTarget}`
-      : null;
-
-    return {
-      isSymlink: true,
-      targetPath: resolvedTarget,
-      targetEscapesProject,
-      warning,
-    };
-  } catch (error) {
-    // If we can't read the link, treat as non-symlink for safety
+    stats = fs.lstatSync(filePath);
+  } catch {
+    // Path does not exist or cannot be read
     return {
       isSymlink: false,
       targetPath: null,
@@ -83,6 +55,40 @@ export function detectSymlink(filePath: string, projectRoot: string): SymlinkDet
       warning: null,
     };
   }
+
+  // Not a symbolic link
+  if (!stats.isSymbolicLink()) {
+    return {
+      isSymlink: false,
+      targetPath: null,
+      targetEscapesProject: false,
+      warning: null,
+    };
+  }
+
+  // Resolve the symbolic link target. Broken links (missing target) still count
+  // as symlinks; fall back to the raw link target when realpath fails.
+  let resolvedTarget: string;
+  try {
+    resolvedTarget = path.resolve(fs.realpathSync(filePath));
+  } catch {
+    resolvedTarget = path.resolve(projectRoot, fs.readlinkSync(filePath));
+  }
+
+  // Check if target escapes project boundaries
+  const relativePath = path.relative(projectRoot, resolvedTarget);
+  const targetEscapesProject = relativePath.startsWith("..");
+
+  const warning = targetEscapesProject
+    ? `Symbolic link points outside project: ${filePath} → ${resolvedTarget}`
+    : null;
+
+  return {
+    isSymlink: true,
+    targetPath: resolvedTarget,
+    targetEscapesProject,
+    warning,
+  };
 }
 
 /**
