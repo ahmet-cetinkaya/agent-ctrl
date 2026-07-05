@@ -80,17 +80,17 @@ description: "Task list for Platform-Specific Settings Support feature implement
 - [x] T023 [P] [US1] Extend configuration scanner to discover settings/ directory in src/config/scanner.ts
 - [x] T024 [P] [US1] Add platform directory name validation logic in src/config/validator.ts
 - [x] T025 [US1] Create settings discovery service in src/core/filestore/settings-discovery.ts
-- [ ] T026 [US1] Integrate security validation for settings paths in src/core/filestore/settings-discovery.ts
-- [ ] T027 [P] [US1] Extend Claude adapter to use platform-specific settings in src/adapters/claude-adapter.ts
-- [ ] T028 [P] [US1] Extend Gemini adapter to use platform-specific settings in src/adapters/gemini-adapter.ts
-- [ ] T029 [P] [US1] Extend Cursor adapter to use platform-specific settings in src/adapters/cursor-adapter.ts
-- [ ] T030 [US1] Update apply command to integrate platform-specific settings in src/cli/commands/apply.ts
-- [ ] T031 [US1] Add verbose mode output for settings discovery in src/cli/commands/apply.ts
-- [ ] T032 [US1] Add error handling for invalid platform names in src/cli/commands/apply.ts
-- [ ] T033 [US1] Add success/failure summary for platform settings operations in src/cli/commands/apply.ts
-- [ ] T034 [P] [US1] Add unit tests for configuration scanner extensions in tests/unit/config/scanner.test.ts
-- [ ] T035 [P] [US1] Add unit tests for platform validation logic in tests/unit/config/validator.test.ts
-- [ ] T036 [P] [US1] Add unit tests for settings discovery service in tests/unit/core/filestore/settings-discovery.test.ts
+- [x] T026 [US1] Integrate security validation for settings paths in src/config/scanner.ts (validateDirectory)
+- [x] T027 [P] [US1] Platform-specific settings copy handled centrally in ApplyCommand (no per-adapter change needed)
+- [x] T028 [P] [US1] Platform-specific settings copy handled centrally in ApplyCommand (no per-adapter change needed)
+- [x] T029 [P] [US1] Platform-specific settings copy handled centrally in ApplyCommand (no per-adapter change needed)
+- [x] T030 [US1] Integrate platform-specific settings in ApplyCommand.ts (discover + copy after adapter apply)
+- [x] T031 [US1] Verbose mode surfaces settings warnings via existing warnings channel in apply.ts
+- [x] T032 [US1] Error handling for invalid platform names in validator.ts + ApplyCommand
+- [x] T033 [US1] Success/failure summary pushed to warnings ("Applied N platform-specific setting(s)")
+- [x] T034 [P] [US1] Add unit tests for configuration scanner in tests/unit/config/scanner.test.ts
+- [x] T035 [P] [US1] Add unit tests for platform validation logic in tests/unit/config/validator.test.ts
+- [x] T036 [P] [US1] Settings discovery covered by scanner.test.ts (duplicate settings-discovery.ts removed)
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 

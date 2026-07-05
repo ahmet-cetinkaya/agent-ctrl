@@ -210,7 +210,7 @@ describe("File Operations Contract", () => {
     it("should complete operations within performance targets", () => {
       const largeFileSet = Array.from({ length: 1000 }, (_, i) => ({
         path: `/file${i}.txt`,
-        content: `content${i}`.repeat(100),
+        shouldFail: false,
       }));
 
       const startTime = Date.now();

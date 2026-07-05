@@ -37,7 +37,7 @@ describe("Platform Settings Backward Compatibility Integration", () => {
 
       expect(discovered.platforms).toHaveLength(0);
       expect(discovered.hasSettingsDirectory).toBe(false);
-      expect(discovered.settingsDirectories).toEqual({});
+      expect(Object.keys(discovered.settingsDirectories)).toHaveLength(0);
     });
 
     it("should not require settings directory for successful discovery", async () => {

@@ -1,10 +1,9 @@
 import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { validatePlatformName } from "./validator.js";
-import { validateDirectory } from "@/core/filestore/security-service.js";
+import { validateDirectory, DEFAULT_SECURITY_CONFIG } from "@/core/filestore/security-service.js";
 import type { PlatformSettingsDirectory } from "@/core/domain/shared/types/PlatformSettingsDirectory";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
-import type { SecurityValidationResult } from "@/core/domain/shared/types/SecurityValidationResult";
 
 export interface SettingsDiscoveryResult {
 	platforms: SupportedApplyPlatform[];
@@ -35,7 +34,10 @@ export async function discoverPlatformSettings(projectPath: string): Promise<Set
 			}
 
 			const platformDirPath = resolve(settingsPath, entry.name);
-			const securityCheck = validateDirectory(platformDirPath, { projectRoot: projectPath });
+			const securityCheck = validateDirectory(platformDirPath, {
+				...DEFAULT_SECURITY_CONFIG,
+				projectRoot: projectPath,
+			});
 
 			if (!securityCheck.isValid) {
 				result.validationErrors.push(

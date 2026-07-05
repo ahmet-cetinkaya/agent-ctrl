@@ -70,7 +70,7 @@ describe("Platform Settings Basic Application Integration", () => {
       const discovered = await discoverPlatformSettings(testProjectDir);
 
       expect(discovered.platforms).toHaveLength(0);
-      expect(discovered.settingsDirectories).toEqual({});
+      expect(Object.keys(discovered.settingsDirectories)).toHaveLength(0);
     });
 
     it("should handle empty settings directory gracefully", async () => {
