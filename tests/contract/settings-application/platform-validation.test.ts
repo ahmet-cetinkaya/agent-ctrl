@@ -1,6 +1,5 @@
 import { describe, it, expect } from "bun:test";
 import { validatePlatformName } from "@/config/validator.js";
-import type { PlatformValidationResult } from "@/core/domain/shared/types/PlatformValidationResult.js";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform.js";
 
 /**

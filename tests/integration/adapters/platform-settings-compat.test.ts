@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import fs from "node:fs";
-import path from "node:path";
 import { discoverPlatformSettings } from "@/config/scanner.js";
 
 /**
@@ -50,7 +49,7 @@ describe("Platform Settings Backward Compatibility Integration", () => {
     it("should handle all platforms without settings directory", async () => {
       const platforms: Array<"claude" | "gemini" | "cursor"> = ["claude", "gemini", "cursor"];
 
-      for (const platform of platforms) {
+      for (const _platform of platforms) {
         const discovered = await discoverPlatformSettings(testProjectDir);
         expect(discovered.platforms).toHaveLength(0);
         expect(discovered.hasSettingsDirectory).toBe(false);

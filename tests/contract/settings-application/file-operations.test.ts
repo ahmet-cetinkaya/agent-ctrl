@@ -374,7 +374,7 @@ function simulateBatchCopyContract(files: Array<{ path: string; shouldFail: bool
 /**
  * Mock single file copy for contract testing.
  */
-function simulateSingleFileCopyContract(file: { path: string; content: Buffer | string }): {
+function simulateSingleFileCopyContract(_file: { path: string; content: Buffer | string }): {
   success: boolean;
   duration: number;
 } {

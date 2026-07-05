@@ -1,4 +1,4 @@
-import { resolve, dirname } from "node:path";
+import { dirname } from "node:path";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
