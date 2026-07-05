@@ -3,6 +3,8 @@ import type { PlatformValidationResult } from "@/core/domain/shared/types/Platfo
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 
 export function validatePlatformName(directoryName: string): PlatformValidationResult {
+	const hasLeadingWhitespace = /^\s/.test(directoryName);
+	const hasTrailingWhitespace = /\s$/.test(directoryName);
 	const normalized = directoryName.toLowerCase().trim();
 
 	if (!normalized) {
@@ -11,6 +13,15 @@ export function validatePlatformName(directoryName: string): PlatformValidationR
 			isValid: false,
 			normalizedPlatform: null,
 			validationErrors: ["Platform name cannot be empty or whitespace only"],
+		};
+	}
+
+	if (hasLeadingWhitespace || hasTrailingWhitespace) {
+		return {
+			directoryName,
+			isValid: false,
+			normalizedPlatform: null,
+			validationErrors: ["Platform name cannot have leading or trailing whitespace"],
 		};
 	}
 
