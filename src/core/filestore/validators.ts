@@ -75,9 +75,12 @@ export function validatePathTraversal(filePath: string, allowedRoot: string): Pa
     };
   }
 
-  // Check if resolved path escapes allowed root
+  // Check if resolved path escapes allowed root. On Windows, a path on a
+  // different drive than allowedRoot can't be expressed as a relative "../"
+  // path — path.relative returns an absolute path instead, which wouldn't
+  // start with ".." and would silently bypass this check.
   const relativePath = path.relative(allowedRoot, resolved);
-  if (relativePath.startsWith("..")) {
+  if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
     return {
       isValid: false,
       error: `Path escapes allowed root: ${normalized} escapes ${allowedRoot}`,
