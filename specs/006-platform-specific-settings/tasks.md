@@ -70,16 +70,16 @@ description: "Task list for Platform-Specific Settings Support feature implement
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T019 [P] [US1] Contract test for platform validation in tests/contract/settings-application/platform-validation.test.ts
-- [ ] T020 [P] [US1] Contract test for file operations in tests/contract/settings-application/file-operations.test.ts
-- [ ] T021 [P] [US1] Integration test for basic platform settings application in tests/integration/adapters/platform-settings-basic.test.ts
-- [ ] T022 [P] [US1] Integration test for backward compatibility without settings directory in tests/integration/adapters/platform-settings-compat.test.ts
+- [x] T019 [P] [US1] Contract test for platform validation in tests/contract/settings-application/platform-validation.test.ts
+- [x] T020 [P] [US1] Contract test for file operations in tests/contract/settings-application/file-operations.test.ts
+- [x] T021 [P] [US1] Integration test for basic platform settings application in tests/integration/adapters/platform-settings-basic.test.ts
+- [x] T022 [P] [US1] Integration test for backward compatibility without settings directory in tests/integration/adapters/platform-settings-compat.test.ts
 
 ### Implementation for User Story 1
 
-- [ ] T023 [P] [US1] Extend configuration scanner to discover settings/ directory in src/config/scanner.ts
-- [ ] T024 [P] [US1] Add platform directory name validation logic in src/config/validator.ts
-- [ ] T025 [US1] Create settings discovery service in src/core/filestore/settings-discovery.ts
+- [x] T023 [P] [US1] Extend configuration scanner to discover settings/ directory in src/config/scanner.ts
+- [x] T024 [P] [US1] Add platform directory name validation logic in src/config/validator.ts
+- [x] T025 [US1] Create settings discovery service in src/core/filestore/settings-discovery.ts
 - [ ] T026 [US1] Integrate security validation for settings paths in src/core/filestore/settings-discovery.ts
 - [ ] T027 [P] [US1] Extend Claude adapter to use platform-specific settings in src/adapters/claude-adapter.ts
 - [ ] T028 [P] [US1] Extend Gemini adapter to use platform-specific settings in src/adapters/gemini-adapter.ts
