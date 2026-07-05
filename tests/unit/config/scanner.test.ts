@@ -5,7 +5,7 @@ import { discoverPlatformSettings } from "@/config/scanner.js";
 
 describe("discoverPlatformSettings", () => {
   const testDir = "/tmp/test-scanner-unit";
-  const settingsDir = path.join(testDir, "settings");
+  const settingsDir = path.join(testDir, ".agent-ctrl", "settings");
 
   beforeEach(() => {
     if (fs.existsSync(testDir)) fs.rmSync(testDir, { recursive: true, force: true });

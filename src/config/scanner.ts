@@ -19,7 +19,9 @@ export interface SettingsDiscoveryResult {
 }
 
 export async function discoverPlatformSettings(projectPath: string): Promise<SettingsDiscoveryResult> {
-  const settingsPath = resolve(projectPath, "settings");
+  // settings/ lives inside the agent-ctrl configuration directory, alongside
+  // rules/, skills/, agents/, commands/ (see ApplySourceLoader.load).
+  const settingsPath = resolve(projectPath, ".agent-ctrl", "settings");
   const result: SettingsDiscoveryResult = {
     platforms: [],
     settingsDirectories: {} as Record<SupportedApplyPlatform, PlatformSettingsDirectory>,

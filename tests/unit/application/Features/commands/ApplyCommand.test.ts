@@ -101,8 +101,8 @@ describe("ApplyCommand", () => {
     });
 
     it("discovers and applies platform-specific settings", async () => {
-      await mkdir(join(projectPath, "settings", "gemini"), { recursive: true });
-      await writeFile(join(projectPath, "settings", "gemini", "extra.md"), "# Extra\n", "utf-8");
+      await mkdir(join(projectPath, ".agent-ctrl", "settings", "gemini"), { recursive: true });
+      await writeFile(join(projectPath, ".agent-ctrl", "settings", "gemini", "extra.md"), "# Extra\n", "utf-8");
 
       const result = await command.execute({
         projectPath,
@@ -120,8 +120,8 @@ describe("ApplyCommand", () => {
     });
 
     it("does not apply settings for a platform without a settings directory", async () => {
-      await mkdir(join(projectPath, "settings", "claude"), { recursive: true });
-      await writeFile(join(projectPath, "settings", "claude", "x.md"), "x", "utf-8");
+      await mkdir(join(projectPath, ".agent-ctrl", "settings", "claude"), { recursive: true });
+      await writeFile(join(projectPath, ".agent-ctrl", "settings", "claude", "x.md"), "x", "utf-8");
 
       const result = await command.execute({
         projectPath,
@@ -137,8 +137,8 @@ describe("ApplyCommand", () => {
     });
 
     it("surfaces validation errors for invalid platform directories", async () => {
-      await mkdir(join(projectPath, "settings", "vscode"), { recursive: true });
-      await writeFile(join(projectPath, "settings", "vscode", "y.md"), "y", "utf-8");
+      await mkdir(join(projectPath, ".agent-ctrl", "settings", "vscode"), { recursive: true });
+      await writeFile(join(projectPath, ".agent-ctrl", "settings", "vscode", "y.md"), "y", "utf-8");
 
       const result = await command.execute({
         projectPath,
@@ -153,7 +153,7 @@ describe("ApplyCommand", () => {
     });
 
     it("fails the command when platform-specific settings copy fails", async () => {
-      const geminiSettingsDir = join(projectPath, "settings", "gemini");
+      const geminiSettingsDir = join(projectPath, ".agent-ctrl", "settings", "gemini");
       await mkdir(geminiSettingsDir, { recursive: true });
       await writeFile(join(geminiSettingsDir, "extra.md"), "# Extra\n", "utf-8");
 
@@ -177,7 +177,7 @@ describe("ApplyCommand", () => {
     });
 
     it("fails the command when a settings directory contains a symlink escaping the project", async () => {
-      const geminiSettingsDir = join(projectPath, "settings", "gemini");
+      const geminiSettingsDir = join(projectPath, ".agent-ctrl", "settings", "gemini");
       await mkdir(geminiSettingsDir, { recursive: true });
       const outsideFile = join(tmpdir(), `apply-command-outside-${Date.now()}.txt`);
       await writeFile(outsideFile, "secret", "utf-8");

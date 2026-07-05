@@ -6,7 +6,7 @@ import { copyPlatformSettings } from "@/core/filestore/copiers.js";
 
 describe("Partial Platform Settings Integration", () => {
   const testDir = "/tmp/test-partial-platform";
-  const settingsDir = path.join(testDir, "settings");
+  const settingsDir = path.join(testDir, ".agent-ctrl", "settings");
   const targetRoot = "/tmp/test-partial-target";
 
   beforeEach(() => {

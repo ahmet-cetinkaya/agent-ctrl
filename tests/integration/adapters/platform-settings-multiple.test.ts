@@ -6,7 +6,7 @@ import { copyMultiplePlatformSettings } from "@/core/filestore/copiers.js";
 
 describe("Multi-Platform Settings Application Integration", () => {
   const testDir = "/tmp/test-multi-platform";
-  const settingsDir = path.join(testDir, "settings");
+  const settingsDir = path.join(testDir, ".agent-ctrl", "settings");
   const targetRoot = "/tmp/test-multi-target";
 
   beforeEach(() => {

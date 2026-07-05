@@ -6,7 +6,7 @@ import { validatePlatformName } from "@/config/validator.js";
 
 describe("Settings Security Edge Cases Contract", () => {
   const testDir = "/tmp/test-security-edge";
-  const settingsDir = path.join(testDir, "settings");
+  const settingsDir = path.join(testDir, ".agent-ctrl", "settings");
 
   beforeEach(() => {
     if (fs.existsSync(testDir)) fs.rmSync(testDir, { recursive: true, force: true });

@@ -24,8 +24,8 @@ describe("Complete Platform Settings Workflow Integration", () => {
   });
 
   it("applies standard artifacts and platform-specific settings together", async () => {
-    await mkdir(join(projectPath, "settings", "gemini"), { recursive: true });
-    await writeFile(join(projectPath, "settings", "gemini", "custom.md"), "# Custom\n", "utf-8");
+    await mkdir(join(projectPath, ".agent-ctrl", "settings", "gemini"), { recursive: true });
+    await writeFile(join(projectPath, ".agent-ctrl", "settings", "gemini", "custom.md"), "# Custom\n", "utf-8");
 
     const result = await command.execute({
       projectPath,
@@ -56,8 +56,8 @@ describe("Complete Platform Settings Workflow Integration", () => {
   });
 
   it("does not copy settings during dry-run", async () => {
-    await mkdir(join(projectPath, "settings", "gemini"), { recursive: true });
-    await writeFile(join(projectPath, "settings", "gemini", "custom.md"), "# Custom\n", "utf-8");
+    await mkdir(join(projectPath, ".agent-ctrl", "settings", "gemini"), { recursive: true });
+    await writeFile(join(projectPath, ".agent-ctrl", "settings", "gemini", "custom.md"), "# Custom\n", "utf-8");
 
     const result = await command.execute({
       projectPath,
@@ -74,10 +74,10 @@ describe("Complete Platform Settings Workflow Integration", () => {
   });
 
   it("only applies settings matching the selected platform", async () => {
-    await mkdir(join(projectPath, "settings", "claude"), { recursive: true });
-    await mkdir(join(projectPath, "settings", "gemini"), { recursive: true });
-    await writeFile(join(projectPath, "settings", "claude", "claude.md"), "c", "utf-8");
-    await writeFile(join(projectPath, "settings", "gemini", "gemini.md"), "g", "utf-8");
+    await mkdir(join(projectPath, ".agent-ctrl", "settings", "claude"), { recursive: true });
+    await mkdir(join(projectPath, ".agent-ctrl", "settings", "gemini"), { recursive: true });
+    await writeFile(join(projectPath, ".agent-ctrl", "settings", "claude", "claude.md"), "c", "utf-8");
+    await writeFile(join(projectPath, ".agent-ctrl", "settings", "gemini", "gemini.md"), "g", "utf-8");
 
     const result = await command.execute({
       projectPath,

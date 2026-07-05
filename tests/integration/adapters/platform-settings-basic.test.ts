@@ -16,7 +16,7 @@ import { copyPlatformSettings } from "@/core/filestore/copiers.js";
 
 describe("Platform Settings Basic Application Integration", () => {
   const testProjectDir = "/tmp/test-platform-settings";
-  const settingsDir = path.join(testProjectDir, "settings");
+  const settingsDir = path.join(testProjectDir, ".agent-ctrl", "settings");
   const claudeSettingsDir = path.join(settingsDir, "claude");
   const geminiSettingsDir = path.join(settingsDir, "gemini");
 
@@ -280,7 +280,7 @@ describe("Platform Settings Basic Application Integration", () => {
 });
 
 function applyPlatformSettings(platform: string, projectRoot: string, targetConfigDir: string) {
-  const settingsPath = path.join(projectRoot, "settings", platform);
+  const settingsPath = path.join(projectRoot, ".agent-ctrl", "settings", platform);
 
   if (!fs.existsSync(settingsPath)) {
     return {
