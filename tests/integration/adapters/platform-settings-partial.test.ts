@@ -43,7 +43,7 @@ describe("Partial Platform Settings Integration", () => {
       if (!discovered.platforms.includes(platform as any)) continue;
       const target = path.join(targetRoot, platform);
       fs.mkdirSync(target, { recursive: true });
-      const result = copyPlatformSettings(discovered.settingsDirectories[platform as "claude"].path, target);
+      const result = await copyPlatformSettings(discovered.settingsDirectories[platform as "claude"].path, target);
       if (result.success) applied.push(platform);
     }
 

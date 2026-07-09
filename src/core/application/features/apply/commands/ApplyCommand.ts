@@ -11,6 +11,7 @@ import { PlatformAdapterRegistry } from "@/infrastructure/features/apply/adapter
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 import { discoverPlatformSettings } from "@/config/scanner.js";
 import { copyPlatformSettings } from "@/core/filestore/copiers.js";
+import { loadEnvFile } from "@/core/filestore/env-loader.js";
 
 export interface ApplyCommandOptions {
   projectPath: string;
@@ -111,7 +112,16 @@ export class ApplyCommand {
             userConfigRootPath,
           });
           const targetConfigDir = target.settingsDirectory ?? dirname(target.configPath);
-          const copyResult = copyPlatformSettings(platformSettingsDir.path, targetConfigDir);
+
+          // Load env variables for interpolation
+          const envResult = await loadEnvFile(projectPath);
+          const envVariables = envResult.variables;
+
+          const copyResult = await copyPlatformSettings(platformSettingsDir.path, targetConfigDir, {
+            followSymbolicLinks: true,
+            createParentDirectories: true,
+            envVariables: Object.keys(envVariables).length > 0 ? envVariables : undefined,
+          });
           if (copyResult.success) {
             appliedPlatform = selectedPlatform;
             settingsFilesCopied = copyResult.filesCopied;

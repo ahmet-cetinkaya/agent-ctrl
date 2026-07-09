@@ -34,10 +34,13 @@ describe("Complete Platform Settings Workflow Integration", () => {
     });
 
     expect(result.success).toBe(true);
-    if (!result.success) return;
+    if (!result.success) {
+      return;
+    }
 
-    expect(result.data.status).toBe("success");
-    expect(result.data.settingsDiscovery?.appliedPlatform).toBe("gemini");
+    const applyResult = result.data;
+    expect(applyResult.status).toBe("success");
+    expect(applyResult.settingsDiscovery?.appliedPlatform).toBe("gemini");
     expect(existsSync(join(userRootPath, "custom.md"))).toBe(true);
   });
 
@@ -49,10 +52,13 @@ describe("Complete Platform Settings Workflow Integration", () => {
     });
 
     expect(result.success).toBe(true);
-    if (!result.success) return;
+    if (!result.success) {
+      return;
+    }
 
-    expect(result.data.status).toBe("success");
-    expect(result.data.settingsDiscovery?.discoveredPlatforms).toHaveLength(0);
+    const applyResult = result.data;
+    expect(applyResult.status).toBe("success");
+    expect(applyResult.settingsDiscovery?.discoveredPlatforms).toHaveLength(0);
   });
 
   it("does not copy settings during dry-run", async () => {
@@ -67,9 +73,12 @@ describe("Complete Platform Settings Workflow Integration", () => {
     });
 
     expect(result.success).toBe(true);
-    if (!result.success) return;
+    if (!result.success) {
+      return;
+    }
 
-    expect(result.data.settingsDiscovery?.appliedPlatform).toBeNull();
+    const applyResult = result.data;
+    expect(applyResult.settingsDiscovery?.appliedPlatform).toBeNull();
     expect(existsSync(join(userRootPath, "custom.md"))).toBe(false);
   });
 
@@ -85,9 +94,14 @@ describe("Complete Platform Settings Workflow Integration", () => {
       userConfigRootPath: userRootPath,
     });
 
+    if (!result.success) {
+      return;
+    }
     expect(result.success).toBe(true);
     if (!result.success) return;
 
+    const applyResult = result.data;
+    expect(applyResult.status).toBe("success");
     expect(existsSync(join(userRootPath, "gemini.md"))).toBe(true);
     expect(existsSync(join(userRootPath, "claude.md"))).toBe(false);
   });

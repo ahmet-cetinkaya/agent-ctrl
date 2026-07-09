@@ -39,8 +39,8 @@ describe("Multi-Platform Settings Application Integration", () => {
     fs.mkdirSync(geminiTarget, { recursive: true });
 
     const results = [
-      copyPlatformSettings(discovered.settingsDirectories.claude.path, claudeTarget),
-      copyPlatformSettings(discovered.settingsDirectories.gemini.path, geminiTarget),
+      await copyPlatformSettings(discovered.settingsDirectories.claude.path, claudeTarget),
+      await copyPlatformSettings(discovered.settingsDirectories.gemini.path, geminiTarget),
     ];
 
     expect(results).toHaveLength(2);
@@ -63,8 +63,8 @@ describe("Multi-Platform Settings Application Integration", () => {
     fs.mkdirSync(claudeTarget, { recursive: true });
     fs.mkdirSync(geminiTarget, { recursive: true });
 
-    copyPlatformSettings(discovered.settingsDirectories.claude.path, claudeTarget);
-    copyPlatformSettings(discovered.settingsDirectories.gemini.path, geminiTarget);
+    await copyPlatformSettings(discovered.settingsDirectories.claude.path, claudeTarget);
+    await copyPlatformSettings(discovered.settingsDirectories.gemini.path, geminiTarget);
 
     expect(fs.existsSync(path.join(claudeTarget, "claude-only.txt"))).toBe(true);
     expect(fs.existsSync(path.join(claudeTarget, "gemini-only.txt"))).toBe(false);
@@ -88,8 +88,8 @@ describe("Multi-Platform Settings Application Integration", () => {
     fs.mkdirSync(geminiTarget, { recursive: true });
 
     const results = [
-      copyPlatformSettings(discovered.settingsDirectories.claude.path, claudeTarget),
-      copyPlatformSettings(discovered.settingsDirectories.gemini.path, geminiTarget),
+      await copyPlatformSettings(discovered.settingsDirectories.claude.path, claudeTarget),
+      await copyPlatformSettings(discovered.settingsDirectories.gemini.path, geminiTarget),
     ];
 
     expect(results[0].filesCopied).toBe(1);
