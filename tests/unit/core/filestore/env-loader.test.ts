@@ -100,4 +100,33 @@ describe("env-loader", () => {
     expect(result.exists).toBe(false);
     expect(result.variables).toEqual({});
   });
+
+  it("leaves an unterminated quote untouched instead of stripping it", async () => {
+    const envDir = path.join(testDir, ".agent-ctrl");
+    fs.mkdirSync(envDir, { recursive: true });
+    fs.writeFileSync(path.join(envDir, ".env"), 'UNTERMINATED="still-open\n', "utf-8");
+
+    const result = await loadEnvFile(testDir);
+
+    expect(result.exists).toBe(true);
+    expect(result.variables).toEqual({ UNTERMINATED: '"still-open' });
+  });
+
+  it("propagates non-ENOENT read errors instead of reporting exists: false", async () => {
+    const envDir = path.join(testDir, ".agent-ctrl");
+    fs.mkdirSync(envDir, { recursive: true });
+    const envFilePath = path.join(envDir, ".env");
+    fs.writeFileSync(envFilePath, "KEY=value\n", "utf-8");
+    fs.chmodSync(envFilePath, 0o000);
+
+    try {
+      if (process.getuid && process.getuid() === 0) {
+        // Running as root bypasses permission checks; skip this assertion.
+        return;
+      }
+      await expect(loadEnvFile(testDir)).rejects.toThrow();
+    } finally {
+      fs.chmodSync(envFilePath, 0o644);
+    }
+  });
 });

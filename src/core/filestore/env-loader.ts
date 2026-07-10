@@ -32,52 +32,64 @@ export async function loadEnvFile(projectPath: string, options: LoadEnvFileOptio
   const projectEnvPath = resolve(projectPath, ".agent-ctrl", ".env");
   const userEnvPath = resolve(options.userHomePath ?? homedir(), ".agent-ctrl", ".env");
 
-  let envPath: string;
-  let exists = false;
-
-  try {
-    await readFile(projectEnvPath, "utf-8");
-    envPath = projectEnvPath;
-    exists = true;
-  } catch {
-    envPath = userEnvPath;
-    try {
-      await readFile(userEnvPath, "utf-8");
-      exists = true;
-    } catch {
-      return { exists: false, variables: {} };
-    }
-  }
-
-  try {
-    const content = await readFile(envPath, "utf-8");
-    const variables: Record<string, string> = {};
-
-    for (const rawLine of content.split(/\r?\n/)) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith("#")) {
-        continue;
-      }
-
-      const sepIndex = line.indexOf("=");
-      if (sepIndex <= 0) {
-        continue;
-      }
-
-      const key = line.slice(0, sepIndex).trim();
-      const rawValue = line.slice(sepIndex + 1).trim();
-
-      if (!key) {
-        continue;
-      }
-
-      variables[key] = unquote(rawValue);
-    }
-
-    return { exists, variables };
-  } catch {
+  const content = await readEnvFileContent(projectEnvPath, userEnvPath);
+  if (content === null) {
     return { exists: false, variables: {} };
   }
+
+  const variables: Record<string, string> = {};
+
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+
+    const sepIndex = line.indexOf("=");
+    if (sepIndex <= 0) {
+      continue;
+    }
+
+    const key = line.slice(0, sepIndex).trim();
+    const rawValue = line.slice(sepIndex + 1).trim();
+
+    if (!key) {
+      continue;
+    }
+
+    variables[key] = unquote(rawValue);
+  }
+
+  return { exists: true, variables };
+}
+
+/**
+ * Reads the first available .env file, preferring the project-level path over
+ * the user-level fallback. Returns null only when neither file exists; any
+ * other read failure (e.g. permission denied) is propagated so callers don't
+ * silently treat it as "no .env file present".
+ */
+async function readEnvFileContent(projectEnvPath: string, userEnvPath: string): Promise<string | null> {
+  try {
+    return await readFile(projectEnvPath, "utf-8");
+  } catch (error) {
+    if (!isFileNotFoundError(error)) {
+      throw error;
+    }
+  }
+
+  try {
+    return await readFile(userEnvPath, "utf-8");
+  } catch (error) {
+    if (!isFileNotFoundError(error)) {
+      throw error;
+    }
+    return null;
+  }
+}
+
+function isFileNotFoundError(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException)?.code === "ENOENT";
 }
 
 function unquote(value: string): string {

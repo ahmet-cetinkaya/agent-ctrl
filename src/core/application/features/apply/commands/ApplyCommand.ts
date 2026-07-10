@@ -113,14 +113,14 @@ export class ApplyCommand {
           });
           const targetConfigDir = target.settingsDirectory ?? dirname(target.configPath);
 
-          // Load env variables for interpolation
+          // Env variables must be loaded before copying so ${VAR} placeholders
+          // in settings files are interpolated at write time, not after.
           const envResult = await loadEnvFile(projectPath);
-          const envVariables = envResult.variables;
 
           const copyResult = await copyPlatformSettings(platformSettingsDir.path, targetConfigDir, {
             followSymbolicLinks: true,
             createParentDirectories: true,
-            envVariables: Object.keys(envVariables).length > 0 ? envVariables : undefined,
+            envVariables: envResult.variables,
           });
           if (copyResult.success) {
             appliedPlatform = selectedPlatform;
