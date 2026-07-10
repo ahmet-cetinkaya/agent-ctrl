@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-07-05
+
+### Added
+
+- Expose settings discovery summary and multi-platform tests
+- Integrate platform-specific settings discovery and copy
+- Add platform validation and settings discovery
+- US1 test infrastructure - contract + integration tests
+- Complete foundational infrastructure and US1 tests
+
+### Fixed
+
+- Resolve relative symlink targets against link's own dir
+- Reject cross-drive path escape on Windows
+- Resolve settings path under .agent-ctrl directory
+- Address code review findings from PR #7 (errors, architecture, clean-code)
+- Resolve pre-existing security and path-resolution bugs
+- Handle whitespace padding and update test expectations
+
 ## [0.5.0] - 2026-05-20
 
 ### Added
@@ -131,7 +150,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct import paths in presentation layer
 - Patch path traversal and command injection vulnerabilities
 
-[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.5.0...HEAD
+[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.6.0
 [0.5.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.5.0
 [0.4.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.4.0
 [0.3.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.3.0
