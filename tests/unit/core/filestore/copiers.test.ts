@@ -8,7 +8,7 @@ describe("copiers - File Copying with Override Semantics", () => {
   const sourceDir = path.join(testDir, "source");
   const targetDir = path.join(testDir, "target");
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Create clean test directories
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });
@@ -17,7 +17,7 @@ describe("copiers - File Copying with Override Semantics", () => {
     fs.mkdirSync(targetDir, { recursive: true });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     // Cleanup test directories
     if (fs.existsSync(testDir)) {
       fs.rmSync(testDir, { recursive: true, force: true });
@@ -25,12 +25,12 @@ describe("copiers - File Copying with Override Semantics", () => {
   });
 
   describe("copyFile", () => {
-    it("should copy a single file successfully", () => {
+    it("should copy a single file successfully", async () => {
       const sourceFile = path.join(sourceDir, "config.json");
       const targetFile = path.join(targetDir, "config.json");
       fs.writeFileSync(sourceFile, '{"test": "data"}');
 
-      const result = copyFile(sourceFile, targetFile);
+      const result = await copyFile(sourceFile, targetFile);
 
       expect(result.status).toBe("completed");
       expect(result.error).toBeNull();
@@ -38,46 +38,46 @@ describe("copiers - File Copying with Override Semantics", () => {
       expect(fs.readFileSync(targetFile, "utf-8")).toBe('{"test": "data"}');
     });
 
-    it("should create parent directories if needed", () => {
+    it("should create parent directories if needed", async () => {
       const sourceFile = path.join(sourceDir, "config.json");
       const targetFile = path.join(targetDir, "subdir/nested/config.json");
       fs.writeFileSync(sourceFile, "test content");
 
-      const result = copyFile(sourceFile, targetFile);
+      const result = await copyFile(sourceFile, targetFile);
 
       expect(result.status).toBe("completed");
       expect(fs.existsSync(targetFile)).toBe(true);
     });
 
-    it("should overwrite existing files (replace semantics)", () => {
+    it("should overwrite existing files (replace semantics)", async () => {
       const sourceFile = path.join(sourceDir, "config.json");
       const targetFile = path.join(targetDir, "config.json");
       fs.writeFileSync(sourceFile, "new content");
       fs.writeFileSync(targetFile, "old content");
 
-      const result = copyFile(sourceFile, targetFile);
+      const result = await copyFile(sourceFile, targetFile);
 
       expect(result.status).toBe("completed");
       expect(fs.readFileSync(targetFile, "utf-8")).toBe("new content");
     });
 
-    it("should handle non-existent source file", () => {
+    it("should handle non-existent source file", async () => {
       const sourceFile = path.join(sourceDir, "nonexistent.json");
       const targetFile = path.join(targetDir, "target.json");
 
-      const result = copyFile(sourceFile, targetFile);
+      const result = await copyFile(sourceFile, targetFile);
 
       expect(result.status).toBe("failed");
       expect(result.error).not.toBeNull();
     });
 
-    it("should preserve file permissions", () => {
+    it("should preserve file permissions", async () => {
       const sourceFile = path.join(sourceDir, "script.sh");
       const targetFile = path.join(targetDir, "script.sh");
       fs.writeFileSync(sourceFile, "#!/bin/bash\necho test");
       fs.chmodSync(sourceFile, 0o755);
 
-      copyFile(sourceFile, targetFile);
+      await copyFile(sourceFile, targetFile);
 
       const stats = fs.statSync(targetFile);
       // Note: Windows may not preserve Unix permissions exactly
@@ -88,7 +88,7 @@ describe("copiers - File Copying with Override Semantics", () => {
   });
 
   describe("copyDirectory", () => {
-    it("should copy directory structure recursively", () => {
+    it("should copy directory structure recursively", async () => {
       // Create nested directory structure
       fs.mkdirSync(path.join(sourceDir, "level1"));
       fs.mkdirSync(path.join(sourceDir, "level1/level2"));
@@ -96,7 +96,7 @@ describe("copiers - File Copying with Override Semantics", () => {
       fs.writeFileSync(path.join(sourceDir, "level1/file2.txt"), "content2");
       fs.writeFileSync(path.join(sourceDir, "level1/level2/file3.txt"), "content3");
 
-      const operations = copyDirectory(sourceDir, targetDir);
+      const operations = await copyDirectory(sourceDir, targetDir);
 
       expect(operations.length).toBeGreaterThan(0);
       expect(operations.every((op) => op.status === "completed" || op.operationType === "directory")).toBe(true);
@@ -104,41 +104,41 @@ describe("copiers - File Copying with Override Semantics", () => {
       expect(fs.existsSync(path.join(sourceDir, "level1/level2/file3.txt"))).toBe(true);
     });
 
-    it("should handle empty directories", () => {
+    it("should handle empty directories", async () => {
       const emptyDir = path.join(sourceDir, "empty");
       fs.mkdirSync(emptyDir);
 
-      const operations = copyDirectory(sourceDir, targetDir);
+      const operations = await copyDirectory(sourceDir, targetDir);
 
       expect(operations.length).toBeGreaterThanOrEqual(1); // At least the directory creation
     });
 
-    it("should handle symbolic links when followSymbolicLinks is true", () => {
+    it("should handle symbolic links when followSymbolicLinks is true", async () => {
       const sourceFile = path.join(sourceDir, "original.txt");
       const symlinkPath = path.join(sourceDir, "link.txt");
       fs.writeFileSync(sourceFile, "original content");
       fs.symlinkSync(sourceFile, symlinkPath);
 
       const config: CopyConfig = { followSymbolicLinks: true, createParentDirectories: true };
-      const operations = copyDirectory(sourceDir, targetDir, config);
+      const operations = await copyDirectory(sourceDir, targetDir, config);
 
       expect(operations.some((op) => op.operationType === "file")).toBe(true);
     });
 
-    it("should handle non-existent source directory", () => {
+    it("should handle non-existent source directory", async () => {
       const nonExistentDir = "/tmp/nonexistent-dir";
-      const operations = copyDirectory(nonExistentDir, targetDir);
+      const operations = await copyDirectory(nonExistentDir, targetDir);
 
       expect(operations.some((op) => op.status === "failed")).toBe(true);
     });
 
-    it("should handle large directory trees", () => {
+    it("should handle large directory trees", async () => {
       // Create 100 files
       for (let i = 0; i < 100; i++) {
         fs.writeFileSync(path.join(sourceDir, `file${i}.txt`), `content${i}`);
       }
 
-      const operations = copyDirectory(sourceDir, targetDir);
+      const operations = await copyDirectory(sourceDir, targetDir);
 
       expect(operations.length).toBeGreaterThanOrEqual(100);
       expect(operations.filter((op) => op.status === "completed").length).toBeGreaterThan(50);
@@ -146,14 +146,14 @@ describe("copiers - File Copying with Override Semantics", () => {
   });
 
   describe("copyPlatformSettings", () => {
-    it("should copy platform settings successfully", () => {
+    it("should copy platform settings successfully", async () => {
       // Create platform-specific settings structure
       fs.mkdirSync(path.join(sourceDir, "claude"));
       fs.writeFileSync(path.join(sourceDir, "claude", "config.json"), '{"claude": "settings"}');
       fs.mkdirSync(path.join(sourceDir, "claude", "rules"));
       fs.writeFileSync(path.join(sourceDir, "claude", "rules", "custom.md"), "# Custom Rule");
 
-      const result = copyPlatformSettings(sourceDir, targetDir);
+      const result = await copyPlatformSettings(sourceDir, targetDir);
 
       expect(result.success).toBe(true);
       expect(result.filesCopied).toBeGreaterThanOrEqual(2);
@@ -161,15 +161,15 @@ describe("copiers - File Copying with Override Semantics", () => {
       expect(fs.existsSync(path.join(targetDir, "claude", "config.json"))).toBe(true);
     });
 
-    it("should return error for non-existent source directory", () => {
+    it("should return error for non-existent source directory", async () => {
       const nonExistentDir = "/tmp/nonexistent-settings";
-      const result = copyPlatformSettings(nonExistentDir, targetDir);
+      const result = await copyPlatformSettings(nonExistentDir, targetDir);
 
       expect(result.success).toBe(false);
       expect(result.error).toContain("does not exist");
     });
 
-    it("should report individual operation failures", () => {
+    it("should report individual operation failures", async () => {
       // Create a file that will fail to copy (e.g., permission issues simulated)
       fs.writeFileSync(path.join(sourceDir, "good.txt"), "content");
       fs.writeFileSync(path.join(sourceDir, "bad.txt"), "content");
@@ -181,17 +181,17 @@ describe("copiers - File Copying with Override Semantics", () => {
         // Skip this test on systems where chmod doesn't work as expected
       }
 
-      const result = copyPlatformSettings(sourceDir, targetDir);
+      const result = await copyPlatformSettings(sourceDir, targetDir);
 
       // At least some files should copy
       expect(result.filesCopied).toBeGreaterThanOrEqual(0);
     });
 
-    it("should provide detailed operation tracking", () => {
+    it("should provide detailed operation tracking", async () => {
       fs.writeFileSync(path.join(sourceDir, "file1.txt"), "content1");
       fs.writeFileSync(path.join(sourceDir, "file2.txt"), "content2");
 
-      const result = copyPlatformSettings(sourceDir, targetDir);
+      const result = await copyPlatformSettings(sourceDir, targetDir);
 
       expect(result.operations).toBeDefined();
       expect(result.operations.length).toBeGreaterThan(0);
@@ -201,7 +201,7 @@ describe("copiers - File Copying with Override Semantics", () => {
   });
 
   describe("override semantics", () => {
-    it("should completely replace existing files (no merging)", () => {
+    it("should completely replace existing files (no merging)", async () => {
       const sourceFile = path.join(sourceDir, "config.json");
       const targetFile = path.join(targetDir, "config.json");
 
@@ -210,7 +210,7 @@ describe("copiers - File Copying with Override Semantics", () => {
       // Source has completely different structure
       fs.writeFileSync(sourceFile, '{"new": "structure"}');
 
-      copyFile(sourceFile, targetFile);
+      await copyFile(sourceFile, targetFile);
 
       // Verify complete replacement, not merge
       const content = fs.readFileSync(targetFile, "utf-8");
@@ -218,14 +218,14 @@ describe("copiers - File Copying with Override Semantics", () => {
       expect(content).not.toContain("preserve");
     });
 
-    it("should not create backups (Git provides version history)", () => {
+    it("should not create backups (Git provides version history)", async () => {
       const sourceFile = path.join(sourceDir, "config.json");
       const targetFile = path.join(targetDir, "config.json");
 
       fs.writeFileSync(sourceFile, "new content");
       fs.writeFileSync(targetFile, "old content");
 
-      copyFile(sourceFile, targetFile);
+      await copyFile(sourceFile, targetFile);
 
       // Verify old content is gone (no backup file created)
       expect(fs.readFileSync(targetFile, "utf-8")).toBe("new content");
@@ -235,26 +235,26 @@ describe("copiers - File Copying with Override Semantics", () => {
   });
 
   describe("performance and scalability", () => {
-    it("should handle large files efficiently", () => {
+    it("should handle large files efficiently", async () => {
       const largeFile = path.join(sourceDir, "large.bin");
       const largeContent = Buffer.alloc(1024 * 1024); // 1MB file
 
       fs.writeFileSync(largeFile, largeContent);
 
-      const result = copyPlatformSettings(sourceDir, targetDir);
+      const result = await copyPlatformSettings(sourceDir, targetDir);
 
       expect(result.success).toBe(true);
       expect(fs.statSync(path.join(targetDir, "large.bin")).size).toBe(1024 * 1024);
     });
 
-    it("should handle many small files efficiently", () => {
+    it("should handle many small files efficiently", async () => {
       const fileCount = 1000;
       for (let i = 0; i < fileCount; i++) {
         fs.writeFileSync(path.join(sourceDir, `file${i}.txt`), `content${i}`);
       }
 
       const startTime = Date.now();
-      const result = copyPlatformSettings(sourceDir, targetDir);
+      const result = await copyPlatformSettings(sourceDir, targetDir);
       const duration = Date.now() - startTime;
 
       expect(result.success).toBe(true);
@@ -265,12 +265,12 @@ describe("copiers - File Copying with Override Semantics", () => {
   });
 
   describe("per-entry error isolation", () => {
-    it("should continue copying remaining entries after a broken symlink", () => {
+    it("should continue copying remaining entries after a broken symlink", async () => {
       fs.writeFileSync(path.join(sourceDir, "a.txt"), "a");
       fs.symlinkSync("/non/existent/target", path.join(sourceDir, "broken-link"));
       fs.writeFileSync(path.join(sourceDir, "c.txt"), "c");
 
-      const result = copyPlatformSettings(sourceDir, targetDir);
+      const result = await copyPlatformSettings(sourceDir, targetDir);
 
       expect(fs.existsSync(path.join(targetDir, "a.txt"))).toBe(true);
       expect(fs.existsSync(path.join(targetDir, "c.txt"))).toBe(true);
@@ -280,12 +280,12 @@ describe("copiers - File Copying with Override Semantics", () => {
       expect(brokenOp?.status).toBe("failed");
     });
 
-    it("should record every entry explicitly even when one throws mid-loop", () => {
+    it("should record every entry explicitly even when one throws mid-loop", async () => {
       fs.writeFileSync(path.join(sourceDir, "a.txt"), "a");
       fs.symlinkSync("/non/existent/target", path.join(sourceDir, "broken-link"));
       fs.writeFileSync(path.join(sourceDir, "z.txt"), "z");
 
-      const result = copyPlatformSettings(sourceDir, targetDir);
+      const result = await copyPlatformSettings(sourceDir, targetDir);
 
       const recordedNames = result.operations.map((op) => path.basename(op.sourcePath));
       expect(recordedNames).toContain("a.txt");
@@ -295,13 +295,13 @@ describe("copiers - File Copying with Override Semantics", () => {
   });
 
   describe("symlink escape prevention", () => {
-    it("should reject symlinks that resolve outside the settings root", () => {
+    it("should reject symlinks that resolve outside the settings root", async () => {
       const outsideDir = path.join(testDir, "outside");
       fs.mkdirSync(outsideDir, { recursive: true });
       fs.writeFileSync(path.join(outsideDir, "secret.txt"), "secret");
       fs.symlinkSync(path.join(outsideDir, "secret.txt"), path.join(sourceDir, "escape-link"));
 
-      const result = copyPlatformSettings(sourceDir, targetDir);
+      const result = await copyPlatformSettings(sourceDir, targetDir);
 
       expect(result.success).toBe(false);
       expect(fs.existsSync(path.join(targetDir, "escape-link"))).toBe(false);
@@ -310,14 +310,106 @@ describe("copiers - File Copying with Override Semantics", () => {
       expect(escapeOp?.error).toContain("escapes settings root");
     });
 
-    it("should still copy symlinks that resolve within the settings root", () => {
+    it("should still copy symlinks that resolve within the settings root", async () => {
       fs.writeFileSync(path.join(sourceDir, "real.txt"), "real content");
       fs.symlinkSync(path.join(sourceDir, "real.txt"), path.join(sourceDir, "internal-link"));
 
-      const result = copyPlatformSettings(sourceDir, targetDir);
+      const result = await copyPlatformSettings(sourceDir, targetDir);
 
       expect(result.success).toBe(true);
       expect(fs.readFileSync(path.join(targetDir, "internal-link"), "utf-8")).toBe("real content");
+    });
+  });
+
+  describe("env variable interpolation", () => {
+    it("should interpolate ${VAR} placeholders when env variables are provided", async () => {
+      const sourceFile = path.join(sourceDir, "config.json");
+      const targetFile = path.join(targetDir, "config.json");
+      fs.writeFileSync(sourceFile, '{"api_key": "${API_KEY}", "endpoint": "${ENDPOINT}"}');
+
+      const envVariables = {
+        API_KEY: "secret123",
+        ENDPOINT: "https://api.example.com",
+      };
+
+      const config: CopyConfig = {
+        followSymbolicLinks: true,
+        createParentDirectories: true,
+        envVariables,
+      };
+
+      const result = await copyFile(sourceFile, targetFile, config);
+
+      expect(result.status).toBe("completed");
+      const content = fs.readFileSync(targetFile, "utf-8");
+      expect(content).toBe('{"api_key": "secret123", "endpoint": "https://api.example.com"}');
+    });
+
+    it("should leave ${VAR} placeholders unchanged when variable is missing", async () => {
+      const sourceFile = path.join(sourceDir, "config.json");
+      const targetFile = path.join(targetDir, "config.json");
+      fs.writeFileSync(sourceFile, '{"api_key": "${MISSING_VAR}", "endpoint": "${ENDPOINT}"}');
+
+      const envVariables = {
+        ENDPOINT: "https://api.example.com",
+      };
+
+      const config: CopyConfig = { followSymbolicLinks: true, createParentDirectories: true, envVariables };
+
+      const result = await copyFile(sourceFile, targetFile, config);
+
+      expect(result.status).toBe("completed");
+      const content = fs.readFileSync(targetFile, "utf-8");
+      expect(content).toBe('{"api_key": "${MISSING_VAR}", "endpoint": "https://api.example.com"}');
+    });
+
+    it("should not resolve placeholders from Object prototype keys", async () => {
+      const sourceFile = path.join(sourceDir, "config.json");
+      const targetFile = path.join(targetDir, "config.json");
+      fs.writeFileSync(sourceFile, '{"value": "${constructor}", "other": "${toString}"}');
+
+      const envVariables = {
+        REAL_KEY: "real-value",
+      };
+
+      const config: CopyConfig = { followSymbolicLinks: true, createParentDirectories: true, envVariables };
+
+      const result = await copyFile(sourceFile, targetFile, config);
+
+      expect(result.status).toBe("completed");
+      const content = fs.readFileSync(targetFile, "utf-8");
+      expect(content).toBe('{"value": "${constructor}", "other": "${toString}"}');
+    });
+
+    it("should not interpolate binary files", async () => {
+      const sourceFile = path.join(sourceDir, "image.png");
+      const targetFile = path.join(targetDir, "image.png");
+      const binaryContent = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x00, 0x00, 0x00]);
+      fs.writeFileSync(sourceFile, binaryContent);
+
+      const envVariables = { VAR: "test" };
+      const config: CopyConfig = { followSymbolicLinks: true, createParentDirectories: true, envVariables };
+
+      const result = await copyFile(sourceFile, targetFile, config);
+
+      expect(result.status).toBe("completed");
+      const content = fs.readFileSync(targetFile);
+      expect(content).toEqual(binaryContent);
+    });
+
+    it("should handle text files without placeholders gracefully", async () => {
+      const sourceFile = path.join(sourceDir, "plain.txt");
+      const targetFile = path.join(targetDir, "plain.txt");
+      fs.writeFileSync(sourceFile, "Just plain text without any placeholders");
+
+      const envVariables = { VAR: "test" };
+      const config: CopyConfig = { followSymbolicLinks: true, createParentDirectories: true, envVariables };
+
+      const result = await copyFile(sourceFile, targetFile, config);
+
+      expect(result.status).toBe("completed");
+      const content = fs.readFileSync(targetFile, "utf-8");
+      expect(content).toBe("Just plain text without any placeholders");
     });
   });
 });

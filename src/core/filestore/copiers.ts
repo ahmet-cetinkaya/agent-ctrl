@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { readFile, writeFile } from "node:fs/promises";
 import type { FileOperation } from "../domain/shared/types/FileOperation.js";
 
 /**
@@ -21,6 +22,9 @@ export interface CopyConfig {
 
   /** Whether to create parent directories if they don't exist */
   createParentDirectories: boolean;
+
+  /** Environment variables for ${VAR} placeholder interpolation (optional) */
+  envVariables?: Record<string, string>;
 }
 
 /**
@@ -32,7 +36,34 @@ export interface CopyConfig {
 export const DEFAULT_COPY_CONFIG: CopyConfig = {
   followSymbolicLinks: true,
   createParentDirectories: true,
+  envVariables: undefined,
 };
+
+/**
+ * Checks if a buffer contains binary data (null bytes).
+ * Text files typically don't contain null bytes, so this is a simple heuristic.
+ */
+function isBinaryFile(buffer: Buffer): boolean {
+  return buffer.includes(0);
+}
+
+/**
+ * Checks if content contains ${VAR} placeholders.
+ */
+function containsPlaceholders(content: string): boolean {
+  return /\$\{[^}]+\}/.test(content);
+}
+
+/**
+ * Resolves ${VAR} placeholders in content using provided variables.
+ */
+function resolvePlaceholders(content: string, variables: Record<string, string>): string {
+  return content.replace(/\$\{([^}]+)\}/g, (_match, variableName: string) => {
+    return Object.prototype.hasOwnProperty.call(variables, variableName)
+      ? variables[variableName]
+      : `\${${variableName}}`;
+  });
+}
 
 /**
  * Result of a file copy operation.
@@ -55,7 +86,7 @@ export interface CopyResult {
 }
 
 /**
- * Copies a single file from source to destination.
+ * Copies a single file from source to destination with optional env variable interpolation.
  *
  * @param sourcePath - Source file path
  * @param destinationPath - Destination file path
@@ -64,15 +95,15 @@ export interface CopyResult {
  *
  * @example
  * ```ts
- * const result = copyFile('/project/settings/claude/config.json', '/home/user/.claude/config.json');
+ * const result = await copyFile('/project/settings/claude/config.json', '/home/user/.claude/config.json');
  * // { success: true, filesCopied: 1, directoriesCreated: 0, error: null, operations: [...] }
  * ```
  */
-export function copyFile(
+export async function copyFile(
   sourcePath: string,
   destinationPath: string,
   config: CopyConfig = DEFAULT_COPY_CONFIG
-): FileOperation {
+): Promise<FileOperation> {
   const operation: FileOperation = {
     sourcePath,
     destinationPath: destinationPath,
@@ -89,8 +120,22 @@ export function copyFile(
       fs.mkdirSync(parentDir, { recursive: true });
     }
 
-    // Perform the copy
-    fs.copyFileSync(sourcePath, destinationPath);
+    // Read source file for potential interpolation
+    const content = await readFile(sourcePath);
+    const isBinary = isBinaryFile(content);
+
+    if (!isBinary && config.envVariables && Object.keys(config.envVariables).length > 0) {
+      const textContent = content.toString("utf-8");
+      if (containsPlaceholders(textContent)) {
+        const interpolated = resolvePlaceholders(textContent, config.envVariables);
+        await writeFile(destinationPath, interpolated, "utf-8");
+      } else {
+        await writeFile(destinationPath, content);
+      }
+    } else {
+      // Binary file or no interpolation needed - use direct copy
+      fs.copyFileSync(sourcePath, destinationPath);
+    }
 
     operation.status = "completed";
     return operation;
@@ -111,16 +156,16 @@ export function copyFile(
  *
  * @example
  * ```ts
- * const operations = copyDirectory('/project/settings/claude', '/home/user/.claude');
+ * const operations = await copyDirectory('/project/settings/claude', '/home/user/.claude');
  * // Returns array of FileOperation objects for each file/directory copied
  * ```
  */
-export function copyDirectory(
+export async function copyDirectory(
   sourcePath: string,
   destinationPath: string,
   config: CopyConfig = DEFAULT_COPY_CONFIG,
   sourceRoot: string = sourcePath
-): FileOperation[] {
+): Promise<FileOperation[]> {
   const operations: FileOperation[] = [];
 
   try {
@@ -170,7 +215,7 @@ export function copyDirectory(
 
     try {
       if (entry.isDirectory()) {
-        const subOps = copyDirectory(sourceEntry, destEntry, config, sourceRoot);
+        const subOps = await copyDirectory(sourceEntry, destEntry, config, sourceRoot);
         operations.push(...subOps);
       } else if (entry.isSymbolicLink() && config.followSymbolicLinks) {
         const targetPath = fs.realpathSync(sourceEntry);
@@ -186,9 +231,9 @@ export function copyDirectory(
           });
           continue;
         }
-        operations.push(copyFile(targetPath, destEntry, config));
+        operations.push(await copyFile(targetPath, destEntry, config));
       } else if (entry.isFile()) {
-        operations.push(copyFile(sourceEntry, destEntry, config));
+        operations.push(await copyFile(sourceEntry, destEntry, config));
       }
       // Symbolic links when followSymbolicLinks is false are skipped
     } catch (error) {
@@ -216,18 +261,18 @@ export function copyDirectory(
  *
  * @example
  * ```ts
- * const result = copyPlatformSettings(
+ * const result = await copyPlatformSettings(
  *   '/project/settings/claude',
  *   '/home/user/.claude'
  * );
  * // { success: true, filesCopied: 5, directoriesCreated: 2, error: null, operations: [...] }
  * ```
  */
-export function copyPlatformSettings(
+export async function copyPlatformSettings(
   sourceSettingsPath: string,
   targetConfigPath: string,
   config: CopyConfig = DEFAULT_COPY_CONFIG
-): CopyResult {
+): Promise<CopyResult> {
   try {
     // Validate source exists
     if (!fs.existsSync(sourceSettingsPath)) {
@@ -241,7 +286,7 @@ export function copyPlatformSettings(
     }
 
     // Perform directory copy
-    const operations = copyDirectory(sourceSettingsPath, targetConfigPath, config);
+    const operations = await copyDirectory(sourceSettingsPath, targetConfigPath, config);
 
     // Calculate statistics
     const filesCopied = operations.filter((op) => op.operationType === "file" && op.status === "completed").length;
