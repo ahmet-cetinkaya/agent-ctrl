@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-07-10
+
+### Fixed
+
+- Stop double-reading .env and masking read errors
+- Interpolate env in settings files
+
 ## [0.6.0] - 2026-07-05
 
 ### Added
@@ -150,7 +157,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct import paths in presentation layer
 - Patch path traversal and command injection vulnerabilities
 
-[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.6.0...HEAD
+[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.6.1
 [0.6.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.6.0
 [0.5.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.5.0
 [0.4.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.4.0

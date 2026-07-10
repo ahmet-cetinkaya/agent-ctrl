@@ -1,6 +1,6 @@
 {
   "name": "agent-ctrl-cli",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "A centralized CLI tool for managing AI agent configurations with standard directory-based patterns.",
   "author": "Ahmet Cetinkaya <ahmetcetinkaya@tutamail.com> (https://github.com/ahmet-cetinkaya)",
   "license": "GPL-3.0",
