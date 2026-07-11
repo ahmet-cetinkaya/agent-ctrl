@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-07-11
+
+### Fixed
+
+- Scaffold profiles/ and settings/ directories
+
 ## [0.6.2] - 2026-07-11
 
 ### Fixed
@@ -163,7 +169,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct import paths in presentation layer
 - Patch path traversal and command injection vulnerabilities
 
-[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.6.2...HEAD
+[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.6.3
 [0.6.2]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.6.2
 [0.6.1]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.6.1
 [0.6.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.6.0
