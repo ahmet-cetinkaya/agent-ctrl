@@ -153,9 +153,13 @@ Key behavior:
 │   └── explain.md
 ├── agents/                 # Agent personas
 │   └── architect.md
+├── profiles/               # Named bundles applied via `apply --profile <name>`
+│   └── backend/
 ├── mcps/                   # MCP server configurations
 │   └── filesystem/
 │       └── MCP.json
+├── settings/               # Platform-specific files, copied as-is (see below)
+│   └── claude/
 └── .env                    # Optional API credentials for catalog access
 ```
 

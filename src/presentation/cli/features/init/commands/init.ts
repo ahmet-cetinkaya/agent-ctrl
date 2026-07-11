@@ -31,9 +31,9 @@ export function createInitCommand(): Command {
       try {
         if (options.dryRun) {
           LogService.log(`Would create at: ${resolvedTargetPath}`);
-          LogService.log("Directories: rules/, skills/, agents/, commands/, mcps/");
+          LogService.log("Directories: rules/, skills/, agents/, commands/, profiles/, mcps/, settings/");
           LogService.log(
-            "Files: rules/.gitkeep, skills/.gitkeep, agents/.gitkeep, commands/.gitkeep, mcps/.gitkeep, README.md"
+            "Files: rules/.gitkeep, skills/.gitkeep, agents/.gitkeep, commands/.gitkeep, profiles/.gitkeep, mcps/.gitkeep, settings/.gitkeep, README.md"
           );
           LogService.outro("No changes made");
           return;
@@ -57,7 +57,9 @@ export function createInitCommand(): Command {
           LogService.log(`Configuration root: ${resolvedTargetPath}`);
           LogService.log("");
           LogService.log("Next steps:");
-          LogService.log("1. Add your files in the related folders: rules, skills, agents, commands and mcps.");
+          LogService.log(
+            "1. Add your files in the related folders: rules, skills, agents, commands, profiles, mcps and settings."
+          );
           LogService.log("   - You can add from remote registries:");
           LogService.log("        agent-ctrl skill add skillsmp:code-review");
           LogService.log("        agent-ctrl mcp add smithery:github");

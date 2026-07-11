@@ -15,9 +15,10 @@ export interface InitCommandResult {
 }
 
 export class InitCommand {
-  private static readonly BASE_DIRECTORIES = ["rules", "skills", "agents", "commands"];
+  private static readonly BASE_DIRECTORIES = ["rules", "skills", "agents", "commands", "profiles"];
   private static readonly CONFIG_ROOT_DIR = ".agent-ctrl";
   private static readonly MCP_DIR = "mcps";
+  private static readonly SETTINGS_DIR = "settings";
   private static readonly GITKEEP_FILE = ".gitkeep";
   private static readonly README_FILE = "README.md";
   private static readonly ENV_FILE = ".env";
@@ -38,8 +39,9 @@ export class InitCommand {
     }
 
     const mcpDirectory = this.getMcpDirectoryForTarget(targetPath);
+    const settingsDirectory = this.getSettingsDirectoryForTarget(targetPath);
     const configRootPath = this.getConfigRootPathForTarget(targetPath);
-    const directories = this.getDirectoriesForTarget(mcpDirectory);
+    const directories = this.getDirectoriesForTarget(mcpDirectory, settingsDirectory);
     const createdDirs: string[] = [];
     const createdFiles: string[] = [];
     for (const dir of directories) {
@@ -195,13 +197,18 @@ export class InitCommand {
     }
   }
 
-  private getDirectoriesForTarget(mcpDirectory: string): string[] {
-    return [...InitCommand.BASE_DIRECTORIES, mcpDirectory];
+  private getDirectoriesForTarget(mcpDirectory: string, settingsDirectory: string): string[] {
+    return [...InitCommand.BASE_DIRECTORIES, mcpDirectory, settingsDirectory];
   }
 
   private getMcpDirectoryForTarget(targetPath: string): string {
     const isConfigRootTarget = new RegExp(`(^|[\\\\/])${InitCommand.CONFIG_ROOT_DIR}$`).test(targetPath);
     return isConfigRootTarget ? InitCommand.MCP_DIR : `${InitCommand.CONFIG_ROOT_DIR}/${InitCommand.MCP_DIR}`;
+  }
+
+  private getSettingsDirectoryForTarget(targetPath: string): string {
+    const isConfigRootTarget = new RegExp(`(^|[\\\\/])${InitCommand.CONFIG_ROOT_DIR}$`).test(targetPath);
+    return isConfigRootTarget ? InitCommand.SETTINGS_DIR : `${InitCommand.CONFIG_ROOT_DIR}/${InitCommand.SETTINGS_DIR}`;
   }
 
   private getConfigRootPathForTarget(targetPath: string): string {
@@ -226,7 +233,9 @@ CLI tool repository: https://github.com/ahmet-cetinkaya/agent-ctrl
 - \`skills/\`: Skills using the SKILL.md standard
 - \`agents/\`: Agent persona definitions
 - \`commands/\`: Command prompt templates
+- \`profiles/\`: Named bundles of the above, applied with \`agent-ctrl apply --profile <name>\`
 - \`.agent-ctrl/mcps/\`: MCP server definitions
+- \`.agent-ctrl/settings/<platform>/\`: Platform-specific files copied as-is during \`agent-ctrl apply\`
 - \`.agent-ctrl/.env\`: SkillsMP and Smithery API credentials
 
 ## Next steps

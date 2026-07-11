@@ -31,12 +31,16 @@ describe("InitCommand", () => {
       expect(result.data.createdDirectories).toContain("skills");
       expect(result.data.createdDirectories).toContain("agents");
       expect(result.data.createdDirectories).toContain("commands");
+      expect(result.data.createdDirectories).toContain("profiles");
       expect(result.data.createdDirectories).toContain(".agent-ctrl/mcps");
+      expect(result.data.createdDirectories).toContain(".agent-ctrl/settings");
       expect(result.data.createdFiles).toContain("rules/.gitkeep");
       expect(result.data.createdFiles).toContain("skills/.gitkeep");
       expect(result.data.createdFiles).toContain("agents/.gitkeep");
       expect(result.data.createdFiles).toContain("commands/.gitkeep");
+      expect(result.data.createdFiles).toContain("profiles/.gitkeep");
       expect(result.data.createdFiles).toContain(".agent-ctrl/mcps/.gitkeep");
+      expect(result.data.createdFiles).toContain(".agent-ctrl/settings/.gitkeep");
       expect(result.data.createdFiles).toContain(".agent-ctrl/.env");
       expect(result.data.createdFiles).toContain(".agent-ctrl/.env.example");
       expect(result.data.createdFiles).toContain(".agent-ctrl/.gitignore");
@@ -54,7 +58,9 @@ describe("InitCommand", () => {
       resolve(testDir, "skills", ".gitkeep"),
       resolve(testDir, "agents", ".gitkeep"),
       resolve(testDir, "commands", ".gitkeep"),
+      resolve(testDir, "profiles", ".gitkeep"),
       resolve(testDir, ".agent-ctrl", "mcps", ".gitkeep"),
+      resolve(testDir, ".agent-ctrl", "settings", ".gitkeep"),
     ];
 
     for (const path of gitkeepPaths) {
@@ -129,8 +135,12 @@ describe("InitCommand", () => {
     if (result.success) {
       expect(result.data.createdDirectories).toContain("mcps");
       expect(result.data.createdDirectories).not.toContain(".agent-ctrl/mcps");
+      expect(result.data.createdDirectories).toContain("settings");
+      expect(result.data.createdDirectories).not.toContain(".agent-ctrl/settings");
       expect(result.data.createdFiles).toContain("mcps/.gitkeep");
       expect(result.data.createdFiles).not.toContain(".agent-ctrl/mcps/.gitkeep");
+      expect(result.data.createdFiles).toContain("settings/.gitkeep");
+      expect(result.data.createdFiles).not.toContain(".agent-ctrl/settings/.gitkeep");
       expect(result.data.createdFiles).toContain(".env");
       expect(result.data.createdFiles).toContain(".env.example");
       expect(result.data.createdFiles).toContain(".gitignore");

@@ -120,7 +120,9 @@ describe("Init CLI action behavior", () => {
     expect(logs.some((line) => line.includes("Next steps:"))).toBe(true);
     expect(
       logs.some((line) =>
-        line.includes("Add your files in the related folders: rules, skills, agents, commands and mcps.")
+        line.includes(
+          "Add your files in the related folders: rules, skills, agents, commands, profiles, mcps and settings."
+        )
       )
     ).toBe(true);
     expect(logs.some((line) => line.includes("You can add from remote registries:"))).toBe(true);
