@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createRequire } from "node:module";
 import { Command } from "commander";
 import { intro, outro } from "@clack/prompts";
 import color from "picocolors";
@@ -13,7 +14,9 @@ import { createApplyCommand } from "@/presentation/cli/features/apply/commands/a
 import { createProfileCommand } from "@/presentation/cli/features/profile/commands/profile";
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
 
-const VERSION = "0.1.0";
+const require = createRequire(import.meta.url);
+const packageJson = require("../package.json") as { version: string };
+const VERSION = packageJson.version;
 
 const program = new Command();
 
