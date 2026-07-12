@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Show profile metadata (name, description, tags) grouped by category in `profile list` and the interactive `profile apply` picker, sourced from an optional `profile.yaml` per profile directory
+
 ## [0.6.3] - 2026-07-11
 
 ### Fixed

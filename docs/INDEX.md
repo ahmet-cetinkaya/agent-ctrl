@@ -124,7 +124,7 @@ agent-ctrl
 
 | Path             | Contents                                                                                                                                                            |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `entities/`      | Rule, Skill, Agent, CatalogItem, ManagedIntegration, Profile, Project, DiscoveryScope, CompatibilityAssessment, SyncReport, OperationLogEntry, SourceRegistry       |
+| `entities/`      | Rule, Skill, Agent, CatalogItem, ManagedIntegration, Profile, ProfileMetadata, Project, DiscoveryScope, CompatibilityAssessment, SyncReport, OperationLogEntry, SourceRegistry |
 | `interfaces/`    | IApplyPlatformAdapter, ISkillsMpClient, ISmitheryRegistryClient, IAgentScanner, ICatalogStateStore, IFileValidator, IFileSystem, IMcpConfigLoader, IPlatformAdapter |
 | `types/`         | Artifact, SupportedApplyPlatform                                                                                                                                    |
 | `errors/`        | BaseError, UserError (exitCode=1), SystemError (exitCode=2), ProfileError                                                                                           |
@@ -170,6 +170,7 @@ agent-ctrl
 | `ApplyMergePolicy`        | Determines how content is merged                                             |
 | `ProfileMerger`           | Merges profile artifacts with base config                                    |
 | `ProfileScanner`          | Scans profile directories                                                    |
+| `ProfileMetadataReader`   | Reads optional `profile.yaml` display metadata (name, description, tags/category) |
 | Renderers                 | `IAgentRenderer`, `ICommandRenderer`, `IMcpConfigRenderer` + implementations |
 | Utilities                 | `PlatformSyncUtils`, `CommandScopePrecedenceResolver`, `ManagedTextSection`  |
 
@@ -304,6 +305,7 @@ AGENT_CTRL_HOME env var ──► exists? ──yes──► use it
 │   └── .env              # MCP-specific env vars
 ├── profiles/             # Configuration profiles
 │   └── <name>/           # Profile directory
+│       └── profile.yaml  # Optional: display metadata (name, description, tags)
 └── catalog/              # Cached catalog state (managed)
     └── catalog.json      # CatalogStateFileStore output
 ```

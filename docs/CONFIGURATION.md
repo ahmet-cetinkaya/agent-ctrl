@@ -209,13 +209,28 @@ Profiles allow you to define named configurations that bundle specific artifacts
 ```
 profiles/
 └── default/              # Profile name (any directory name)
+    ├── profile.yaml      # Optional: display metadata (name, description, tags)
     ├── rules/            # Optional: profile-specific rules
     ├── skills/           # Optional: profile-specific skills
     └── ...               # Other artifact subdirectories
 ```
 
+**Metadata (`profile.yaml`):**
+
+Each profile directory can optionally include a `profile.yaml` with display metadata. The first tag is treated as the profile's **category** — profiles are grouped by category when listed or picked interactively. A profile without `profile.yaml` (or without tags) falls back to the `Uncategorized` group.
+
+```yaml
+name: Machine Learning
+description: "Machine learning / AI — agents and skills for model training, MLOps, and applied ML."
+tags:
+  - ai
+  - training
+  - mlops
+  - pytorch
+```
+
 ```bash
-# List profiles
+# List profiles (grouped by category, with description and tags)
 agent-ctrl profile list
 
 # Apply a profile to a platform

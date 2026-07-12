@@ -75,6 +75,7 @@ The CLI operates on a project-local structure that defines agent behavior:
 │   └── .env            # MCP environment variables
 ├── profiles/           # Configuration profiles (optional)
 │   └── default/        # Profile directory with artifact references
+│       └── profile.yaml  # Optional: display metadata (name, description, tags)
 └── .agent-ctrl/
     ├── catalog/        # Sync cache, discovery scopes, managed source metadata
     └── README.md       # Config root documentation
@@ -156,6 +157,7 @@ Each artifact type has a dedicated scanner:
 - `CommandScanner` - Indexes commands in `commands/` (recursive, max depth 20, symlink-safe)
 - `AgentScanner` - Loads agent personas from `agents/` (`.md`/`.markdown`)
 - `ProfileScanner` - Scans profile directories for combined artifact snapshots
+- `ProfileMetadataReader` - Reads optional `profile.yaml` display metadata (name, description, tags/category); falls back to `Uncategorized` when absent
 
 ## Design Patterns
 
@@ -188,6 +190,7 @@ The directory structure **IS** the configuration. No complex config files - just
 | `Skill`                   | Skill artifact with directory name, path, type                            |
 | `Agent`                   | Agent persona artifact with filename, path, type                          |
 | `Profile`                 | Configuration profile with name, path, configRoot, artifactPaths          |
+| `ProfileMetadata`         | Optional display metadata for a profile: displayName, description, tags, category (from `profile.yaml`) |
 | `CatalogItem`             | Registry catalog entry with metadata, compatibility, and activation state |
 | `ManagedIntegration`      | Activated skill/MCP with lifecycle state and version tracking             |
 | `DiscoveryScope`          | Discovery scope configuration for registry sync                           |

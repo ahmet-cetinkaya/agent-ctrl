@@ -207,7 +207,7 @@ agent-ctrl mcp update --all --refresh
 Profiles allow you to define and apply specific sets of artifacts to platforms.
 
 ```bash
-# List available profiles
+# List available profiles (grouped by category, with description and tags)
 agent-ctrl profile list
 
 # Apply a profile to a platform
@@ -221,6 +221,8 @@ agent-ctrl profile apply production --platform cursor --override
 ```
 
 **Location:** `profiles/`
+
+**Metadata:** Each profile directory can optionally define a `profile.yaml` with `name`, `description`, and `tags`. The first tag is used as the profile's category, and `profile list` / the interactive `profile apply` picker group profiles by category (profiles without metadata are grouped under `Uncategorized`). See [Configuration → Profiles](./CONFIGURATION.md#profiles-profiles) for the file format.
 
 ---
 
