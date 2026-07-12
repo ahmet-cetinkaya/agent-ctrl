@@ -217,7 +217,7 @@ profiles/
 
 **Metadata (`profile.yaml`):**
 
-Each profile directory can optionally include a `profile.yaml` with display metadata. The first tag is treated as the profile's **category** — profiles are grouped by category when listed or picked interactively. A profile without `profile.yaml` (or without tags) falls back to the `Uncategorized` group.
+Each profile directory can optionally include a `profile.yaml` with display metadata. The first tag is treated as the profile's **category** — profiles are grouped by category when listed or picked interactively. A profile without `profile.yaml` (or without tags) falls back to the `Uncategorized` group. If a `profile.yaml` exists but cannot be read or fails to parse, `profile list`/`profile apply` still list the profile (using the directory name as a fallback) and print a warning identifying the affected profile.
 
 ```yaml
 name: Machine Learning

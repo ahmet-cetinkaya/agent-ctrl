@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, mkdir, chmod } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ProfileMetadataReader } from "@/infrastructure/features/apply/adapters/ProfileMetadataReader";
@@ -29,47 +29,83 @@ tags:
       "utf-8"
     );
 
-    const meta = await reader.read(profileDir, "machine-learning");
+    const { metadata, warnings } = await reader.read(profileDir, "machine-learning");
 
-    expect(meta.displayName).toBe("Machine Learning");
-    expect(meta.description).toBe("ML — agents and skills.");
-    expect(meta.tags).toEqual(["ai", "training", "mlops"]);
-    expect(meta.category).toBe("ai");
+    expect(metadata.displayName).toBe("Machine Learning");
+    expect(metadata.description).toBe("ML — agents and skills.");
+    expect(metadata.tags).toEqual(["ai", "training", "mlops"]);
+    expect(metadata.category).toBe("ai");
+    expect(warnings).toEqual([]);
   });
 
-  it("falls back to Uncategorized when profile.yaml is missing", async () => {
-    const meta = await reader.read(profileDir, "bare-profile");
+  it("falls back to Uncategorized with no warnings when profile.yaml is missing", async () => {
+    const { metadata, warnings } = await reader.read(profileDir, "bare-profile");
 
-    expect(meta.displayName).toBe("bare-profile");
-    expect(meta.description).toBe("");
-    expect(meta.tags).toEqual([]);
-    expect(meta.category).toBe("Uncategorized");
+    expect(metadata.displayName).toBe("bare-profile");
+    expect(metadata.description).toBe("");
+    expect(metadata.tags).toEqual([]);
+    expect(metadata.category).toBe("Uncategorized");
+    expect(warnings).toEqual([]);
   });
 
   it("falls back to Uncategorized when tags are missing or empty", async () => {
     await writeFile(join(profileDir, "profile.yaml"), `name: No Tags\ntags: []\n`, "utf-8");
 
-    const meta = await reader.read(profileDir, "no-tags");
+    const { metadata, warnings } = await reader.read(profileDir, "no-tags");
 
-    expect(meta.displayName).toBe("No Tags");
-    expect(meta.category).toBe("Uncategorized");
+    expect(metadata.displayName).toBe("No Tags");
+    expect(metadata.category).toBe("Uncategorized");
+    expect(warnings).toEqual([]);
   });
 
-  it("falls back without throwing on malformed yaml", async () => {
+  it("falls back and reports a warning on malformed yaml", async () => {
     await writeFile(join(profileDir, "profile.yaml"), `name: [unterminated\n  : :`, "utf-8");
 
-    const meta = await reader.read(profileDir, "broken");
+    const { metadata, warnings } = await reader.read(profileDir, "broken");
 
-    expect(meta.displayName).toBe("broken");
-    expect(meta.category).toBe("Uncategorized");
+    expect(metadata.displayName).toBe("broken");
+    expect(metadata.category).toBe("Uncategorized");
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("broken");
+    expect(warnings[0]).toContain("malformed profile.yaml");
+  });
+
+  it("falls back and reports a warning when profile.yaml cannot be read", async () => {
+    const filePath = join(profileDir, "profile.yaml");
+    await writeFile(filePath, `name: Unreadable\n`, "utf-8");
+    await chmod(filePath, 0o000);
+
+    try {
+      const { metadata, warnings } = await reader.read(profileDir, "unreadable");
+
+      expect(metadata.displayName).toBe("unreadable");
+      expect(metadata.category).toBe("Uncategorized");
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0]).toContain("unreadable");
+      expect(warnings[0]).toContain("failed to read profile.yaml");
+    } finally {
+      await chmod(filePath, 0o644);
+    }
   });
 
   it("uses directory name when name field is absent", async () => {
     await writeFile(join(profileDir, "profile.yaml"), `tags:\n  - web\n`, "utf-8");
 
-    const meta = await reader.read(profileDir, "frontend");
+    const { metadata, warnings } = await reader.read(profileDir, "frontend");
 
-    expect(meta.displayName).toBe("frontend");
-    expect(meta.category).toBe("web");
+    expect(metadata.displayName).toBe("frontend");
+    expect(metadata.category).toBe("web");
+    expect(warnings).toEqual([]);
+  });
+
+  it("falls back with no warning when profile.yaml exists but is a directory", async () => {
+    await mkdir(join(profileDir, "profile.yaml"));
+
+    const { metadata, warnings } = await reader.read(profileDir, "dir-instead-of-file");
+
+    expect(metadata.displayName).toBe("dir-instead-of-file");
+    expect(metadata.category).toBe("Uncategorized");
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("failed to read profile.yaml");
   });
 });

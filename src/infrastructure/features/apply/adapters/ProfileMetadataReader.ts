@@ -5,38 +5,71 @@ import { type ProfileMetadata, UNCATEGORIZED_CATEGORY } from "@/core/domain/shar
 
 const PROFILE_METADATA_FILENAME = "profile.yaml";
 
+export interface ProfileMetadataReadResult {
+  metadata: ProfileMetadata;
+  warnings: string[];
+}
+
 /**
  * Reads optional display metadata from `<profileDir>/profile.yaml`.
  *
- * A profile without a metadata file (or with malformed/partial metadata) is a
- * normal case, not an error: the reader always resolves to a ProfileMetadata
- * with sensible fallbacks and never throws.
+ * A profile without a metadata file is a normal case, not an error: the reader
+ * resolves to a ProfileMetadata with sensible fallbacks and never throws. A
+ * profile.yaml that exists but fails to read or parse is a genuine problem
+ * the caller should surface, so it is reported via `warnings` rather than
+ * being silently indistinguishable from "no file".
  */
 export class ProfileMetadataReader {
-  async read(profileDirPath: string, dirName: string): Promise<ProfileMetadata> {
+  async read(profileDirPath: string, dirName: string): Promise<ProfileMetadataReadResult> {
     const metadataPath = resolve(profileDirPath, PROFILE_METADATA_FILENAME);
+
+    let content: string;
+    try {
+      content = await readFile(metadataPath, "utf-8");
+    } catch (error) {
+      if (this.isMissingFile(error)) {
+        return { metadata: this.fallback(dirName), warnings: [] };
+      }
+      return {
+        metadata: this.fallback(dirName),
+        warnings: [`Profile '${dirName}': failed to read profile.yaml: ${this.describeError(error)}`],
+      };
+    }
 
     let raw: unknown;
     try {
-      const content = await readFile(metadataPath, "utf-8");
       raw = parseYaml(content);
-    } catch {
-      return this.fallback(dirName);
+    } catch (error) {
+      return {
+        metadata: this.fallback(dirName),
+        warnings: [`Profile '${dirName}': malformed profile.yaml: ${this.describeError(error)}`],
+      };
     }
 
     if (raw === null || typeof raw !== "object") {
-      return this.fallback(dirName);
+      return { metadata: this.fallback(dirName), warnings: [] };
     }
 
     const record = raw as Record<string, unknown>;
     const tags = this.readTags(record.tags);
 
     return {
-      displayName: this.readString(record.name) ?? dirName,
-      description: this.readString(record.description) ?? "",
-      tags,
-      category: tags.length > 0 ? tags[0] : UNCATEGORIZED_CATEGORY,
+      metadata: {
+        displayName: this.readString(record.name) ?? dirName,
+        description: this.readString(record.description) ?? "",
+        tags,
+        category: tags.length > 0 ? tags[0] : UNCATEGORIZED_CATEGORY,
+      },
+      warnings: [],
     };
+  }
+
+  private isMissingFile(error: unknown): boolean {
+    return (error as NodeJS.ErrnoException)?.code === "ENOENT";
+  }
+
+  private describeError(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
   }
 
   private fallback(dirName: string): ProfileMetadata {

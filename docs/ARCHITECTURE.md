@@ -184,19 +184,19 @@ The directory structure **IS** the configuration. No complex config files - just
 
 **Location:** `src/core/domain/shared/entities/`
 
-| Entity                    | Purpose                                                                   |
-| ------------------------- | ------------------------------------------------------------------------- |
-| `Rule`                    | Rule artifact with filename, path, type                                   |
-| `Skill`                   | Skill artifact with directory name, path, type                            |
-| `Agent`                   | Agent persona artifact with filename, path, type                          |
-| `Profile`                 | Configuration profile with name, path, configRoot, artifactPaths          |
+| Entity                    | Purpose                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `Rule`                    | Rule artifact with filename, path, type                                                                 |
+| `Skill`                   | Skill artifact with directory name, path, type                                                          |
+| `Agent`                   | Agent persona artifact with filename, path, type                                                        |
+| `Profile`                 | Configuration profile with name, path, configRoot, artifactPaths                                        |
 | `ProfileMetadata`         | Optional display metadata for a profile: displayName, description, tags, category (from `profile.yaml`) |
-| `CatalogItem`             | Registry catalog entry with metadata, compatibility, and activation state |
-| `ManagedIntegration`      | Activated skill/MCP with lifecycle state and version tracking             |
-| `DiscoveryScope`          | Discovery scope configuration for registry sync                           |
-| `CompatibilityAssessment` | Platform compatibility evaluation for catalog items                       |
-| `SyncReport`              | Sync operation result with per-item status                                |
-| `OperationLogEntry`       | Audit log entry for catalog operations                                    |
+| `CatalogItem`             | Registry catalog entry with metadata, compatibility, and activation state                               |
+| `ManagedIntegration`      | Activated skill/MCP with lifecycle state and version tracking                                           |
+| `DiscoveryScope`          | Discovery scope configuration for registry sync                                                         |
+| `CompatibilityAssessment` | Platform compatibility evaluation for catalog items                                                     |
+| `SyncReport`              | Sync operation result with per-item status                                                              |
+| `OperationLogEntry`       | Audit log entry for catalog operations                                                                  |
 
 ### Catalog Types
 

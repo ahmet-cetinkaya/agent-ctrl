@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ProfileListCommand } from "@/core/application/features/apply/commands/ProfileListCommand";
 import { UserError } from "@/core/domain/shared/errors/UserError";
+import { ProfileMetadataReader } from "@/infrastructure/features/apply/adapters/ProfileMetadataReader";
+import type { ProfileMetadata } from "@/core/domain/shared/entities/Profile";
 
 describe("ProfileListCommand", () => {
   let projectPath: string;
@@ -37,6 +39,7 @@ describe("ProfileListCommand", () => {
     if (!result.success) return;
 
     expect(result.data.profiles).toHaveLength(0);
+    expect(result.data.warnings).toEqual([]);
   });
 
   it("returns empty list when profiles directory is empty", async () => {
@@ -48,6 +51,7 @@ describe("ProfileListCommand", () => {
     if (!result.success) return;
 
     expect(result.data.profiles).toHaveLength(0);
+    expect(result.data.warnings).toEqual([]);
   });
 
   it("returns sorted list of profile names", async () => {
@@ -99,6 +103,7 @@ describe("ProfileListCommand", () => {
     if (!result.success) return;
 
     expect(result.data.profiles).toEqual(["bare", "machine-learning"]);
+    expect(result.data.warnings).toEqual([]);
 
     // sorted by category: "ai" before "Uncategorized"
     expect(result.data.details.map((d) => d.name)).toEqual(["machine-learning", "bare"]);
@@ -112,5 +117,47 @@ describe("ProfileListCommand", () => {
     const bare = result.data.details.find((d) => d.name === "bare");
     expect(bare?.displayName).toBe("bare");
     expect(bare?.category).toBe("Uncategorized");
+  });
+
+  it("propagates warnings from a malformed profile.yaml instead of swallowing them", async () => {
+    const profilesPath = join(projectPath, ".agent-ctrl", "profiles");
+    const { writeFile } = await import("node:fs/promises");
+
+    await mkdir(join(profilesPath, "broken"), { recursive: true });
+    await writeFile(join(profilesPath, "broken", "profile.yaml"), `name: [unterminated\n  : :`, "utf-8");
+
+    const result = await command.execute(projectPath);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.data.warnings).toHaveLength(1);
+    expect(result.data.warnings[0]).toContain("broken");
+    // still lists the profile with its fallback metadata despite the warning
+    expect(result.data.details.find((d) => d.name === "broken")?.category).toBe("Uncategorized");
+  });
+
+  it("uses an injected metadata reader instead of always constructing its own", async () => {
+    const stubMetadata: ProfileMetadata = {
+      displayName: "Stubbed",
+      description: "from stub",
+      tags: ["stub-tag"],
+      category: "stub-tag",
+    };
+    const stubReader = {
+      read: async () => ({ metadata: stubMetadata, warnings: [] }),
+    } as unknown as ProfileMetadataReader;
+
+    const profilesPath = join(projectPath, ".agent-ctrl", "profiles");
+    await mkdir(join(profilesPath, "any-profile"), { recursive: true });
+
+    const stubbedCommand = new ProfileListCommand(stubReader);
+    const result = await stubbedCommand.execute(projectPath);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.data.details[0]?.displayName).toBe("Stubbed");
+    expect(result.data.details[0]?.category).toBe("stub-tag");
   });
 });

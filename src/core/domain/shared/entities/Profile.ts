@@ -27,6 +27,14 @@ export interface ProfileMetadata {
 
 export const UNCATEGORIZED_CATEGORY = "Uncategorized";
 
+/**
+ * Centralizes the "is this the fallback category" check so callers never
+ * compare against `UNCATEGORIZED_CATEGORY` by hand and risk drifting from it.
+ */
+export function isUncategorizedCategory(category: string): boolean {
+  return category === UNCATEGORIZED_CATEGORY;
+}
+
 const PROFILE_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
 export function createProfile(

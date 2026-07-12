@@ -122,14 +122,14 @@ agent-ctrl
 
 **Domain** (`src/core/domain/shared/`)
 
-| Path             | Contents                                                                                                                                                            |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Path             | Contents                                                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `entities/`      | Rule, Skill, Agent, CatalogItem, ManagedIntegration, Profile, ProfileMetadata, Project, DiscoveryScope, CompatibilityAssessment, SyncReport, OperationLogEntry, SourceRegistry |
-| `interfaces/`    | IApplyPlatformAdapter, ISkillsMpClient, ISmitheryRegistryClient, IAgentScanner, ICatalogStateStore, IFileValidator, IFileSystem, IMcpConfigLoader, IPlatformAdapter |
-| `types/`         | Artifact, SupportedApplyPlatform                                                                                                                                    |
-| `errors/`        | BaseError, UserError (exitCode=1), SystemError (exitCode=2), ProfileError                                                                                           |
-| `constants/`     | errorIds.ts                                                                                                                                                         |
-| `value-objects/` | ArtifactType, FileExtensions, Result                                                                                                                                |
+| `interfaces/`    | IApplyPlatformAdapter, ISkillsMpClient, ISmitheryRegistryClient, IAgentScanner, ICatalogStateStore, IFileValidator, IFileSystem, IMcpConfigLoader, IPlatformAdapter            |
+| `types/`         | Artifact, SupportedApplyPlatform                                                                                                                                               |
+| `errors/`        | BaseError, UserError (exitCode=1), SystemError (exitCode=2), ProfileError                                                                                                      |
+| `constants/`     | errorIds.ts                                                                                                                                                                    |
+| `value-objects/` | ArtifactType, FileExtensions, Result                                                                                                                                           |
 
 **Application** (`src/core/application/features/`)
 
@@ -162,17 +162,17 @@ agent-ctrl
 
 **Apply Framework** (`src/infrastructure/features/apply/adapters/`)
 
-| Component                 | Purpose                                                                      |
-| ------------------------- | ---------------------------------------------------------------------------- |
-| `BaseTextApplyAdapter`    | Abstract base for marker-based markdown merge                                |
-| `PlatformAdapterRegistry` | Factory-based adapter registration                                           |
-| `ApplySourceLoader`       | Scans .agent-ctrl/ for artifacts                                             |
-| `ApplyMergePolicy`        | Determines how content is merged                                             |
-| `ProfileMerger`           | Merges profile artifacts with base config                                    |
-| `ProfileScanner`          | Scans profile directories                                                    |
+| Component                 | Purpose                                                                           |
+| ------------------------- | --------------------------------------------------------------------------------- |
+| `BaseTextApplyAdapter`    | Abstract base for marker-based markdown merge                                     |
+| `PlatformAdapterRegistry` | Factory-based adapter registration                                                |
+| `ApplySourceLoader`       | Scans .agent-ctrl/ for artifacts                                                  |
+| `ApplyMergePolicy`        | Determines how content is merged                                                  |
+| `ProfileMerger`           | Merges profile artifacts with base config                                         |
+| `ProfileScanner`          | Scans profile directories                                                         |
 | `ProfileMetadataReader`   | Reads optional `profile.yaml` display metadata (name, description, tags/category) |
-| Renderers                 | `IAgentRenderer`, `ICommandRenderer`, `IMcpConfigRenderer` + implementations |
-| Utilities                 | `PlatformSyncUtils`, `CommandScopePrecedenceResolver`, `ManagedTextSection`  |
+| Renderers                 | `IAgentRenderer`, `ICommandRenderer`, `IMcpConfigRenderer` + implementations      |
+| Utilities                 | `PlatformSyncUtils`, `CommandScopePrecedenceResolver`, `ManagedTextSection`       |
 
 **Catalog System** (`src/infrastructure/features/catalog/`)
 

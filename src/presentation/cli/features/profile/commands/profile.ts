@@ -6,7 +6,7 @@ import {
   ProfileListCommand,
   type ProfileListItem,
 } from "@/core/application/features/apply/commands/ProfileListCommand";
-import { UNCATEGORIZED_CATEGORY } from "@/core/domain/shared/entities/Profile";
+import { isUncategorizedCategory } from "@/core/domain/shared/entities/Profile";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ProfileError } from "@/core/domain/shared/errors/ProfileError";
@@ -28,7 +28,7 @@ function resolveConfigParent(): string {
 /**
  * Groups profile details by category (first tag), with "Uncategorized" sorted last.
  */
-function groupByCategory(details: ProfileListItem[]): [string, ProfileListItem[]][] {
+export function groupByCategory(details: ProfileListItem[]): [string, ProfileListItem[]][] {
   const groups = new Map<string, ProfileListItem[]>();
   for (const item of details) {
     const bucket = groups.get(item.category);
@@ -37,8 +37,8 @@ function groupByCategory(details: ProfileListItem[]): [string, ProfileListItem[]
   }
 
   return [...groups.entries()].sort(([a], [b]) => {
-    if (a === UNCATEGORIZED_CATEGORY) return 1;
-    if (b === UNCATEGORIZED_CATEGORY) return -1;
+    if (isUncategorizedCategory(a)) return 1;
+    if (isUncategorizedCategory(b)) return -1;
     return a.localeCompare(b);
   });
 }
@@ -46,7 +46,7 @@ function groupByCategory(details: ProfileListItem[]): [string, ProfileListItem[]
 /**
  * Renders profiles grouped by category with metadata into a note box.
  */
-function renderProfileGroups(details: ProfileListItem[]): void {
+export function renderProfileGroups(details: ProfileListItem[]): void {
   const grouped = groupByCategory(details);
   const sections: string[] = [];
 
@@ -54,6 +54,7 @@ function renderProfileGroups(details: ProfileListItem[]): void {
     if (sections.length > 0) sections.push("");
     sections.push(color.bold(category));
 
+    if (items.length === 0) continue;
     const maxNameLen = Math.max(...items.map((item) => item.displayName.length));
     for (const item of items) {
       const padded = item.displayName.padEnd(maxNameLen + 2);
@@ -110,6 +111,10 @@ export function createProfileCommand(): Command {
           process.exit(1);
         }
 
+        if (listResult.data.warnings.length > 0) {
+          LogService.warn(listResult.data.warnings.join("\n"));
+        }
+
         if (resolvedProfiles.length === 0) {
           const groups: Record<string, { value: string; label: string; hint?: string }[]> = {};
           for (const [category, items] of groupByCategory(listResult.data.details)) {
@@ -164,6 +169,10 @@ export function createProfileCommand(): Command {
       LogService.error(result.error.message);
       const exitCode = result.error instanceof UserError ? result.error.exitCode : 1;
       process.exit(exitCode);
+    }
+
+    if (result.data.warnings.length > 0) {
+      LogService.warn(result.data.warnings.join("\n"));
     }
 
     if (result.data.profiles.length === 0) {
