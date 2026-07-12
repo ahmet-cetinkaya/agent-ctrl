@@ -4,9 +4,17 @@ import { UserError } from "@/core/domain/shared/errors/UserError";
 import { resolve } from "node:path";
 import { readdir } from "node:fs/promises";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
+import type { ProfileMetadata } from "@/core/domain/shared/entities/Profile";
+import { ProfileMetadataReader } from "@/infrastructure/features/apply/adapters/ProfileMetadataReader";
+
+export interface ProfileListItem extends ProfileMetadata {
+  /** Directory name — the profile's identity used when applying. */
+  name: string;
+}
 
 export interface ProfileListCommandResult {
   profiles: string[];
+  details: ProfileListItem[];
 }
 
 export class ProfileListCommand {
@@ -25,7 +33,7 @@ export class ProfileListCommand {
       }
 
       if (!(await directoryExists(profilesPath))) {
-        return ok({ profiles: [] });
+        return ok({ profiles: [], details: [] });
       }
 
       const entries = await readdir(profilesPath, { withFileTypes: true });
@@ -34,7 +42,21 @@ export class ProfileListCommand {
         .map((entry) => entry.name)
         .sort();
 
-      return ok({ profiles });
+      const metadataReader = new ProfileMetadataReader();
+      const details: ProfileListItem[] = await Promise.all(
+        profiles.map(async (name) => {
+          const metadata = await metadataReader.read(resolve(profilesPath, name), name);
+          return { name, ...metadata };
+        })
+      );
+
+      details.sort((a, b) => {
+        const byCategory = a.category.localeCompare(b.category);
+        if (byCategory !== 0) return byCategory;
+        return a.displayName.localeCompare(b.displayName);
+      });
+
+      return ok({ profiles, details });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return err(new UserError(`Failed to read profiles directory: ${message}`, ERROR_IDS.DIRECTORY_ACCESS_FAILED));

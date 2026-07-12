@@ -78,4 +78,39 @@ describe("ProfileListCommand", () => {
 
     expect(result.data.profiles).toEqual(["valid-profile"]);
   });
+
+  it("populates details with metadata grouped/sorted by category", async () => {
+    const profilesPath = join(projectPath, ".agent-ctrl", "profiles");
+    const { writeFile } = await import("node:fs/promises");
+
+    await mkdir(join(profilesPath, "machine-learning"), { recursive: true });
+    await writeFile(
+      join(profilesPath, "machine-learning", "profile.yaml"),
+      `name: Machine Learning\ndescription: ML profile\ntags:\n  - ai\n  - mlops\n`,
+      "utf-8"
+    );
+
+    // bare profile with no metadata → Uncategorized
+    await mkdir(join(profilesPath, "bare"), { recursive: true });
+
+    const result = await command.execute(projectPath);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+
+    expect(result.data.profiles).toEqual(["bare", "machine-learning"]);
+
+    // sorted by category: "ai" before "Uncategorized"
+    expect(result.data.details.map((d) => d.name)).toEqual(["machine-learning", "bare"]);
+
+    const ml = result.data.details.find((d) => d.name === "machine-learning");
+    expect(ml).toBeDefined();
+    expect(ml?.displayName).toBe("Machine Learning");
+    expect(ml?.category).toBe("ai");
+    expect(ml?.tags).toEqual(["ai", "mlops"]);
+
+    const bare = result.data.details.find((d) => d.name === "bare");
+    expect(bare?.displayName).toBe("bare");
+    expect(bare?.category).toBe("Uncategorized");
+  });
 });

@@ -7,6 +7,7 @@ import {
   confirm,
   select,
   multiselect,
+  groupMultiselect,
   spinner,
   progress,
 } from "@clack/prompts";
@@ -165,6 +166,39 @@ export class PromptService {
     const result = await multiselect({
       message: options.message,
       options: options.options.map((o) => ({ value: o.value as any, label: o.label, hint: o.hint })),
+      required: options.required,
+    });
+    return result as T[] | symbol | null;
+  }
+
+  /**
+   * Selection prompt for multiple options grouped by category.
+   *
+   * @template T - Type of the value associated with each option.
+   * @param {string} options.message - The question to display.
+   * @param {Record<string, PromptOption<T>[]>} options.groups - Options keyed by group label.
+   * @param {boolean} [options.required] - If true, ensures at least one option is selected.
+   * @returns {Promise<T[] | symbol | null>} Selected values, or a cancellation symbol/null.
+   * @throws {Error} If no options are provided across all groups.
+   */
+  static async selectManyGrouped<T>(options: {
+    message: string;
+    groups: Record<string, PromptOption<T>[]>;
+    required?: boolean;
+  }): Promise<T[] | symbol | null> {
+    const totalOptions = Object.values(options.groups).reduce((sum, opts) => sum + opts.length, 0);
+    if (totalOptions === 0) {
+      throw new Error("selectManyGrouped requires at least one option");
+    }
+
+    const mappedGroups: Record<string, { value: any; label: string; hint?: string }[]> = {};
+    for (const [group, opts] of Object.entries(options.groups)) {
+      mappedGroups[group] = opts.map((o) => ({ value: o.value as any, label: o.label, hint: o.hint }));
+    }
+
+    const result = await groupMultiselect({
+      message: options.message,
+      options: mappedGroups,
       required: options.required,
     });
     return result as T[] | symbol | null;
