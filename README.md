@@ -110,6 +110,28 @@ Agent personas and identity definitions.
 - `agent-ctrl mcp update <id>` - Update a configured MCP server.
 - `agent-ctrl mcp rm <id>` - Remove an MCP server.
 
+#### Profiles (`profiles/`)
+
+Named bundles of artifacts applied together to a platform.
+
+- `agent-ctrl profile list` - List profiles, grouped by category with description and tags.
+- `agent-ctrl profile apply [platform] [profiles...]` - Apply one or more profiles to a platform.
+
+Add an optional `profile.yaml` at the root of a profile directory to give it display metadata.
+The first tag is treated as its **category** — profiles are grouped by category when listed or
+picked interactively (profiles without a `profile.yaml`, or without tags, are grouped under
+`Uncategorized`):
+
+```yaml
+name: Machine Learning
+description: "Machine learning / AI — agents and skills for model training, MLOps, and applied ML."
+tags:
+  - ai
+  - training
+  - mlops
+  - pytorch
+```
+
 ### Platform-Specific Settings (`settings/`)
 
 Place a `settings/<platform>/` directory in your project to apply files that only
@@ -155,6 +177,7 @@ Key behavior:
 │   └── architect.md
 ├── profiles/               # Named bundles applied via `apply --profile <name>`
 │   └── backend/
+│       └── profile.yaml   # Optional: display metadata (name, description, tags)
 ├── mcps/                   # MCP server configurations
 │   └── filesystem/
 │       └── MCP.json

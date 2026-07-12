@@ -1,7 +1,12 @@
 import { Command } from "commander";
 import { resolve } from "node:path";
+import color from "picocolors";
 import { ApplyProfileCommand } from "@/core/application/features/apply/commands/ApplyProfileCommand";
-import { ProfileListCommand } from "@/core/application/features/apply/commands/ProfileListCommand";
+import {
+  ProfileListCommand,
+  type ProfileListItem,
+} from "@/core/application/features/apply/commands/ProfileListCommand";
+import { isUncategorizedCategory } from "@/core/domain/shared/entities/Profile";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ProfileError } from "@/core/domain/shared/errors/ProfileError";
@@ -18,6 +23,53 @@ import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 
 function resolveConfigParent(): string {
   return resolve(resolveConfigRoot(), "..");
+}
+
+/**
+ * Groups profile details by category (first tag), with "Uncategorized" sorted last.
+ */
+export function groupByCategory(details: ProfileListItem[]): [string, ProfileListItem[]][] {
+  const groups = new Map<string, ProfileListItem[]>();
+  for (const item of details) {
+    const bucket = groups.get(item.category);
+    if (bucket) bucket.push(item);
+    else groups.set(item.category, [item]);
+  }
+
+  return [...groups.entries()].sort(([a], [b]) => {
+    if (isUncategorizedCategory(a)) return 1;
+    if (isUncategorizedCategory(b)) return -1;
+    return a.localeCompare(b);
+  });
+}
+
+/**
+ * Renders profiles grouped by category with metadata into a note box.
+ */
+export function renderProfileGroups(details: ProfileListItem[]): void {
+  const grouped = groupByCategory(details);
+  const sections: string[] = [];
+
+  for (const [category, items] of grouped) {
+    if (sections.length > 0) sections.push("");
+    sections.push(color.bold(category));
+
+    if (items.length === 0) continue;
+    const maxNameLen = Math.max(...items.map((item) => item.displayName.length));
+    for (const item of items) {
+      const padded = item.displayName.padEnd(maxNameLen + 2);
+      let line = `  ${color.cyan(padded)}`;
+      if (item.description) line += color.dim(item.description);
+      sections.push(line);
+
+      const extraTags = item.tags.slice(1);
+      if (extraTags.length > 0) {
+        sections.push(`  ${" ".repeat(maxNameLen + 2)}${color.dim(`tags: ${extraTags.join(", ")}`)}`);
+      }
+    }
+  }
+
+  LogService.note(sections.join("\n"), "Profiles:");
 }
 
 export function createProfileCommand(): Command {
@@ -59,10 +111,23 @@ export function createProfileCommand(): Command {
           process.exit(1);
         }
 
+        if (listResult.data.warnings.length > 0) {
+          LogService.warn(listResult.data.warnings.join("\n"));
+        }
+
         if (resolvedProfiles.length === 0) {
-          const selected = await PromptService.selectMany<string>({
+          const groups: Record<string, { value: string; label: string; hint?: string }[]> = {};
+          for (const [category, items] of groupByCategory(listResult.data.details)) {
+            groups[category] = items.map((item) => ({
+              value: item.name,
+              label: item.displayName,
+              hint: item.description || undefined,
+            }));
+          }
+
+          const selected = await PromptService.selectManyGrouped<string>({
             message: "Select profiles to apply",
-            options: listResult.data.profiles.map((p) => ({ value: p, label: p })),
+            groups,
             required: true,
           });
 
@@ -106,12 +171,16 @@ export function createProfileCommand(): Command {
       process.exit(exitCode);
     }
 
+    if (result.data.warnings.length > 0) {
+      LogService.warn(result.data.warnings.join("\n"));
+    }
+
     if (result.data.profiles.length === 0) {
       LogService.note("No profiles configured.", "Profiles:");
       return;
     }
 
-    LogService.note(result.data.profiles.join("\n"), "Profiles:");
+    renderProfileGroups(result.data.details);
   });
 
   profileCommand.addCommand(profileApplyCommand);
