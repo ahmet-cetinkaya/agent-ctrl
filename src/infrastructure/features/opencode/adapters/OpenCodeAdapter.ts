@@ -6,6 +6,7 @@ import type {
   ApplyIntegrationResult,
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import { AgentRendererFactory } from "@/infrastructure/features/apply/adapters/AgentRendererFactory";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
   mergeJsonObjectFile,
@@ -117,7 +118,13 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
     }
 
     if (source.agents.length > 0) {
-      const agentsResult = await syncAgentsAsMarkdown(source.agents, agentRoot, Boolean(request.dryRun), true);
+      const agentsResult = await syncAgentsAsMarkdown(
+        source.agents,
+        agentRoot,
+        Boolean(request.dryRun),
+        true,
+        AgentRendererFactory.getRenderer("opencode")
+      );
       changed = agentsResult.changed || changed;
       fileChanges.push(...agentsResult.paths);
     }

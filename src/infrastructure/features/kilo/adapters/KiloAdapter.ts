@@ -7,6 +7,7 @@ import type {
   ApplyIntegrationResult,
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import { AgentRendererFactory } from "@/infrastructure/features/apply/adapters/AgentRendererFactory";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
   mergeJsonObjectFile,
@@ -121,7 +122,8 @@ export class KiloAdapter implements IApplyPlatformAdapter {
           source.agents,
           resolve(targetRoot, "agents"),
           Boolean(request.dryRun),
-          true
+          true,
+          AgentRendererFactory.getRenderer("kilo")
         );
         changed = agentsResult.changed || changed;
         fileChanges.push(...agentsResult.paths);
