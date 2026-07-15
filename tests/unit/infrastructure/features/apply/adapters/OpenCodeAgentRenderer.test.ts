@@ -114,6 +114,19 @@ More content after a horizontal rule.`;
       expect(result).toContain("More content after a horizontal rule.");
     });
 
+    it("should leave content unchanged when frontmatter YAML is malformed", () => {
+      const source = `---
+name: [unterminated
+tools: ["Read"]
+---
+
+Body content`;
+
+      expect(() => renderer.renderAgent(source, "architect")).not.toThrow();
+      const result = renderer.renderAgent(source, "architect");
+      expect(result).toContain("Body content");
+    });
+
     it("should add frontmatter when none exists (no tools to normalize)", () => {
       const source = "# Architect Agent\n\nBe explicit.";
       const result = renderer.renderAgent(source, "architect");

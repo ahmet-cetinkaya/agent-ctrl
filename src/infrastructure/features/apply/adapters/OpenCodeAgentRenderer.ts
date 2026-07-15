@@ -1,5 +1,4 @@
 import { isScalar, isSeq, parseDocument } from "yaml";
-import { BaseAgentRenderer } from "./BaseAgentRenderer";
 import { ForgeCodeAgentRenderer } from "./ForgeCodeAgentRenderer";
 import type { IAgentRenderer } from "./IAgentRenderer";
 
@@ -13,7 +12,7 @@ const TOOLS_KEY = "tools";
  * the object of lowercase booleans OpenCode's config schema requires
  * (e.g. { read: true, grep: true }). See https://opencode.ai/docs/agents/.
  */
-export class OpenCodeAgentRenderer extends BaseAgentRenderer implements IAgentRenderer {
+export class OpenCodeAgentRenderer implements IAgentRenderer {
   readonly fileExtension = ".md";
   private readonly baseRenderer = new ForgeCodeAgentRenderer();
 
@@ -30,6 +29,12 @@ export class OpenCodeAgentRenderer extends BaseAgentRenderer implements IAgentRe
 
     const [, frontmatterText, rest = ""] = match;
     const doc = parseDocument(frontmatterText);
+    if (doc.errors.length > 0) {
+      // Malformed frontmatter YAML — leave content untouched rather than
+      // crashing on doc.toString(), which throws for documents with errors.
+      return content;
+    }
+
     const toolsNode = doc.get(TOOLS_KEY, true);
     if (!isSeq(toolsNode)) {
       return content;
