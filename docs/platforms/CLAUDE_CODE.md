@@ -173,17 +173,21 @@ When you run `agent-ctrl apply claude`, the following transformations occur:
 
 ### Desktop App Limitations
 
-The Claude Desktop App (Chat/Cowork/Code) has a known issue that affects how filesystem skills are displayed:
+The Claude Desktop App's support for filesystem-based skills is currently **unstable**, with several distinct upstream issues reported as of July 2026 — not just a display quirk. Treat filesystem skills in Desktop as best-effort until Anthropic resolves these:
 
-| Feature               | Code Tab | Chat/Cowork | Customize > Skills Panel           |
-| --------------------- | -------- | ----------- | ---------------------------------- |
-| `/` slash commands    | ✅ Works | ❌ N/A      | ❌ Does not list filesystem skills |
-| Auto-invocation       | ✅ Works | ❌ N/A      | ❌ Does not list filesystem skills |
-| Type `/name` manually | ✅ Works | ❌ N/A      | ❌ Does not list filesystem skills |
+| Feature               | Code Tab      | Chat/Cowork | Customize > Skills Panel           |
+| --------------------- | ------------- | ----------- | ---------------------------------- |
+| `/` slash commands    | ⚠️ Unreliable | ❌ N/A      | ❌ Does not list filesystem skills |
+| Auto-invocation       | ⚠️ Unreliable | ❌ N/A      | ❌ Does not list filesystem skills |
+| Type `/name` manually | ⚠️ Unreliable | ❌ N/A      | ❌ Does not list filesystem skills |
 
-**Root cause (GitHub issue #31597):** The Customize > Skills panel uses a separate code path that only queries plugin skills and built-in skills — it skips filesystem sources (`~/.claude/skills/` and `.claude/skills/`). Skills are loaded into the runtime and work correctly in the Code tab, but are invisible in the panel.
+**Issue 1 — Not listed in Customize panel (GitHub issue #31597):** The Customize > Skills panel uses a separate code path that only queries plugin skills and built-in skills — it skips filesystem sources (`~/.claude/skills/` and `.claude/skills/`). When this is the _only_ symptom, skills still work correctly in the Code tab; they're just invisible in the panel.
 
-**Note:** Skills loaded via `~/.claude/skills/` are only available in the **Code tab** of the Desktop App. The Chat and Cowork tabs do not load filesystem-based skills. Skills in those tabs require installation through the Customize > Skills UI (which uploads them to the cloud).
+**Issue 2 — Slash-command invocation silently fails (GitHub issue #36031, closed "not planned"):** A skill can appear correctly in the Code tab's `/` autocomplete (proving Desktop discovered it on disk), but submitting `/skillname` does **not** load the `SKILL.md` content into context — Claude treats it as plain text and proceeds as if no skill were invoked, with no error shown. This reproduces even with a plain `SKILL.md` (no forks, no dynamic `!` commands). **Workaround:** remove `disable-model-invocation: true` from the skill's frontmatter — this lets Desktop pick the skill up via automatic model-invocation instead of the broken slash-command path.
+
+**Issue 3 — Skills list empty / nothing loads (GitHub issue #69180, open as of 2026-06-17):** In some Desktop/CLI versions, `/skills` returns an empty list even though skill directories exist on disk in `~/.claude/skills/` or `./claude/skills/` — no skills are discovered at all, in Desktop or CLI. This is a more severe regression than issues 1–2 and indicates filesystem-skill loading is not reliably stable across Claude Code/Desktop releases.
+
+**Note:** Even when working, skills loaded via `~/.claude/skills/` are only available in the **Code tab** of the Desktop App. The Chat and Cowork tabs do not load filesystem-based skills at all. Skills in those tabs require installation through the Customize > Skills UI (which uploads them to the cloud).
 
 ### Output Locations
 
@@ -254,13 +258,19 @@ agent-ctrl apply claude
 
 ### Known Limitations
 
-1. **Customize > Skills panel:** The Desktop App's skills panel only shows plugin and built-in skills — filesystem skills from `~/.claude/skills/` are not listed there (GitHub issue #31597). They **do work** in the Code tab via `/` slash commands.
+There are multiple known upstream Anthropic issues affecting filesystem skills in Claude Desktop, some still open as of July 2026 — this is not a single fully-diagnosed bug:
 
-2. **Chat/Cowork tabs:** Filesystem skills (`~/.claude/skills/`) are only available in the Code tab. They aren't loaded in Chat or Cowork tabs.
+1. **Customize > Skills panel:** The Desktop App's skills panel only shows plugin and built-in skills — filesystem skills from `~/.claude/skills/` are not listed there (GitHub issue #31597). When this is the only symptom, skills **do work** in the Code tab via `/` slash commands.
+
+2. **Chat/Cowork tabs:** Filesystem skills (`~/.claude/skills/`) are only available in the Code tab. They aren't loaded in Chat or Cowork tabs at all.
 
 3. **New directories require restart:** If `~/.claude/skills/` didn't exist before starting the Desktop App, newly added skills won't be discovered until restart.
 
-4. **Workaround:** To add skills to Chat/Cowork tabs, upload them through **Customize > Skills** in the Desktop App UI.
+4. **Workaround for Chat/Cowork:** To add skills to Chat/Cowork tabs, upload them through **Customize > Skills** in the Desktop App UI.
+
+5. **Invocation can silently fail even in the Code tab (GitHub issue #36031):** A skill listed correctly in `/` autocomplete may still not have its `SKILL.md` content loaded on invocation — no error is shown, Claude just ignores the skill's instructions. Try removing `disable-model-invocation: true` from the skill's frontmatter as a workaround.
+
+6. **Skills may not load at all (GitHub issue #69180, open):** In some versions, `/skills` reports an empty list even with valid skill directories present on disk, in both Desktop and CLI. If this happens, it is a version-specific regression, not an agent-ctrl configuration problem — verify by checking `/skills` output directly.
 
 ---
 
@@ -271,3 +281,6 @@ agent-ctrl apply claude
 - [Extend Claude Code (Features Overview)](https://docs.anthropic.com/en/docs/claude-code/features-overview)
 - [Claude Code Permissions & Modes](https://docs.anthropic.com/en/docs/claude-code/permission-modes)
 - [Advanced Setup & Customization](https://docs.anthropic.com/en/docs/claude-code/setup)
+- [GitHub issue #31597 — Skills from ~/.claude/skills/ and plugins not shown in Customize > Skills panel](https://github.com/anthropics/claude-code/issues/31597)
+- [GitHub issue #36031 — User-level skills appear in Desktop autocomplete but don't invoke](https://github.com/anthropics/claude-code/issues/36031)
+- [GitHub issue #69180 — Skills not loading from CLI or ./claude/skills directory](https://github.com/anthropics/claude-code/issues/69180)

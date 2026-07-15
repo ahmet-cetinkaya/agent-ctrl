@@ -96,7 +96,7 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
       ...source.warnings,
       ...(source.skills.length > 0 && target.scope !== "project"
         ? [
-            'Skills were applied to ~/.claude/skills/ but the Claude Desktop App (Chat/Cowork) does not load filesystem skills. They are only available in the Code tab via "/" slash commands. Upload skills through Customize > Skills for Chat/Cowork use, or use a project-local .claude/skills/ directory.',
+            "Skills were applied to ~/.claude/skills/. Claude Desktop's filesystem-skill support is known to be unstable: skills may not appear in Customize > Skills, may silently fail to invoke via \"/name\" in the Code tab even when listed in autocomplete, or may not load at all in some versions. They are never available in Chat/Cowork tabs. If a skill doesn't seem to fire, try removing `disable-model-invocation: true` from its SKILL.md frontmatter, or upload it through Customize > Skills for Chat/Cowork use.",
           ]
         : []),
     ];
