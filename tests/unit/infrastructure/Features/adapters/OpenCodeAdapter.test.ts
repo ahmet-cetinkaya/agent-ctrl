@@ -66,6 +66,30 @@ describe("OpenCodeAdapter", () => {
     await expect(access(resolve(userRootPath, ".opencode"))).rejects.toBeDefined();
   });
 
+  it("normalizes a Claude-style tools array in agent frontmatter into an object", async () => {
+    await writeFile(
+      resolve(projectPath, ".agent-ctrl", "agents", "architect.md"),
+      [
+        "---",
+        "name: architect",
+        "description: Software architecture specialist",
+        'tools: ["Read", "Grep", "Glob"]',
+        "---",
+        "",
+        "Be explicit.",
+      ].join("\n"),
+      "utf-8"
+    );
+
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+    const content = await readFile(resolve(projectPath, ".opencode", "agents", "architect.md"), "utf-8");
+    expect(content).toContain("read: true");
+    expect(content).toContain("grep: true");
+    expect(content).toContain("glob: true");
+    expect(content).not.toContain('tools: ["Read"');
+  });
+
   it("cleans existing managed artifacts when override is enabled", async () => {
     // First apply without override
     await adapter.applyApplyIntegration({ projectPath, targetScope: "user", userConfigRootPath: userRootPath });

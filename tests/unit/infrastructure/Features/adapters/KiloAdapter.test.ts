@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { access, mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { KiloAdapter } from "@/infrastructure/features/kilo/adapters/KiloAdapter";
@@ -34,6 +34,32 @@ describe("KiloAdapter", () => {
     await expect(access(resolve(projectPath, ".kilocode", "kilo.jsonc"))).resolves.toBeNull();
     // Commands are written as skills with warning
     expect(result.warnings!.some((w) => w.includes("Commands are being written as skills"))).toBe(true);
+  });
+
+  it("normalizes a Claude-style tools array in agent frontmatter into an object", async () => {
+    await writeFile(
+      resolve(projectPath, ".agent-ctrl", "agents", "architect.md"),
+      [
+        "---",
+        "name: architect",
+        "description: Software architecture specialist",
+        'tools: ["Read", "Grep", "Glob"]',
+        "---",
+        "",
+        "Be explicit.",
+      ].join("\n"),
+      "utf-8"
+    );
+
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+    for (const root of [".kilo", ".kilocode"]) {
+      const content = await readFile(resolve(projectPath, root, "agents", "architect.md"), "utf-8");
+      expect(content).toContain("read: true");
+      expect(content).toContain("grep: true");
+      expect(content).toContain("glob: true");
+      expect(content).not.toContain('tools: ["Read"');
+    }
   });
 
   it("reapplies idempotently", async () => {
