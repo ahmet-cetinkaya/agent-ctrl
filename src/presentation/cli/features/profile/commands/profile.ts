@@ -44,29 +44,63 @@ export function groupByCategory(details: ProfileListItem[]): [string, ProfileLis
 }
 
 /**
- * Renders profiles grouped by category with metadata into a note box.
+ * Formats a category label as Title Case for display (e.g. "oss-release" → "Oss Release").
+ * Categories are stored as raw tag values (often kebab-case); this only affects rendering.
+ */
+export function titleCaseCategory(category: string): string {
+  return category
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+/** Synthetic category label for profiles whose own category has no other members. */
+export const STANDALONE_CATEGORY = "Standalone";
+
+/**
+ * Merges categories that only have a single profile into one "Standalone" group, appended
+ * last. A category heading adds no value when it only ever groups one profile.
+ */
+export function groupSingletonCategories(grouped: [string, ProfileListItem[]][]): [string, ProfileListItem[]][] {
+  const categorized = grouped.filter(([, items]) => items.length > 1);
+  const standalone = grouped.filter(([, items]) => items.length === 1).flatMap(([, items]) => items);
+
+  if (standalone.length === 0) return categorized;
+  return [...categorized, [STANDALONE_CATEGORY, standalone]];
+}
+
+/**
+ * Appends padded, description-annotated lines for a list of profile items to `sections`.
+ */
+function appendProfileItemLines(sections: string[], items: ProfileListItem[]): void {
+  if (items.length === 0) return;
+  const maxNameLen = Math.max(...items.map((item) => item.displayName.length));
+  for (const item of items) {
+    const padded = item.displayName.padEnd(maxNameLen + 2);
+    let line = `  ${color.cyan(padded)}`;
+    if (item.description) line += color.dim(item.description);
+    sections.push(line);
+
+    const extraTags = item.tags.slice(1);
+    if (extraTags.length > 0) {
+      sections.push(`  ${" ".repeat(maxNameLen + 2)}${color.dim(`tags: ${extraTags.join(", ")}`)}`);
+    }
+  }
+}
+
+/**
+ * Renders profiles grouped by category with metadata into a note box. Categories with a single
+ * profile are merged into a trailing "Standalone" group instead of each getting their own heading.
  */
 export function renderProfileGroups(details: ProfileListItem[]): void {
-  const grouped = groupByCategory(details);
+  const grouped = groupSingletonCategories(groupByCategory(details));
   const sections: string[] = [];
 
   for (const [category, items] of grouped) {
     if (sections.length > 0) sections.push("");
-    sections.push(color.bold(category));
-
-    if (items.length === 0) continue;
-    const maxNameLen = Math.max(...items.map((item) => item.displayName.length));
-    for (const item of items) {
-      const padded = item.displayName.padEnd(maxNameLen + 2);
-      let line = `  ${color.cyan(padded)}`;
-      if (item.description) line += color.dim(item.description);
-      sections.push(line);
-
-      const extraTags = item.tags.slice(1);
-      if (extraTags.length > 0) {
-        sections.push(`  ${" ".repeat(maxNameLen + 2)}${color.dim(`tags: ${extraTags.join(", ")}`)}`);
-      }
-    }
+    sections.push(color.bold(titleCaseCategory(category)));
+    appendProfileItemLines(sections, items);
   }
 
   LogService.note(sections.join("\n"), "Profiles:");
@@ -117,8 +151,8 @@ export function createProfileCommand(): Command {
 
         if (resolvedProfiles.length === 0) {
           const groups: Record<string, { value: string; label: string; hint?: string }[]> = {};
-          for (const [category, items] of groupByCategory(listResult.data.details)) {
-            groups[category] = items.map((item) => ({
+          for (const [category, items] of groupSingletonCategories(groupByCategory(listResult.data.details))) {
+            groups[titleCaseCategory(category)] = items.map((item) => ({
               value: item.name,
               label: item.displayName,
               hint: item.description || undefined,
@@ -128,6 +162,7 @@ export function createProfileCommand(): Command {
           const selected = await PromptService.selectManyGrouped<string>({
             message: "Select profiles to apply",
             groups,
+            selectableGroups: false,
             required: true,
           });
 

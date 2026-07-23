@@ -178,6 +178,7 @@ export class PromptService {
    * @param {string} options.message - The question to display.
    * @param {Record<string, PromptOption<T>[]>} options.groups - Options keyed by group label.
    * @param {boolean} [options.required] - If true, ensures at least one option is selected.
+   * @param {boolean} [options.selectableGroups] - If false, group headings can't be used to bulk-select/deselect their items; only individual options are selectable. Defaults to true (clack's default).
    * @returns {Promise<T[] | symbol | null>} Selected values, or a cancellation symbol/null.
    * @throws {Error} If no options are provided across all groups.
    */
@@ -185,6 +186,7 @@ export class PromptService {
     message: string;
     groups: Record<string, PromptOption<T>[]>;
     required?: boolean;
+    selectableGroups?: boolean;
   }): Promise<T[] | symbol | null> {
     const totalOptions = Object.values(options.groups).reduce((sum, opts) => sum + opts.length, 0);
     if (totalOptions === 0) {
@@ -200,6 +202,7 @@ export class PromptService {
       message: options.message,
       options: mappedGroups,
       required: options.required,
+      selectableGroups: options.selectableGroups,
     });
     return result as T[] | symbol | null;
   }
