@@ -7,7 +7,7 @@ import {
   type ProfileListItem,
 } from "@/core/application/features/apply/commands/ProfileListCommand";
 import { CreateProfileCommand } from "@/core/application/features/apply/commands/CreateProfileCommand";
-import { isUncategorizedCategory } from "@/core/domain/shared/entities/Profile";
+import { isUncategorizedCategory, PROFILE_ARTIFACT_DIRECTORIES, PROFILE_GITKEEP_FILE } from "@/core/domain/shared/entities/Profile";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ProfileError } from "@/core/domain/shared/errors/ProfileError";
@@ -270,15 +270,17 @@ export function createProfileCommand(): Command {
 
       const configRoot = resolveConfigRoot(options.path as string | undefined);
       const createCommand = new CreateProfileCommand(new NodeFileSystem());
+      const metadata = {
+        name: displayName,
+        description,
+        tags: parseTagsInput(tagsInput),
+      };
 
       if (options.dryRun) {
         LogService.log(`Would create at: ${resolve(configRoot, "profiles", profileName)}/`);
-        LogService.log("Directories: rules/, skills/, agents/, commands/, mcps/ (each with .gitkeep)");
-        const metadata = {
-          name: displayName,
-          description,
-          tags: parseTagsInput(tagsInput),
-        };
+        LogService.log(
+          `Directories: ${PROFILE_ARTIFACT_DIRECTORIES.join(", ")} (each with ${PROFILE_GITKEEP_FILE})`
+        );
         if (metadata.name || metadata.description || metadata.tags.length > 0) {
           LogService.log("Files: profiles/<name>/profile.yaml");
         }
@@ -290,11 +292,7 @@ export function createProfileCommand(): Command {
       const result = await createCommand.execute({
         configRoot,
         profileName,
-        metadata: {
-          name: displayName,
-          description,
-          tags: parseTagsInput(tagsInput),
-        },
+        metadata,
       });
 
       if (!result.success) {

@@ -3,8 +3,12 @@ import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ProfileError } from "@/core/domain/shared/errors/ProfileError";
-import { isValidProfileName } from "@/core/domain/shared/entities/Profile";
-import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
+import {
+  isValidProfileName,
+  PROFILE_ARTIFACT_DIRECTORIES,
+  PROFILE_GITKEEP_FILE,
+} from "@/core/domain/shared/entities/Profile";
+import { ERROR_IDS, type ErrorId } from "@/core/domain/shared/constants/errorIds";
 import { stringify as stringifyYaml } from "yaml";
 
 export interface CreateProfileMetadata {
@@ -32,8 +36,6 @@ export interface CreateProfileCommandResult {
 }
 
 const PROFILE_METADATA_FILENAME = "profile.yaml";
-const PROFILE_ARTIFACT_DIRECTORIES = ["rules", "skills", "agents", "commands", "mcps"];
-const GITKEEP_FILE = ".gitkeep";
 
 export class CreateProfileCommand {
   private readonly fileSystem: IFileSystem;
@@ -54,7 +56,12 @@ export class CreateProfileCommand {
 
     try {
       await this.fileSystem.access(options.configRoot);
-    } catch {
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
+        return err(
+          this.toSystemError("Failed to access config root", error, ERROR_IDS.DIRECTORY_ACCESS_FAILED)
+        );
+      }
       return err(
         new UserError(
           `No .agent-ctrl directory found at ${options.configRoot}. Initialize the project first.`,
@@ -76,18 +83,19 @@ export class CreateProfileCommand {
       );
     } catch (error) {
       if (!this.isMissingFileError(error)) {
-        return err(this.toSystemError("Failed to check profile directory", error));
+        return err(this.toSystemError("Failed to check profile directory", error, ERROR_IDS.DIRECTORY_ACCESS_FAILED));
       }
     }
 
     try {
       await this.fileSystem.mkdir(profilePath, { recursive: true });
     } catch (error) {
-      return err(this.toSystemError("Failed to create profile directory", error));
+      return err(this.toSystemError("Failed to create profile directory", error, ERROR_IDS.DIRECTORY_CREATE_FAILED));
     }
 
     const result = await this.scaffoldArtifactDirectories(profilePath);
     if (!result.success) {
+      await this.cleanupPartialProfile(profilePath);
       return err(result.error);
     }
 
@@ -98,14 +106,14 @@ export class CreateProfileCommand {
         await this.fileSystem.writeFile(metadataPath, metadataYaml, "utf-8");
         result.data.createdFiles.push(PROFILE_METADATA_FILENAME);
       } catch (error) {
-        return err(this.toSystemError("Failed to write profile.yaml", error));
+        await this.cleanupPartialProfile(profilePath);
+        return err(this.toSystemError("Failed to write profile.yaml", error, ERROR_IDS.FILE_WRITE_FAILED));
       }
     }
 
     return ok({
       profilePath,
-      createdDirectories: result.data.createdDirectories,
-      createdFiles: result.data.createdFiles,
+      ...result.data,
     });
   }
 
@@ -120,16 +128,18 @@ export class CreateProfileCommand {
       try {
         await this.fileSystem.mkdir(dirPath, { recursive: true });
       } catch (error) {
-        return err(this.toSystemError(`Failed to create directory ${dir}`, error));
+        return err(this.toSystemError(`Failed to create directory ${dir}`, error, ERROR_IDS.DIRECTORY_CREATE_FAILED));
       }
       createdDirectories.push(dir);
 
-      const gitkeepPath = this.fileSystem.resolve(dirPath, GITKEEP_FILE);
+      const gitkeepPath = this.fileSystem.resolve(dirPath, PROFILE_GITKEEP_FILE);
       try {
         await this.fileSystem.writeFile(gitkeepPath, "", "utf-8");
-        createdFiles.push(`${dir}/${GITKEEP_FILE}`);
+        createdFiles.push(`${dir}/${PROFILE_GITKEEP_FILE}`);
       } catch (error) {
-        return err(this.toSystemError(`Failed to create ${GITKEEP_FILE} in directory ${dir}`, error));
+        return err(
+          this.toSystemError(`Failed to create ${PROFILE_GITKEEP_FILE} in directory ${dir}`, error, ERROR_IDS.FILE_WRITE_FAILED)
+        );
       }
     }
 
@@ -165,7 +175,20 @@ export class CreateProfileCommand {
     return (error as NodeJS.ErrnoException)?.code === "ENOENT";
   }
 
-  private toSystemError(prefix: string, error: unknown): SystemError {
+  /**
+   * Removes a partially scaffolded profile directory so a failed create does
+   * not leave behind a broken profile. Best-effort: the original error is
+   * already being returned to the caller.
+   */
+  private async cleanupPartialProfile(profilePath: string): Promise<void> {
+    try {
+      await this.fileSystem.rm(profilePath, { recursive: true, force: true });
+    } catch {
+      // Best-effort cleanup; the original error takes precedence.
+    }
+  }
+
+  private toSystemError(prefix: string, error: unknown, errorId: ErrorId): SystemError {
     const nodeErr = error as NodeJS.ErrnoException;
     let message = prefix;
 
@@ -181,6 +204,6 @@ export class CreateProfileCommand {
       message += `: ${String(error)}`;
     }
 
-    return new SystemError(message, ERROR_IDS.DIRECTORY_CREATE_FAILED);
+    return new SystemError(message, errorId);
   }
 }

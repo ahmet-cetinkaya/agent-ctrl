@@ -60,4 +60,38 @@ describe("Profile Command Contract", () => {
       expect(promptOption).toBeDefined();
     });
   });
+
+  describe("new subcommand schema (T024)", () => {
+    it("has new subcommand", () => {
+      const profileCmd = createProfileCommand();
+      const newCmd = profileCmd.commands.find((c) => c.name() === "new");
+
+      expect(newCmd).toBeDefined();
+      expect(newCmd?.description()).toContain("Create a new profile");
+    });
+
+    it("new command accepts a required profile_name argument", () => {
+      const profileCmd = createProfileCommand();
+      const newCmd = profileCmd.commands.find((c) => c.name() === "new");
+
+      const helpText = newCmd?.helpInformation() || "";
+      expect(helpText).toContain("profile_name");
+    });
+
+    it("new command supports --dry-run option", () => {
+      const profileCmd = createProfileCommand();
+      const newCmd = profileCmd.commands.find((c) => c.name() === "new");
+      const dryRunOption = newCmd?.options.find((o) => o.long === "--dry-run");
+
+      expect(dryRunOption).toBeDefined();
+    });
+
+    it("new command supports metadata options --name, --description, --tags and --path", () => {
+      const profileCmd = createProfileCommand();
+      const newCmd = profileCmd.commands.find((c) => c.name() === "new");
+      const optionLongs = newCmd?.options.map((o) => o.long) ?? [];
+
+      expect(optionLongs).toEqual(expect.arrayContaining(["--name", "--description", "--tags", "--path"]));
+    });
+  });
 });
