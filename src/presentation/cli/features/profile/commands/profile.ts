@@ -7,7 +7,11 @@ import {
   type ProfileListItem,
 } from "@/core/application/features/apply/commands/ProfileListCommand";
 import { CreateProfileCommand } from "@/core/application/features/apply/commands/CreateProfileCommand";
-import { isUncategorizedCategory, PROFILE_ARTIFACT_DIRECTORIES, PROFILE_GITKEEP_FILE } from "@/core/domain/shared/entities/Profile";
+import {
+  isUncategorizedCategory,
+  PROFILE_ARTIFACT_DIRECTORIES,
+  PROFILE_GITKEEP_FILE,
+} from "@/core/domain/shared/entities/Profile";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ProfileError } from "@/core/domain/shared/errors/ProfileError";
@@ -278,9 +282,7 @@ export function createProfileCommand(): Command {
 
       if (options.dryRun) {
         LogService.log(`Would create at: ${resolve(configRoot, "profiles", profileName)}/`);
-        LogService.log(
-          `Directories: ${PROFILE_ARTIFACT_DIRECTORIES.join(", ")} (each with ${PROFILE_GITKEEP_FILE})`
-        );
+        LogService.log(`Directories: ${PROFILE_ARTIFACT_DIRECTORIES.join(", ")} (each with ${PROFILE_GITKEEP_FILE})`);
         if (metadata.name || metadata.description || metadata.tags.length > 0) {
           LogService.log("Files: profiles/<name>/profile.yaml");
         }

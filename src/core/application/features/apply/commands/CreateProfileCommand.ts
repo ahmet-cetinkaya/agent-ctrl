@@ -58,9 +58,7 @@ export class CreateProfileCommand {
       await this.fileSystem.access(options.configRoot);
     } catch (error) {
       if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") {
-        return err(
-          this.toSystemError("Failed to access config root", error, ERROR_IDS.DIRECTORY_ACCESS_FAILED)
-        );
+        return err(this.toSystemError("Failed to access config root", error, ERROR_IDS.DIRECTORY_ACCESS_FAILED));
       }
       return err(
         new UserError(
@@ -138,7 +136,11 @@ export class CreateProfileCommand {
         createdFiles.push(`${dir}/${PROFILE_GITKEEP_FILE}`);
       } catch (error) {
         return err(
-          this.toSystemError(`Failed to create ${PROFILE_GITKEEP_FILE} in directory ${dir}`, error, ERROR_IDS.FILE_WRITE_FAILED)
+          this.toSystemError(
+            `Failed to create ${PROFILE_GITKEEP_FILE} in directory ${dir}`,
+            error,
+            ERROR_IDS.FILE_WRITE_FAILED
+          )
         );
       }
     }
