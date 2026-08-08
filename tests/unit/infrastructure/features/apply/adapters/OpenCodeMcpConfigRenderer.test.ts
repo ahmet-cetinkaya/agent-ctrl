@@ -36,7 +36,7 @@ describe("OpenCodeMcpConfigRenderer", () => {
       expect(result.mcp).toHaveProperty("new-server");
     });
 
-    it("should filter out non-stdio servers", () => {
+    it("should render http servers as remote alongside stdio servers", () => {
       const existing = { mcp: {} };
 
       const servers: ApplyMcpServer[] = [
@@ -48,17 +48,23 @@ describe("OpenCodeMcpConfigRenderer", () => {
           sourceFile: "/path/to/source.ts",
         },
         {
-          name: "sse-server",
+          name: "http-server",
           transport: "http",
           url: "http://localhost:3000",
           sourceFile: "/path/to/source.ts",
-        } as unknown as ApplyMcpServer,
+        },
       ];
 
-      const result = renderer.renderConfig(existing, servers);
+      const result = renderer.renderConfig(existing, servers) as {
+        mcp: Record<string, Record<string, unknown>>;
+      };
 
-      expect(result.mcp).toHaveProperty("stdio-server");
-      expect(result.mcp).not.toHaveProperty("sse-server");
+      expect(result.mcp["stdio-server"]).toMatchObject({ type: "local", enabled: true });
+      expect(result.mcp["http-server"]).toEqual({
+        type: "remote",
+        url: "http://localhost:3000",
+        enabled: true,
+      });
     });
 
     it("should include server with cwd", () => {

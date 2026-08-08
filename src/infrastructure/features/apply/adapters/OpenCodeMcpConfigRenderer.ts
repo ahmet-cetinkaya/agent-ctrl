@@ -12,6 +12,7 @@ export class OpenCodeMcpConfigRenderer extends BaseMcpConfigRenderer {
 
   renderConfig(existing: Record<string, unknown>, servers: ApplyMcpServer[]): Record<string, unknown> {
     const stdioServers = this.filterStdioServers(servers);
+    const httpServers = this.filterHttpServers(servers);
     const currentMcp = this.isObject(existing.mcp) ? existing.mcp : {};
     const nextMcp = {
       ...currentMcp,
@@ -24,6 +25,16 @@ export class OpenCodeMcpConfigRenderer extends BaseMcpConfigRenderer {
             enabled: true,
             ...(server.cwd ? { cwd: server.cwd } : {}),
             ...(server.env && Object.keys(server.env).length > 0 ? { environment: server.env } : {}),
+          },
+        ])
+      ),
+      ...Object.fromEntries(
+        httpServers.map((server) => [
+          server.name,
+          {
+            type: "remote",
+            url: server.url,
+            enabled: true,
           },
         ])
       ),
