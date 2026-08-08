@@ -114,6 +114,7 @@ Agent personas and identity definitions.
 
 Named bundles of artifacts applied together to a platform.
 
+- `agent-ctrl profile new <name>` - Create a new profile directory with optional display metadata.
 - `agent-ctrl profile list` - List profiles, grouped by category with description and tags.
 - `agent-ctrl profile apply [platform] [profiles...]` - Apply one or more profiles to a platform.
 

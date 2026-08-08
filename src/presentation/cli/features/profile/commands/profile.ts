@@ -6,7 +6,12 @@ import {
   ProfileListCommand,
   type ProfileListItem,
 } from "@/core/application/features/apply/commands/ProfileListCommand";
-import { isUncategorizedCategory } from "@/core/domain/shared/entities/Profile";
+import { CreateProfileCommand } from "@/core/application/features/apply/commands/CreateProfileCommand";
+import {
+  isUncategorizedCategory,
+  PROFILE_ARTIFACT_DIRECTORIES,
+  PROFILE_GITKEEP_FILE,
+} from "@/core/domain/shared/entities/Profile";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ProfileError } from "@/core/domain/shared/errors/ProfileError";
@@ -16,10 +21,19 @@ import {
   getSupportedApplyPlatformsDisplay,
   getPlatformDisplayName,
 } from "@/core/domain/shared/types/SupportedApplyPlatform";
+import { NodeFileSystem } from "@/infrastructure/shared/file-system/NodeFileSystem";
 import { LogService } from "@/presentation/cli/shared/utils/LogService";
 import { PromptService } from "@/presentation/cli/shared/utils/PromptService";
 import { getLegacyGlobalOptions } from "@/presentation/cli/shared/utils/globalOptions";
 import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
+
+export function parseTagsInput(input?: string): string[] {
+  if (!input) return [];
+  return input
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag.length > 0);
+}
 
 function resolveConfigParent(): string {
   return resolve(resolveConfigRoot(), "..");
@@ -218,8 +232,96 @@ export function createProfileCommand(): Command {
     renderProfileGroups(result.data.details);
   });
 
+  const profileNewCommand = new Command("new")
+    .description("Create a new profile directory with optional metadata")
+    .argument("<profile_name>", "Name of the profile directory to create under .agent-ctrl/profiles/")
+    .option("-n, --name <value>", "Display name shown in profile list (defaults to the profile name)")
+    .option("-d, --description <value>", "Short description shown in profile list")
+    .option("-t, --tags <value>", "Comma-separated tags; the first tag becomes the profile category")
+    .option("--path <value>", "Configuration root path")
+    .option("--dry-run", "Preview what would be created without creating it", false)
+    .action(async (profileName: string, options: any) => {
+      LogService.intro("Creating profile");
+
+      let displayName = options.name as string | undefined;
+      let description = options.description as string | undefined;
+      let tagsInput = options.tags as string | undefined;
+
+      if (!displayName) {
+        const promptResult = await PromptService.input({
+          message: "Display name (shown in profile list)",
+          default: profileName,
+        });
+        if (PromptService.isCancelled(promptResult)) PromptService.handleCancellation();
+        displayName = typeof promptResult === "string" ? promptResult : undefined;
+      }
+
+      if (!description) {
+        const promptResult = await PromptService.input({
+          message: "Description (optional)",
+        });
+        if (PromptService.isCancelled(promptResult)) PromptService.handleCancellation();
+        description = typeof promptResult === "string" ? promptResult : undefined;
+      }
+
+      if (!tagsInput) {
+        const promptResult = await PromptService.input({
+          message: "Tags, comma-separated (optional)",
+        });
+        if (PromptService.isCancelled(promptResult)) PromptService.handleCancellation();
+        tagsInput = typeof promptResult === "string" ? promptResult : undefined;
+      }
+
+      const configRoot = resolveConfigRoot(options.path as string | undefined);
+      const createCommand = new CreateProfileCommand(new NodeFileSystem());
+      const metadata = {
+        name: displayName,
+        description,
+        tags: parseTagsInput(tagsInput),
+      };
+
+      if (options.dryRun) {
+        LogService.log(`Would create at: ${resolve(configRoot, "profiles", profileName)}/`);
+        LogService.log(`Directories: ${PROFILE_ARTIFACT_DIRECTORIES.join(", ")} (each with ${PROFILE_GITKEEP_FILE})`);
+        if (metadata.name || metadata.description || metadata.tags.length > 0) {
+          LogService.log("Files: profiles/<name>/profile.yaml");
+        }
+        LogService.outro("No changes made");
+        return;
+      }
+
+      PromptService.startTask("Creating profile");
+      const result = await createCommand.execute({
+        configRoot,
+        profileName,
+        metadata,
+      });
+
+      if (!result.success) {
+        PromptService.stopTask();
+        const error = result.error;
+        if (error instanceof UserError || error instanceof SystemError) {
+          LogService.error(error.message);
+          process.exit(error.exitCode);
+        }
+        LogService.error(`Unexpected error: ${error}`);
+        process.exit(2);
+      }
+
+      PromptService.stopTask("Profile created");
+      LogService.success(`Profile '${profileName}' created at ${result.data.profilePath}`);
+      if (result.data.createdDirectories.length > 0) {
+        LogService.log(`Directories: ${result.data.createdDirectories.join(", ")}`);
+      }
+      if (result.data.createdFiles.length > 0) {
+        LogService.log(`Files: ${result.data.createdFiles.join(", ")}`);
+      }
+      LogService.outro("Add artifacts (rules/, skills/, agents/, commands/, mcps/) inside the profile directory.");
+    });
+
   profileCommand.addCommand(profileApplyCommand);
   profileCommand.addCommand(profileListCommand);
+  profileCommand.addCommand(profileNewCommand);
 
   return profileCommand;
 }

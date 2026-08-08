@@ -1,4 +1,4 @@
-import { mkdir, writeFile, access, readdir } from "node:fs/promises";
+import { mkdir, writeFile, access, readdir, rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { IFileSystem, FileSystemEntry } from "@/core/domain/shared/interfaces/IFileSystem";
 
@@ -22,6 +22,10 @@ export class NodeFileSystem implements IFileSystem {
       isDirectory: entry.isDirectory(),
       isFile: entry.isFile(),
     }));
+  }
+
+  async rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
+    await rm(path, options);
   }
 
   resolve(...paths: string[]): string {

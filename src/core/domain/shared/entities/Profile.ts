@@ -1,3 +1,13 @@
+/**
+ * Canonical artifact directory names scaffolded into every profile.
+ * Single source of truth — consumers (CreateProfileCommand, ProfileScanner) must
+ * import these instead of re-declaring the list, so the set cannot drift.
+ */
+export const PROFILE_ARTIFACT_DIRECTORIES = ["rules", "skills", "agents", "commands", "mcps"] as const;
+
+/** Placeholder file written into each scaffolded artifact directory. */
+export const PROFILE_GITKEEP_FILE = ".gitkeep";
+
 export interface ProfileArtifactPaths {
   rules: string | null;
   skills: string | null;
@@ -37,13 +47,17 @@ export function isUncategorizedCategory(category: string): boolean {
 
 const PROFILE_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
+export function isValidProfileName(name: string): boolean {
+  return PROFILE_NAME_PATTERN.test(name);
+}
+
 export function createProfile(
   name: string,
   path: string,
   configRoot: string,
   artifactPaths: ProfileArtifactPaths
 ): Profile {
-  if (!PROFILE_NAME_PATTERN.test(name)) {
+  if (!isValidProfileName(name)) {
     throw new Error(`Profile name '${name}' is invalid. Must match pattern: ${PROFILE_NAME_PATTERN.source}`);
   }
 
