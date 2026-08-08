@@ -4,6 +4,7 @@ import {
   groupSingletonCategories,
   titleCaseCategory,
   STANDALONE_CATEGORY,
+  parseTagsInput,
 } from "@/presentation/cli/features/profile/commands/profile";
 import type { ProfileListItem } from "@/core/application/features/apply/commands/ProfileListCommand";
 
@@ -125,5 +126,25 @@ describe("profile.ts titleCaseCategory", () => {
 
   it("returns an empty string for empty input", () => {
     expect(titleCaseCategory("")).toBe("");
+  });
+});
+
+describe("profile.ts parseTagsInput", () => {
+  it("splits comma-separated tags", () => {
+    expect(parseTagsInput("ai, mlops, training")).toEqual(["ai", "mlops", "training"]);
+  });
+
+  it("trims whitespace around tags", () => {
+    expect(parseTagsInput("  ai ,  mlops  ")).toEqual(["ai", "mlops"]);
+  });
+
+  it("drops empty entries", () => {
+    expect(parseTagsInput("ai,,mlops,")).toEqual(["ai", "mlops"]);
+  });
+
+  it("returns an empty array for undefined or empty input", () => {
+    expect(parseTagsInput(undefined)).toEqual([]);
+    expect(parseTagsInput("")).toEqual([]);
+    expect(parseTagsInput("   ")).toEqual([]);
   });
 });

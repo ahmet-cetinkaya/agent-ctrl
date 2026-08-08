@@ -37,13 +37,17 @@ export function isUncategorizedCategory(category: string): boolean {
 
 const PROFILE_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 
+export function isValidProfileName(name: string): boolean {
+  return PROFILE_NAME_PATTERN.test(name);
+}
+
 export function createProfile(
   name: string,
   path: string,
   configRoot: string,
   artifactPaths: ProfileArtifactPaths
 ): Profile {
-  if (!PROFILE_NAME_PATTERN.test(name)) {
+  if (!isValidProfileName(name)) {
     throw new Error(`Profile name '${name}' is invalid. Must match pattern: ${PROFILE_NAME_PATTERN.source}`);
   }
 
