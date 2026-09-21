@@ -310,10 +310,7 @@ export async function syncAgentsAsCodexToml(
     if (platform) {
       const transformed = applyModelFrontmatter(source, platform, "agent");
       warnings.push(...transformed.warnings);
-      const modelMatch = transformed.content.match(/^model:\s*(.+)$/m);
-      if (modelMatch) {
-        modelLine = modelMatch[1].trim();
-      }
+      modelLine = getFrontmatterScalar(transformed.content, "model");
     }
 
     const tomlContent = buildCodexAgentToml(agentName, parsed, modelLine);
@@ -617,6 +614,14 @@ function buildCodexAgentToml(name: string, parsed: ParsedMarkdownPrompt, modelLi
   }
   lines.push(`developer_instructions = """`, parsed.body || parsed.title, `"""`, "");
   return lines.join("\n");
+}
+
+function getFrontmatterScalar(source: string, key: string): string | null {
+  const match = source.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!match) return null;
+
+  const value = match[1].match(new RegExp(`^${key}:\\s*(.+)$`, "m"));
+  return value?.[1].trim() ?? null;
 }
 
 function escapeTomlString(value: string): string {

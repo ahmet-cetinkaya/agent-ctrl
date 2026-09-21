@@ -41,6 +41,26 @@ describe("Claude model frontmatter flow", () => {
     const agent = await readFile(resolve(claudeHomePath, ".claude", "agents", "model-agent.md"), "utf-8");
     expect(agent).toContain("model: claude-sonnet-4-5");
     expect(agent).not.toContain("models:");
+
+    const skill = await readFile(resolve(claudeHomePath, ".claude", "skills", "model-skill", "SKILL.md"), "utf-8");
+    expect(skill).toContain("model: anthropic/claude-sonnet-4-5");
+    expect(skill).not.toContain("models:");
+  });
+
+  it("claude: reports model warnings in dry-run", async () => {
+    await writeFile(
+      resolve(projectPath, ".agent-ctrl", "commands", "invalid-model.md"),
+      "---\nmodel: 42\n---\n\nBody.\n",
+      "utf-8"
+    );
+
+    const result = await new ClaudeApplyAdapter().applyApplyIntegration({
+      projectPath,
+      targetScope: "user",
+      dryRun: true,
+    });
+
+    expect(result.warnings?.some((warning) => warning.includes("model: value must be"))).toBe(true);
   });
 });
 
@@ -67,7 +87,7 @@ describe("Model frontmatter platform flow", () => {
 
     const agent = await readFile(resolve(projectPath, ".opencode", "agents", "model-agent.md"), "utf-8");
     expect(agent).toContain("model: anthropic/claude-sonnet-4-5");
-    expect(result.warnings ?? []).toEqual([]);
+    expect(result.warnings?.some((warning) => warning.includes("OpenCode"))).toBe(true);
   });
 
   it("gemini: drops model with warning on command-as-skill output", async () => {
@@ -78,7 +98,8 @@ describe("Model frontmatter platform flow", () => {
     const skillMd = await readFile(resolve(projectPath, ".gemini", "skills", "model-test", "SKILL.md"), "utf-8");
     expect(skillMd).not.toContain("model:");
     expect(skillMd).not.toContain("models:");
-    expect(result.warnings?.some((w) => w.includes("model"))).toBe(true);
+    const modelWarnings = result.warnings?.filter((w) => w.includes("model")) ?? [];
+    expect(modelWarnings.length).toBe(1);
   });
 
   it("forgecode: splits model + provider on agents, drops on commands with warning", async () => {
@@ -101,6 +122,20 @@ describe("Model frontmatter platform flow", () => {
 
     const toml = await readFile(resolve(projectPath, ".codex", "agents", "model-agent.toml"), "utf-8");
     expect(toml).toContain('model = "anthropic/claude-sonnet-4-5"');
+  });
+
+  it("codex: does not derive a TOML model from a body line", async () => {
+    await writeFile(
+      resolve(projectPath, ".agent-ctrl", "agents", "body-model.md"),
+      "# Body model\n\nmodel: should-not-be-a-setting\n",
+      "utf-8"
+    );
+
+    const result = await new CodexAdapter().applyApplyIntegration({ projectPath, targetScope: "project" });
+    expect(result.status).toBe("success");
+
+    const toml = await readFile(resolve(projectPath, ".codex", "agents", "body-model.toml"), "utf-8");
+    expect(toml).not.toContain('model = "should-not-be-a-setting"');
   });
 
   it("kilo: passes model through on agents, drops on command-as-skill with warning", async () => {

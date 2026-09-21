@@ -76,8 +76,8 @@
 
 - [x] T017 Wire `platformName` + warnings aggregation into skill-writing paths in `src/infrastructure/features/apply/adapters/PlatformSyncUtils.ts`: `syncCommandsAsSkills` (kind `skill` — gemini/cursor/qwen/kilo/antigravity/codex drop cell), `syncCommandsAsWorkflows` (kind `command` — windsurf drop), `syncAgentsAsSkills` (kind `skill`), `syncSkills`/`renderSkillMarkdown`/`buildSkillFiles` (kind `skill`; pass platform through) — transformer runs so `model` is dropped with warning on non-claude platforms, `models` never written
 - [x] T018 Wire `platformName` + warnings aggregation in `src/infrastructure/features/gemini/adapters/GeminiAdapter.ts`, `src/infrastructure/features/cursor/adapters/CursorAdapter.ts`, `src/infrastructure/features/windsurf/adapters/WindsurfAdapter.ts`, `src/infrastructure/features/antigravity/adapters/AntigravityAdapter.ts`, and qwen skill paths in `src/infrastructure/features/qwen/adapters/QwenAdapter.ts`
-- [x] T019 Extend `tests/unit/infrastructure/features/apply/adapters/PlatformSyncUtils.test.ts`: gemini `syncCommandsAsSkills` strips `model` with warning in result; windsurf `syncCommandsAsWorkflows` output has no model + warning; `models` key absent from all outputs
-- [x] T020 Integration test in `tests/integration/apply/`: gemini apply → command TOML has no model, result warnings mention unsupported model field (quickstart.md Senaryo 4); backward-compat assertion — artifact without `model`/`models` produces byte-identical output as before (SC-003)
+- [x] T019 Extend `tests/unit/infrastructure/Features/adapters/ModelFrontmatterPlatformFlow.test.ts`: Gemini command-as-skill strips `model` with one deduplicated warning; `models` key is absent from all checked outputs; Codex only emits TOML `model` from frontmatter
+- [x] T020 Adapter-flow coverage in `tests/unit/infrastructure/Features/adapters/ModelFrontmatterPlatformFlow.test.ts`: Gemini apply drops model with warning; artifacts without `model`/`models` produce no model warnings (SC-003); Claude dry-run still surfaces model validation warnings
 
 **Checkpoint**: US1 + US2 birlikte: destekleyen platformlara yazılır, desteklemeyenlerde uyarılı düşürme
 
@@ -114,10 +114,10 @@
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [X] T024 [P] Update `README.md`: document `model` and `models` frontmatter fields, the support matrix (from contracts/model-frontmatter.md), override syntax and precedence (FR-011)
-- [X] T025 Run full gates: `bun test`, type-check (`bunx tsc --noEmit`), `bun run format`, `bun run lint` — all green (SC-005)
-- [X] T026 Run quickstart.md validation scenarios manually (Senaryo 1-7) and record results
-- [X] T027 Verify existing renderer tests unchanged and passing (zero renderer modification regression proof)
+- [x] T024 [P] Update `README.md`: document `model` and `models` frontmatter fields, the support matrix (from contracts/model-frontmatter.md), override syntax and precedence (FR-011)
+- [x] T025 Run full gates: `bun test`, type-check (`bunx tsc --noEmit`), `bun run format`, `bun run lint` — all green (SC-005)
+- [x] T026 Run quickstart.md validation scenarios manually (Senaryo 1-7) and record results
+- [x] T027 Verify existing renderer tests unchanged and passing (zero renderer modification regression proof)
 
 ---
 

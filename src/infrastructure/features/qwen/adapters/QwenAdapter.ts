@@ -162,7 +162,7 @@ export class QwenAdapter implements IApplyPlatformAdapter {
       status: toStatus(changed),
       message: "Applied Qwen guidance, skills, and MCP servers.",
       fileChanges,
-      warnings: [...source.warnings, ...modelWarnings],
+      warnings: [...source.warnings, ...new Set(modelWarnings)],
     };
   }
 }

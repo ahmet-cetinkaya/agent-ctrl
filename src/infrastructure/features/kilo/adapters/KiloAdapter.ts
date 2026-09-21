@@ -162,7 +162,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
       message:
         "Applied Kilo rules, workflows, skills, agents, and MCP servers to both .kilo and .kilocode directories.",
       fileChanges,
-      warnings: [...source.warnings, ...modelWarnings],
+      warnings: [...source.warnings, ...new Set(modelWarnings)],
     };
   }
 }

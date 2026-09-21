@@ -148,7 +148,11 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
       status: toStatus(changed),
       message: "Applied Gemini guidance, skills, and MCP servers.",
       fileChanges,
-      warnings: [...source.warnings, ...modelWarnings, ...countUnsupportedArtifacts("Gemini", source, ["agents"])],
+      warnings: [
+        ...source.warnings,
+        ...new Set(modelWarnings),
+        ...countUnsupportedArtifacts("Gemini", source, ["agents"]),
+      ],
     };
   }
 }

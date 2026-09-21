@@ -8,6 +8,7 @@ import { resolve } from "node:path";
 export async function writeModelFrontmatterFixtures(projectPath: string): Promise<void> {
   await mkdir(resolve(projectPath, ".agent-ctrl", "commands"), { recursive: true });
   await mkdir(resolve(projectPath, ".agent-ctrl", "agents"), { recursive: true });
+  await mkdir(resolve(projectPath, ".agent-ctrl", "skills", "model-skill"), { recursive: true });
 
   await writeFile(
     resolve(projectPath, ".agent-ctrl", "commands", "model-test.md"),
@@ -20,6 +21,23 @@ export async function writeModelFrontmatterFixtures(projectPath: string): Promis
       "---",
       "",
       "Smoke test body.",
+      "",
+    ].join("\n"),
+    "utf-8"
+  );
+
+  await writeFile(
+    resolve(projectPath, ".agent-ctrl", "skills", "model-skill", "SKILL.md"),
+    [
+      "---",
+      "name: model-skill",
+      "description: Model frontmatter skill",
+      "model: anthropic/claude-sonnet-4-5",
+      "models:",
+      "  qwen: fast",
+      "---",
+      "",
+      "Skill body.",
       "",
     ].join("\n"),
     "utf-8"

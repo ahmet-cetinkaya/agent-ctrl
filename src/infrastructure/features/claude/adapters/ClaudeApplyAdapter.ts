@@ -66,9 +66,11 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
       if (!writeResult.success) {
         throw writeResult.error;
       }
+    } else {
+      await adapter.collectModelWarnings(desiredConfig.data);
     }
 
-    const modelWarnings = adapter.collectedWarnings;
+    const modelWarnings = [...new Set(adapter.collectedWarnings)];
 
     const claudeRoot = resolve(target.configPath, "..");
     const fileChanges: string[] = [];
