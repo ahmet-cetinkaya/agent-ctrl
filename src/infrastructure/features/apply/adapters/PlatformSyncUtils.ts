@@ -5,6 +5,7 @@ import type { Rule } from "@/core/domain/shared/entities/Rule";
 import type { Skill } from "@/core/domain/shared/entities/Skill";
 import type { Agent } from "@/core/domain/shared/entities/Agent";
 import type { CommandArtifact } from "@/infrastructure/features/command/scanners/CommandScanner";
+import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { mergeManagedTextSection, type ManagedTextSectionMarkers } from "./ManagedTextSection";
 import type { ApplyMcpServer } from "./ApplySourceLoader";
 import { CommandRendererFactory } from "./CommandRendererFactory";
@@ -12,10 +13,12 @@ import type { ICommandRenderer, ParsedMarkdownPrompt } from "./ICommandRenderer"
 import { AgentRendererFactory } from "./AgentRendererFactory";
 import type { IAgentRenderer } from "./IAgentRenderer";
 import { McpConfigRendererFactory } from "./McpConfigRendererFactory";
+import { applyModelFrontmatter } from "./FrontmatterModelTransformer";
 
 export interface FileSyncResult {
   changed: boolean;
   paths: string[];
+  warnings: string[];
 }
 
 export interface PlatformTarget {
@@ -69,6 +72,7 @@ export async function upsertManagedRuleDocument(
   return {
     changed: merged.status === "success",
     paths: merged.status === "success" ? [filePath] : [],
+    warnings: [],
   };
 }
 
@@ -92,12 +96,19 @@ export async function syncCommandsAsMarkdown(
   targetRoot: string,
   dryRun: boolean,
   renderer?: ICommandRenderer,
-  flattenSeparator?: string
+  flattenSeparator?: string,
+  platform?: SupportedApplyPlatform
 ): Promise<FileSyncResult> {
   const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("opencode");
+  const warnings: string[] = [];
   const rendered = await Promise.all(
     commands.map(async (command) => {
-      const source = await readFile(command.path, "utf-8");
+      let source = await readFile(command.path, "utf-8");
+      if (platform) {
+        const transformed = applyModelFrontmatter(source, platform, "command");
+        source = transformed.content;
+        warnings.push(...transformed.warnings);
+      }
       const relativePath = flattenSeparator
         ? `${command.id.replaceAll("/", flattenSeparator)}${commandRenderer.fileExtension}`
         : `${command.id}${commandRenderer.fileExtension}`;
@@ -108,19 +119,27 @@ export async function syncCommandsAsMarkdown(
       };
     })
   );
-  return syncRenderedFiles(targetRoot, rendered, dryRun);
+  const result = await syncRenderedFiles(targetRoot, rendered, dryRun);
+  return { ...result, warnings };
 }
 
 export async function syncCommandsAsMarkdownFlattened(
   commands: CommandArtifact[],
   targetRoot: string,
   dryRun: boolean,
-  renderer?: ICommandRenderer
+  renderer?: ICommandRenderer,
+  platform?: SupportedApplyPlatform
 ): Promise<FileSyncResult> {
   const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("opencode");
+  const warnings: string[] = [];
   const rendered = await Promise.all(
     commands.map(async (command) => {
-      const source = await readFile(command.path, "utf-8");
+      let source = await readFile(command.path, "utf-8");
+      if (platform) {
+        const transformed = applyModelFrontmatter(source, platform, "command");
+        source = transformed.content;
+        warnings.push(...transformed.warnings);
+      }
       const relativePath = `${command.id.split("/").pop()}${commandRenderer.fileExtension}`;
 
       return {
@@ -129,20 +148,28 @@ export async function syncCommandsAsMarkdownFlattened(
       };
     })
   );
-  return syncRenderedFiles(targetRoot, rendered, dryRun);
+  const result = await syncRenderedFiles(targetRoot, rendered, dryRun);
+  return { ...result, warnings };
 }
 
 export async function syncSkillsAsCommands(
   skills: Skill[],
   targetRoot: string,
   dryRun: boolean,
-  renderer?: ICommandRenderer
+  renderer?: ICommandRenderer,
+  platform?: SupportedApplyPlatform
 ): Promise<FileSyncResult> {
   const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("opencode");
+  const warnings: string[] = [];
   const rendered = await Promise.all(
     skills.map(async (skill) => {
       const skillMdPath = resolve(skill.path, "SKILL.md");
-      const skillFile = await readFile(skillMdPath, "utf-8");
+      let skillFile = await readFile(skillMdPath, "utf-8");
+      if (platform) {
+        const transformed = applyModelFrontmatter(skillFile, platform, "skill");
+        skillFile = transformed.content;
+        warnings.push(...transformed.warnings);
+      }
       const relativePath = `${skill.id.split("/").pop()}${commandRenderer.fileExtension}`;
 
       return {
@@ -151,7 +178,8 @@ export async function syncSkillsAsCommands(
       };
     })
   );
-  return syncRenderedFiles(targetRoot, rendered, dryRun);
+  const result = await syncRenderedFiles(targetRoot, rendered, dryRun);
+  return { ...result, warnings };
 }
 
 export async function syncCommandsAsToml(
@@ -176,13 +204,20 @@ export async function syncCommandsAsToml(
 export async function syncCommandsAsSkills(
   commands: CommandArtifact[],
   targetRoot: string,
-  dryRun: boolean
+  dryRun: boolean,
+  platform?: SupportedApplyPlatform
 ): Promise<FileSyncResult> {
   let changed = false;
   const paths: string[] = [];
+  const warnings: string[] = [];
 
   for (const command of commands) {
-    const source = await readFile(command.path, "utf-8");
+    let source = await readFile(command.path, "utf-8");
+    if (platform) {
+      const transformed = applyModelFrontmatter(source, platform, "skill");
+      source = transformed.content;
+      warnings.push(...transformed.warnings);
+    }
     const skillName = command.id.replaceAll("/", "-");
     const parsed = parseMarkdownPrompt(source, command.id);
 
@@ -205,26 +240,34 @@ export async function syncCommandsAsSkills(
     }
   }
 
-  return { changed, paths };
+  return { changed, paths, warnings };
 }
 
 export async function syncCommandsAsWorkflows(
   commands: CommandArtifact[],
   targetRoot: string,
   dryRun: boolean,
-  renderer?: ICommandRenderer
+  renderer?: ICommandRenderer,
+  platform?: SupportedApplyPlatform
 ): Promise<FileSyncResult> {
   const commandRenderer = renderer ?? CommandRendererFactory.getRenderer("workflow");
+  const warnings: string[] = [];
   const rendered = await Promise.all(
     commands.map(async (command) => {
-      const source = await readFile(command.path, "utf-8");
+      let source = await readFile(command.path, "utf-8");
+      if (platform) {
+        const transformed = applyModelFrontmatter(source, platform, "command");
+        source = transformed.content;
+        warnings.push(...transformed.warnings);
+      }
       return {
         relativePath: `${command.id}${commandRenderer.fileExtension}`,
         content: commandRenderer.renderCommand(source, command.id),
       };
     })
   );
-  return syncRenderedFiles(targetRoot, rendered, dryRun);
+  const result = await syncRenderedFiles(targetRoot, rendered, dryRun);
+  return { ...result, warnings };
 }
 
 export async function syncSkills(
@@ -232,33 +275,48 @@ export async function syncSkills(
   targetRoot: string,
   dryRun: boolean,
   compatibility?: string,
-  renderer?: ICommandRenderer
+  renderer?: ICommandRenderer,
+  platform?: SupportedApplyPlatform
 ): Promise<FileSyncResult> {
   let changed = false;
   const paths: string[] = [];
+  const warnings: string[] = [];
   for (const skill of skills) {
-    const transformedFiles = await buildSkillFiles(skill, compatibility, renderer);
-    const result = await syncRenderedFiles(resolve(targetRoot, skill.id), transformedFiles, dryRun, true);
+    const transformedFiles = await buildSkillFiles(skill, compatibility, renderer, platform);
+    const result = await syncRenderedFiles(resolve(targetRoot, skill.id), transformedFiles.files, dryRun, true);
     changed = result.changed || changed;
     paths.push(...result.paths);
+    warnings.push(...transformedFiles.warnings);
   }
-  return { changed, paths };
+  return { changed, paths, warnings };
 }
 
 export async function syncAgentsAsCodexToml(
   agents: Agent[],
   targetRoot: string,
-  dryRun: boolean
+  dryRun: boolean,
+  platform?: SupportedApplyPlatform
 ): Promise<FileSyncResult> {
   let changed = false;
   const paths: string[] = [];
+  const warnings: string[] = [];
 
   for (const agent of agents) {
     const source = await readFile(agent.path, "utf-8");
     const parsed = parseMarkdownPrompt(source, agent.id);
     const agentName = agent.id.replaceAll("/", "-");
 
-    const tomlContent = buildCodexAgentToml(agentName, parsed);
+    let modelLine: string | null = null;
+    if (platform) {
+      const transformed = applyModelFrontmatter(source, platform, "agent");
+      warnings.push(...transformed.warnings);
+      const modelMatch = transformed.content.match(/^model:\s*(.+)$/m);
+      if (modelMatch) {
+        modelLine = modelMatch[1].trim();
+      }
+    }
+
+    const tomlContent = buildCodexAgentToml(agentName, parsed, modelLine);
     const targetPath = resolve(targetRoot, `${agentName}.toml`);
     const existing = await readTextFileOrNull(targetPath);
 
@@ -273,19 +331,26 @@ export async function syncAgentsAsCodexToml(
     }
   }
 
-  return { changed, paths };
+  return { changed, paths, warnings };
 }
 
 export async function syncAgentsAsSkills(
   agents: Agent[],
   targetRoot: string,
-  dryRun: boolean
+  dryRun: boolean,
+  platform?: SupportedApplyPlatform
 ): Promise<FileSyncResult> {
   let changed = false;
   const paths: string[] = [];
+  const warnings: string[] = [];
 
   for (const agent of agents) {
-    const source = await readFile(agent.path, "utf-8");
+    let source = await readFile(agent.path, "utf-8");
+    if (platform) {
+      const transformed = applyModelFrontmatter(source, platform, "skill");
+      source = transformed.content;
+      warnings.push(...transformed.warnings);
+    }
     const skillName = agent.id.replaceAll("/", "-");
     const skillMd = [
       "---",
@@ -311,7 +376,7 @@ export async function syncAgentsAsSkills(
     }
   }
 
-  return { changed, paths };
+  return { changed, paths, warnings };
 }
 
 export async function syncAgentsAsMarkdown(
@@ -319,19 +384,27 @@ export async function syncAgentsAsMarkdown(
   targetRoot: string,
   dryRun: boolean,
   withFrontmatter: boolean,
-  agentRenderer?: IAgentRenderer
+  agentRenderer?: IAgentRenderer,
+  platform?: SupportedApplyPlatform
 ): Promise<FileSyncResult> {
   const renderer = agentRenderer ?? AgentRendererFactory.getRenderer("forgecode");
+  const warnings: string[] = [];
   const rendered = await Promise.all(
     agents.map(async (agent) => {
-      const source = await readFile(agent.path, "utf-8");
+      let source = await readFile(agent.path, "utf-8");
+      if (platform) {
+        const transformed = applyModelFrontmatter(source, platform, "agent");
+        source = transformed.content;
+        warnings.push(...transformed.warnings);
+      }
       return {
         relativePath: `${agent.id}${renderer.fileExtension}`,
         content: withFrontmatter ? renderer.renderAgent(source, agent.id) : source.trimEnd(),
       };
     })
   );
-  return syncRenderedFiles(targetRoot, rendered, dryRun);
+  const result = await syncRenderedFiles(targetRoot, rendered, dryRun);
+  return { ...result, warnings };
 }
 
 export async function mergeJsonObjectFile(
@@ -352,6 +425,7 @@ export async function mergeJsonObjectFile(
   return {
     changed,
     paths: changed ? [filePath] : [],
+    warnings: [],
   };
 }
 
@@ -371,6 +445,7 @@ export async function mergeManagedTomlSection(
   return {
     changed: merged.status === "success",
     paths: merged.status === "success" ? [filePath] : [],
+    warnings: [],
   };
 }
 
@@ -430,21 +505,28 @@ export function countUnsupportedArtifacts(
 async function buildSkillFiles(
   skill: Skill,
   compatibility?: string,
-  renderer?: ICommandRenderer
-): Promise<Array<{ relativePath: string; content: string }>> {
+  renderer?: ICommandRenderer,
+  platform?: SupportedApplyPlatform
+): Promise<{ files: Array<{ relativePath: string; content: string }>; warnings: string[] }> {
   const files = await collectFiles(skill.path);
   const out: Array<{ relativePath: string; content: string }> = [];
+  const warnings: string[] = [];
 
   for (const filePath of files) {
     const rel = relative(skill.path, filePath);
-    const source = await readFile(filePath, "utf-8");
+    let source = await readFile(filePath, "utf-8");
+    if (platform && rel === "SKILL.md") {
+      const transformed = applyModelFrontmatter(source, platform, "skill");
+      source = transformed.content;
+      warnings.push(...transformed.warnings);
+    }
     out.push({
       relativePath: rel,
       content: rel === "SKILL.md" ? renderSkillMarkdown(source, skill.id, compatibility, renderer) : source,
     });
   }
 
-  return out;
+  return { files: out, warnings };
 }
 
 async function syncRenderedFiles(
@@ -470,7 +552,7 @@ async function syncRenderedFiles(
     }
   }
 
-  return { changed, paths };
+  return { changed, paths, warnings: [] };
 }
 
 async function collectFiles(root: string): Promise<string[]> {
@@ -528,15 +610,12 @@ function renderSkillMarkdown(
   return lines.join("\n");
 }
 
-function buildCodexAgentToml(name: string, parsed: ParsedMarkdownPrompt): string {
-  const lines = [
-    `name = "${escapeTomlString(name)}"`,
-    `description = "${escapeTomlString(parsed.description)}"`,
-    `developer_instructions = """`,
-    parsed.body || parsed.title,
-    `"""`,
-    "",
-  ];
+function buildCodexAgentToml(name: string, parsed: ParsedMarkdownPrompt, modelLine?: string | null): string {
+  const lines = [`name = "${escapeTomlString(name)}"`, `description = "${escapeTomlString(parsed.description)}"`];
+  if (modelLine) {
+    lines.push(`model = "${escapeTomlString(modelLine)}"`);
+  }
+  lines.push(`developer_instructions = """`, parsed.body || parsed.title, `"""`, "");
   return lines.join("\n");
 }
 

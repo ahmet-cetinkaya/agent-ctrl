@@ -105,16 +105,34 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
+    const modelWarnings: string[] = [];
+
     if (source.commands.length > 0) {
-      const commandsResult = await syncCommandsAsMarkdown(source.commands, commandRoot, Boolean(request.dryRun));
+      const commandsResult = await syncCommandsAsMarkdown(
+        source.commands,
+        commandRoot,
+        Boolean(request.dryRun),
+        undefined,
+        undefined,
+        "opencode"
+      );
       changed = commandsResult.changed || changed;
       fileChanges.push(...commandsResult.paths);
+      modelWarnings.push(...commandsResult.warnings);
     }
 
     if (source.skills.length > 0) {
-      const skillsResult = await syncSkills(source.skills, skillRoot, Boolean(request.dryRun), "opencode");
+      const skillsResult = await syncSkills(
+        source.skills,
+        skillRoot,
+        Boolean(request.dryRun),
+        "opencode",
+        undefined,
+        "opencode"
+      );
       changed = skillsResult.changed || changed;
       fileChanges.push(...skillsResult.paths);
+      modelWarnings.push(...skillsResult.warnings);
     }
 
     if (source.agents.length > 0) {
@@ -123,10 +141,12 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
         agentRoot,
         Boolean(request.dryRun),
         true,
-        AgentRendererFactory.getRenderer("opencode")
+        AgentRendererFactory.getRenderer("opencode"),
+        "opencode"
       );
       changed = agentsResult.changed || changed;
       fileChanges.push(...agentsResult.paths);
+      modelWarnings.push(...agentsResult.warnings);
     }
 
     if (source.mcpServers.length > 0) {
@@ -147,7 +167,7 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
       status: toStatus(changed),
       message: "Applied OpenCode guidance, commands, skills, agents, and MCP servers.",
       fileChanges,
-      warnings: source.warnings,
+      warnings: [...source.warnings, ...modelWarnings],
     };
   }
 }

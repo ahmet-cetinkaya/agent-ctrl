@@ -68,6 +68,8 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
       }
     }
 
+    const modelWarnings = adapter.collectedWarnings;
+
     const claudeRoot = resolve(target.configPath, "..");
     const fileChanges: string[] = [];
 
@@ -94,6 +96,7 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
 
     const warnings = [
       ...source.warnings,
+      ...modelWarnings,
       ...(source.skills.length > 0 && target.scope !== "project"
         ? [
             "Skills were applied to ~/.claude/skills/. Claude Desktop's filesystem-skill support is known to be unstable: skills may not appear in Customize > Skills, may silently fail to invoke via \"/name\" in the Code tab even when listed in autocomplete, or may not load at all in some versions. They are never available in Chat/Cowork tabs. If a skill doesn't seem to fire, try removing `disable-model-invocation: true` from its SKILL.md frontmatter, or upload it through Customize > Skills for Chat/Cowork use.",

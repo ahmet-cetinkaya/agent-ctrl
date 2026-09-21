@@ -53,6 +53,7 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
 
     let changed = false;
     const fileChanges: string[] = [];
+    const modelWarnings: string[] = [];
 
     // Clean existing managed artifacts if override is enabled
     if (request.override) {
@@ -94,20 +95,26 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
         const commandsResult = await syncCommandsAsSkills(
           source.commands,
           resolve(projectRoot, ".agent", "skills"),
-          Boolean(request.dryRun)
+          Boolean(request.dryRun),
+          "antigravity"
         );
         changed = commandsResult.changed || changed;
         fileChanges.push(...commandsResult.paths);
+        modelWarnings.push(...commandsResult.warnings);
       }
 
       if (source.skills.length > 0) {
         const skillsResult = await syncSkills(
           source.skills,
           resolve(projectRoot, ".agent", "skills"),
-          Boolean(request.dryRun)
+          Boolean(request.dryRun),
+          undefined,
+          undefined,
+          "antigravity"
         );
         changed = skillsResult.changed || changed;
         fileChanges.push(...skillsResult.paths);
+        modelWarnings.push(...skillsResult.warnings);
       }
 
       // Antigravity does not support a native MCP configuration file — emit warning instead.
@@ -131,10 +138,14 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
         const skillsResult = await syncSkills(
           source.skills,
           resolve(userRoot, "antigravity", "skills"),
-          Boolean(request.dryRun)
+          Boolean(request.dryRun),
+          undefined,
+          undefined,
+          "antigravity"
         );
         changed = skillsResult.changed || changed;
         fileChanges.push(...skillsResult.paths);
+        modelWarnings.push(...skillsResult.warnings);
       }
 
       // Antigravity does not support a native MCP configuration file — emit warning instead.
@@ -154,7 +165,7 @@ export class AntigravityAdapter implements IApplyPlatformAdapter {
           ? "Applied Antigravity workspace rules, skills, and MCP servers."
           : "Applied Antigravity global guidance, skills, and MCP servers.",
       fileChanges,
-      warnings: [...source.warnings, ...countUnsupportedArtifacts("Antigravity", source, ["agents"])],
+      warnings: [...source.warnings, ...modelWarnings, ...countUnsupportedArtifacts("Antigravity", source, ["agents"])],
     };
   }
 }
