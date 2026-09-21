@@ -98,15 +98,18 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
     fileChanges.push(...rulesResult.paths);
 
     // Sync commands to .forge/commands/
+    const modelWarnings: string[] = [];
     if (source.commands.length > 0) {
       const commandsResult = await syncCommandsAsMarkdownFlattened(
         source.commands,
         commandRoot,
         Boolean(request.dryRun),
-        this.commandRenderer
+        this.commandRenderer,
+        "forgecode"
       );
       changed = commandsResult.changed || changed;
       fileChanges.push(...commandsResult.paths);
+      modelWarnings.push(...commandsResult.warnings);
     }
 
     // Forge Code does not support a native skills directory — write skills as commands instead.
@@ -118,10 +121,12 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
         source.skills,
         commandRoot,
         Boolean(request.dryRun),
-        this.commandRenderer
+        this.commandRenderer,
+        "forgecode"
       );
       changed = skillsResult.changed || changed;
       fileChanges.push(...skillsResult.paths);
+      modelWarnings.push(...skillsResult.warnings);
     }
 
     // Sync agents to .forge/agents/
@@ -131,10 +136,12 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
         agentRoot,
         Boolean(request.dryRun),
         true,
-        this.agentRenderer
+        this.agentRenderer,
+        "forgecode"
       );
       changed = agentsResult.changed || changed;
       fileChanges.push(...agentsResult.paths);
+      modelWarnings.push(...agentsResult.warnings);
     }
 
     // Sync MCP servers to .mcp.json
@@ -163,7 +170,7 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
         mcpServers: source.mcpServers.length,
       },
       fileChanges,
-      warnings: source.warnings,
+      warnings: [...source.warnings, ...modelWarnings],
     };
   }
 }

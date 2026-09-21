@@ -96,6 +96,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
+    const modelWarnings: string[] = [];
     for (const targetRoot of targetRoots) {
       // Kilo does not support a native commands directory — write commands as skills instead.
       if (source.commands.length > 0) {
@@ -105,16 +106,26 @@ export class KiloAdapter implements IApplyPlatformAdapter {
         const commandsResult = await syncCommandsAsSkills(
           source.commands,
           resolve(targetRoot, "skills"),
-          Boolean(request.dryRun)
+          Boolean(request.dryRun),
+          "kilo"
         );
         changed = commandsResult.changed || changed;
         fileChanges.push(...commandsResult.paths);
+        modelWarnings.push(...commandsResult.warnings);
       }
 
       if (source.skills.length > 0) {
-        const skillsResult = await syncSkills(source.skills, resolve(targetRoot, "skills"), Boolean(request.dryRun));
+        const skillsResult = await syncSkills(
+          source.skills,
+          resolve(targetRoot, "skills"),
+          Boolean(request.dryRun),
+          undefined,
+          undefined,
+          "kilo"
+        );
         changed = skillsResult.changed || changed;
         fileChanges.push(...skillsResult.paths);
+        modelWarnings.push(...skillsResult.warnings);
       }
 
       if (source.agents.length > 0) {
@@ -123,10 +134,12 @@ export class KiloAdapter implements IApplyPlatformAdapter {
           resolve(targetRoot, "agents"),
           Boolean(request.dryRun),
           true,
-          AgentRendererFactory.getRenderer("kilo")
+          AgentRendererFactory.getRenderer("kilo"),
+          "kilo"
         );
         changed = agentsResult.changed || changed;
         fileChanges.push(...agentsResult.paths);
+        modelWarnings.push(...agentsResult.warnings);
       }
 
       if (source.mcpServers.length > 0) {
@@ -149,7 +162,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
       message:
         "Applied Kilo rules, workflows, skills, agents, and MCP servers to both .kilo and .kilocode directories.",
       fileChanges,
-      warnings: source.warnings,
+      warnings: [...source.warnings, ...new Set(modelWarnings)],
     };
   }
 }

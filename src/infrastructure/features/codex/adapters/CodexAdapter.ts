@@ -95,22 +95,39 @@ export class CodexAdapter implements IApplyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
-    const skillsResult = await syncSkills(source.skills, skillRoot, Boolean(request.dryRun));
+    const modelWarnings: string[] = [];
+
+    const skillsResult = await syncSkills(
+      source.skills,
+      skillRoot,
+      Boolean(request.dryRun),
+      undefined,
+      undefined,
+      "codex"
+    );
     changed = skillsResult.changed || changed;
     fileChanges.push(...skillsResult.paths);
+    modelWarnings.push(...skillsResult.warnings);
 
     if (target.scope === "user") {
-      const commandsAsSkillsResult = await syncCommandsAsSkills(source.commands, skillRoot, Boolean(request.dryRun));
+      const commandsAsSkillsResult = await syncCommandsAsSkills(
+        source.commands,
+        skillRoot,
+        Boolean(request.dryRun),
+        "codex"
+      );
       changed = commandsAsSkillsResult.changed || changed;
       fileChanges.push(...commandsAsSkillsResult.paths);
+      modelWarnings.push(...commandsAsSkillsResult.warnings);
     }
 
     if (source.agents.length > 0) {
       const agentsDir =
         target.scope === "project" ? resolve(request.projectPath, ".codex", "agents") : resolve(userRoot, "agents");
-      const agentsResult = await syncAgentsAsCodexToml(source.agents, agentsDir, Boolean(request.dryRun));
+      const agentsResult = await syncAgentsAsCodexToml(source.agents, agentsDir, Boolean(request.dryRun), "codex");
       changed = agentsResult.changed || changed;
       fileChanges.push(...agentsResult.paths);
+      modelWarnings.push(...agentsResult.warnings);
     }
 
     if (source.mcpServers.length > 0) {
@@ -143,6 +160,7 @@ export class CodexAdapter implements IApplyPlatformAdapter {
       fileChanges,
       warnings: [
         ...source.warnings,
+        ...modelWarnings,
         ...countUnsupportedArtifacts("Codex", source, target.scope === "project" ? ["commands"] : []),
       ],
     };

@@ -72,17 +72,28 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
     const skillsRoot =
       target.scope === "project" ? resolve(request.projectPath, ".windsurf", "skills") : resolve(userRoot, "skills");
 
+    const modelWarnings: string[] = [];
+
     if (source.skills.length > 0) {
-      const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
+      const skillsResult = await syncSkills(
+        source.skills,
+        skillsRoot,
+        Boolean(request.dryRun),
+        undefined,
+        undefined,
+        "windsurf"
+      );
       changed = skillsResult.changed || changed;
       fileChanges.push(...skillsResult.paths);
+      modelWarnings.push(...skillsResult.warnings);
     }
 
     if (source.agents.length > 0) {
       source.warnings.push("Windsurf does not support custom agents. Agents are being written as skills instead.");
-      const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun));
+      const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun), "windsurf");
       changed = agentsResult.changed || changed;
       fileChanges.push(...agentsResult.paths);
+      modelWarnings.push(...agentsResult.warnings);
     }
 
     // MCP servers are not supported
@@ -131,9 +142,16 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
 
     // Windsurf supports workflows via .windsurf/workflows/.
     if (source.commands.length > 0) {
-      const workflowsResult = await syncCommandsAsWorkflows(source.commands, workflowsRoot, Boolean(request.dryRun));
+      const workflowsResult = await syncCommandsAsWorkflows(
+        source.commands,
+        workflowsRoot,
+        Boolean(request.dryRun),
+        undefined,
+        "windsurf"
+      );
       changed = workflowsResult.changed || changed;
       fileChanges.push(...workflowsResult.paths);
+      modelWarnings.push(...workflowsResult.warnings);
     }
 
     // Windsurf does not natively support skills or agents — write them as skills with a warning.
@@ -149,7 +167,7 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
           ? "Applied Windsurf rules and workflows."
           : "Applied Windsurf global rules (via Cascade Customizations UI fallback).",
       fileChanges,
-      warnings: source.warnings,
+      warnings: [...source.warnings, ...modelWarnings],
     };
   }
 }

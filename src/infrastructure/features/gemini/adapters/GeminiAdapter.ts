@@ -96,22 +96,37 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
     fileChanges.push(...rulesResult.paths);
 
     // Gemini CLI does not support a native commands directory — write commands as skills instead.
+    const modelWarnings: string[] = [];
     if (source.commands.length > 0) {
       source.warnings.push(
         "Gemini CLI does not support a commands directory. Commands are being written as skills instead."
       );
       for (const skillsRoot of [resolve(scopeRoot, "skills"), resolve(scopeAgentsRoot, "skills")]) {
-        const commandsResult = await syncCommandsAsSkills(source.commands, skillsRoot, Boolean(request.dryRun));
+        const commandsResult = await syncCommandsAsSkills(
+          source.commands,
+          skillsRoot,
+          Boolean(request.dryRun),
+          "gemini"
+        );
         changed = commandsResult.changed || changed;
         fileChanges.push(...commandsResult.paths);
+        modelWarnings.push(...commandsResult.warnings);
       }
     }
 
     if (source.skills.length > 0) {
       for (const skillsRoot of [resolve(scopeRoot, "skills"), resolve(scopeAgentsRoot, "skills")]) {
-        const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
+        const skillsResult = await syncSkills(
+          source.skills,
+          skillsRoot,
+          Boolean(request.dryRun),
+          undefined,
+          undefined,
+          "gemini"
+        );
         changed = skillsResult.changed || changed;
         fileChanges.push(...skillsResult.paths);
+        modelWarnings.push(...skillsResult.warnings);
       }
     }
 
@@ -133,7 +148,11 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
       status: toStatus(changed),
       message: "Applied Gemini guidance, skills, and MCP servers.",
       fileChanges,
-      warnings: [...source.warnings, ...countUnsupportedArtifacts("Gemini", source, ["agents"])],
+      warnings: [
+        ...source.warnings,
+        ...new Set(modelWarnings),
+        ...countUnsupportedArtifacts("Gemini", source, ["agents"]),
+      ],
     };
   }
 }

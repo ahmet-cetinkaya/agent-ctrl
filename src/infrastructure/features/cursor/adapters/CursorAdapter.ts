@@ -63,24 +63,36 @@ export class CursorAdapter implements IApplyPlatformAdapter {
     const artifactRoot = target.scope === "project" ? resolve(request.projectPath, ".cursor") : resolve(userRoot);
     const skillsRoot = resolve(artifactRoot, "skills");
 
+    const modelWarnings: string[] = [];
+
     if (source.commands.length > 0) {
       source.warnings.push("Cursor does not support custom commands. Commands are being written as skills instead.");
-      const commandsResult = await syncCommandsAsSkills(source.commands, skillsRoot, Boolean(request.dryRun));
+      const commandsResult = await syncCommandsAsSkills(source.commands, skillsRoot, Boolean(request.dryRun), "cursor");
       changed = commandsResult.changed || changed;
       fileChanges.push(...commandsResult.paths);
+      modelWarnings.push(...commandsResult.warnings);
     }
 
     if (source.agents.length > 0) {
       source.warnings.push("Cursor does not support custom agents. Agents are being written as skills instead.");
-      const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun));
+      const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun), "cursor");
       changed = agentsResult.changed || changed;
       fileChanges.push(...agentsResult.paths);
+      modelWarnings.push(...agentsResult.warnings);
     }
 
     if (source.skills.length > 0) {
-      const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
+      const skillsResult = await syncSkills(
+        source.skills,
+        skillsRoot,
+        Boolean(request.dryRun),
+        undefined,
+        undefined,
+        "cursor"
+      );
       changed = skillsResult.changed || changed;
       fileChanges.push(...skillsResult.paths);
+      modelWarnings.push(...skillsResult.warnings);
     }
 
     // MCP servers are not supported
@@ -137,7 +149,7 @@ export class CursorAdapter implements IApplyPlatformAdapter {
       status: toStatus(changed),
       message: "Applied Cursor rules via .cursor/rules/*.mdc.",
       fileChanges,
-      warnings: source.warnings,
+      warnings: [...source.warnings, ...modelWarnings],
     };
   }
 }

@@ -101,6 +101,35 @@ Agent personas and identity definitions.
 
 - `agent-ctrl agent ls` - List agent personas.
 
+#### Model Frontmatter (`model` / `models`)
+
+Commands, agents, and skills can declare which model they should run with via frontmatter. The canonical value format is `provider/model-id`; agent-ctrl transforms it per platform instead of maintaining model mapping tables, so new model releases work without tool updates.
+
+```markdown
+---
+description: Run heavy refactors with a strong model
+model: anthropic/claude-sonnet-4-5
+models: # optional per-platform overrides (agent-ctrl only — never written to targets)
+  qwen: fast
+---
+```
+
+Precedence: `models.<platform>` > `model` > (absent).
+
+Platform behavior:
+
+| Platform                                 | Commands                        | Agents                                 | Notes                                                     |
+| ---------------------------------------- | ------------------------------- | -------------------------------------- | --------------------------------------------------------- |
+| Claude Code                              | `model: <id>` (prefix stripped) | `model: <id>`                          | Skills keep the value verbatim                            |
+| OpenCode                                 | `model: <provider/model-id>`    | `model: <provider/model-id>`           |                                                           |
+| Kilo Code                                | dropped + warning               | `model: <provider/model-id>`           | Commands are written as skills                            |
+| Forge Code                               | dropped + warning               | `model: <id>` + `provider: <provider>` | Split into two fields                                     |
+| Qwen                                     | dropped + warning               | override only (`models.qwen`)          | Constrained vocabulary; canonical value drops with a hint |
+| Codex                                    | dropped + warning               | TOML `model = "<provider/model-id>"`   |                                                           |
+| Cursor / Gemini / Windsurf / Antigravity | dropped + warning               | dropped + warning (or unsupported)     |                                                           |
+
+Unsupported surfaces drop the field and report why in the apply warnings. The `models` map is agent-ctrl configuration and is never written to any target file.
+
 #### MCP Configuration (`mcps/`)
 
 - `agent-ctrl mcp ls` - List configured MCP servers.

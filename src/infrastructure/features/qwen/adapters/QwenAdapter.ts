@@ -7,12 +7,13 @@ import type {
   ApplyIntegrationResult,
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import { AgentRendererFactory } from "@/infrastructure/features/apply/adapters/AgentRendererFactory";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
-  countUnsupportedArtifacts,
   mergeJsonObjectFile,
   renderSettingsMcpConfig,
   resolveApplyScope,
+  syncAgentsAsMarkdown,
   syncCommandsAsSkills,
   syncSkills,
   toStatus,
@@ -95,22 +96,51 @@ export class QwenAdapter implements IApplyPlatformAdapter {
     fileChanges.push(...rulesResult.paths);
 
     // Qwen does not support a native commands directory — write commands as skills instead.
+    const modelWarnings: string[] = [];
     if (source.commands.length > 0) {
       source.warnings.push(
         "Qwen Code does not support a commands directory. Commands are being written as skills instead."
       );
       for (const skillsRoot of [resolve(scopeRoot, "skills"), resolve(scopeAgentsRoot, "skills")]) {
-        const commandsResult = await syncCommandsAsSkills(source.commands, skillsRoot, Boolean(request.dryRun));
+        const commandsResult = await syncCommandsAsSkills(source.commands, skillsRoot, Boolean(request.dryRun), "qwen");
         changed = commandsResult.changed || changed;
         fileChanges.push(...commandsResult.paths);
+        modelWarnings.push(...commandsResult.warnings);
       }
     }
 
     if (source.skills.length > 0) {
       for (const skillsRoot of [resolve(scopeRoot, "skills"), resolve(scopeAgentsRoot, "skills")]) {
-        const skillsResult = await syncSkills(source.skills, skillsRoot, Boolean(request.dryRun));
+        const skillsResult = await syncSkills(
+          source.skills,
+          skillsRoot,
+          Boolean(request.dryRun),
+          undefined,
+          undefined,
+          "qwen"
+        );
         changed = skillsResult.changed || changed;
         fileChanges.push(...skillsResult.paths);
+        modelWarnings.push(...skillsResult.warnings);
+      }
+    }
+
+    // Qwen subagents (.qwen/agents/*.md) support a constrained model vocabulary
+    // (inherit|fast|model-id) — canonical `model` values drop with a warning and
+    // only explicit `models.qwen` overrides are written (capability matrix).
+    if (source.agents.length > 0) {
+      for (const agentsRoot of [resolve(scopeRoot, "agents"), resolve(scopeAgentsRoot, "agents")]) {
+        const agentsResult = await syncAgentsAsMarkdown(
+          source.agents,
+          agentsRoot,
+          Boolean(request.dryRun),
+          true,
+          AgentRendererFactory.getRenderer("kilo"),
+          "qwen"
+        );
+        changed = agentsResult.changed || changed;
+        fileChanges.push(...agentsResult.paths);
+        modelWarnings.push(...agentsResult.warnings);
       }
     }
 
@@ -132,7 +162,7 @@ export class QwenAdapter implements IApplyPlatformAdapter {
       status: toStatus(changed),
       message: "Applied Qwen guidance, skills, and MCP servers.",
       fileChanges,
-      warnings: [...source.warnings, ...countUnsupportedArtifacts("Qwen", source, ["agents"])],
+      warnings: [...source.warnings, ...new Set(modelWarnings)],
     };
   }
 }
