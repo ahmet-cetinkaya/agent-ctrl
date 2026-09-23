@@ -27,6 +27,7 @@ describe("Platform customization surface contract", () => {
       gemini: { path: resolve(homedir(), ".gemini", "GEMINI.md"), scope: "user" },
       kilo: { path: resolve(homedir(), ".config", "kilo", "AGENTS.md"), scope: "user" },
       opencode: { path: resolve(homedir(), ".config", "opencode", "AGENTS.md"), scope: "user" },
+      pi: { path: resolve(homedir(), ".pi", "agent", "AGENTS.md"), scope: "user" },
       qwen: { path: resolve(homedir(), ".qwen", "AGENTS.md"), scope: "user" },
       windsurf: { path: resolve(homedir(), ".codeium", "windsurf", "rules"), scope: "user" },
     };

@@ -12,6 +12,7 @@ import type { ModelCapability, ModelCapabilityMatrixTable } from "./types";
  * - qwen: subagents accept inherit/fast/model-id (constrained) — override required
  * - codex: prompts have no frontmatter; agents are TOML with a model field
  * - cursor/gemini/windsurf/antigravity: no model support on agent-ctrl's write surfaces
+ * - pi: no per-skill/per-prompt model frontmatter (model choice is session/CLI/settings scoped)
  */
 const passthrough = (support: "set" | "drop" = "set"): ModelCapability => ({
   support,
@@ -66,6 +67,11 @@ export const MODEL_CAPABILITY_MATRIX: ModelCapabilityMatrixTable = {
     skill: drop(),
   },
   windsurf: {
+    command: drop(),
+    agent: drop(),
+    skill: drop(),
+  },
+  pi: {
     command: drop(),
     agent: drop(),
     skill: drop(),

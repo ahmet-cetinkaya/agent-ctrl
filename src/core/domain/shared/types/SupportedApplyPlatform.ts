@@ -7,6 +7,7 @@ export const SUPPORTED_APPLY_PLATFORMS = [
   "gemini",
   "kilo",
   "opencode",
+  "pi",
   "qwen",
   "windsurf",
 ] as const;
@@ -20,6 +21,7 @@ export const PLATFORM_DISPLAY_NAMES: Record<SupportedApplyPlatform, string> = {
   gemini: "Gemini Query",
   kilo: "Kilo Code",
   opencode: "OpenCode",
+  pi: "Pi",
   qwen: "Qwen",
   windsurf: "Windsurf",
 };

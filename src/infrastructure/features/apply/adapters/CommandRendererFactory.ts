@@ -3,6 +3,7 @@ import { OpenCodeCommandRenderer } from "./OpenCodeCommandRenderer";
 import { GeminiCommandRenderer } from "./GeminiCommandRenderer";
 import { WorkflowCommandRenderer } from "./WorkflowCommandRenderer";
 import { ForgeCodeCommandRenderer } from "./ForgeCodeCommandRenderer";
+import { PiCommandRenderer } from "./PiCommandRenderer";
 
 /**
  * Factory for creating platform-specific command renderers.
@@ -15,6 +16,7 @@ export class CommandRendererFactory {
       ["forgecode", new ForgeCodeCommandRenderer()],
       ["gemini", new GeminiCommandRenderer()],
       ["opencode", new OpenCodeCommandRenderer()],
+      ["pi", new PiCommandRenderer()],
       ["workflow", new WorkflowCommandRenderer()],
     ]);
   }
