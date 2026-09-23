@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { access, mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { access, mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { PiAdapter } from "@/infrastructure/features/pi/adapters/PiAdapter";
@@ -32,12 +32,20 @@ describe("PiAdapter", () => {
     await expect(access(resolve(projectPath, "AGENTS.md"))).resolves.toBeNull();
 
     // Commands are written as prompt templates under .pi/prompts/
-    await expect(access(resolve(projectPath, ".pi", "prompts"))).resolves.toBeNull();
+    const promptPath = resolve(projectPath, ".pi", "prompts", "fix-lint.md");
+    await expect(access(promptPath)).resolves.toBeNull();
+    expect(await readFile(promptPath, "utf-8")).toContain("description:");
 
     // Skills are written natively under .pi/skills/
     await expect(access(resolve(projectPath, ".pi", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
 
-    // Agents are degraded to skills with a warning (no persona concept in Pi)
+    // Agents are degraded to skills with a warning (no persona concept in Pi) — verify
+    // the actual degraded skill file was written, not just that the warning was pushed
+    // (the warning is emitted unconditionally before the sync call, so on its own it
+    // does not prove the file landed correctly).
+    const architectSkillPath = resolve(projectPath, ".pi", "skills", "architect", "SKILL.md");
+    await expect(access(architectSkillPath)).resolves.toBeNull();
+    expect(await readFile(architectSkillPath, "utf-8")).toContain("name: architect");
     expect(result.warnings!.some((w) => w.includes("Agents are being written as skills"))).toBe(true);
 
     // MCP servers are not supported

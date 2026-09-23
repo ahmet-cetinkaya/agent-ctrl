@@ -10,18 +10,18 @@ Bu özellik yeni bir çekirdek veri türü tanımlamaz; mevcut platform-adaptör
 
 ## `ApplyConfigTarget` (Pi örneği)
 
-| Alan         | Proje kapsamı değeri                | Kullanıcı kapsamı değeri (varsayılan)      |
-| ------------ | ------------------------------------ | ------------------------------------------- |
-| `configPath` | `<projectPath>/AGENTS.md`            | `~/.pi/agent/AGENTS.md`                     |
-| `scope`      | `"project"`                          | `"user"` (varsayılan kapsam — diğer platformlarla tutarlı) |
-| `surface`    | `"pi-agents-md-prompts-skills"`      | `"pi-agents-md-prompts-skills"`             |
+| Alan         | Proje kapsamı değeri            | Kullanıcı kapsamı değeri (varsayılan)                      |
+| ------------ | ------------------------------- | ---------------------------------------------------------- |
+| `configPath` | `<projectPath>/AGENTS.md`       | `~/.pi/agent/AGENTS.md`                                    |
+| `scope`      | `"project"`                     | `"user"` (varsayılan kapsam — diğer platformlarla tutarlı) |
+| `surface`    | `"pi-agents-md-prompts-skills"` | `"pi-agents-md-prompts-skills"`                            |
 
 ## `ApplyIntegrationResult.warnings` (Pi'ye özgü uyarı metinleri)
 
-| Koşul                              | Uyarı metni                                                                          |
-| ----------------------------------- | ------------------------------------------------------------------------------------- |
-| `agents.length > 0`                 | `"Pi does not support custom agents. Agents are being written as skills instead."`   |
-| `mcpServers.length > 0`             | `"Pi does not support MCP server configuration. MCP servers will not be applied."`   |
+| Koşul                                | Uyarı metni                                                                           |
+| ------------------------------------ | ------------------------------------------------------------------------------------- |
+| `agents.length > 0`                  | `"Pi does not support custom agents. Agents are being written as skills instead."`    |
+| `mcpServers.length > 0`              | `"Pi does not support MCP server configuration. MCP servers will not be applied."`    |
 | `model`/`models` desteklenmeyen alan | `ModelFrontmatterResolver`'ın ürettiği genel düşürme uyarısı (bkz. 007 data-model.md) |
 
 ## `ModelCapabilityMatrix` (genişletme)

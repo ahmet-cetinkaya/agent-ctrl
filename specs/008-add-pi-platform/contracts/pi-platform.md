@@ -10,13 +10,13 @@
 
 ## Artifact → hedef eşlemesi
 
-| Artifact  | Pi desteği | Hedef (proje)         | Hedef (kullanıcı)              | Dönüşüm                                                          |
-| --------- | ---------- | ---------------------- | -------------------------------- | ----------------------------------------------------------------- |
-| rules     | ✅ native  | `AGENTS.md`             | `~/.pi/agent/AGENTS.md`          | Yönetilen bölüm (marker) upsert                                    |
-| commands  | ✅ native  | `.pi/prompts/<ad>.md`   | `~/.pi/agent/prompts/<ad>.md`    | Düzleştirilmiş dosya adı + `description` frontmatter               |
-| skills    | ✅ native  | `.pi/skills/<id>/SKILL.md` | `~/.pi/agent/skills/<id>/SKILL.md` | Birebir kopya (+ assets), frontmatter normalize edilir              |
-| agents    | ❌ yok     | `.pi/skills/<id>/SKILL.md` | `~/.pi/agent/skills/<id>/SKILL.md` | Skill'e dönüştürülür + uyarı                                        |
-| mcpServers| ❌ yok     | —                       | —                                 | Uygulanmaz, yalnızca uyarı                                          |
+| Artifact   | Pi desteği | Hedef (proje)              | Hedef (kullanıcı)                  | Dönüşüm                                                |
+| ---------- | ---------- | -------------------------- | ---------------------------------- | ------------------------------------------------------ |
+| rules      | ✅ native  | `AGENTS.md`                | `~/.pi/agent/AGENTS.md`            | Yönetilen bölüm (marker) upsert                        |
+| commands   | ✅ native  | `.pi/prompts/<ad>.md`      | `~/.pi/agent/prompts/<ad>.md`      | Düzleştirilmiş dosya adı + `description` frontmatter   |
+| skills     | ✅ native  | `.pi/skills/<id>/SKILL.md` | `~/.pi/agent/skills/<id>/SKILL.md` | Birebir kopya (+ assets), frontmatter normalize edilir |
+| agents     | ❌ yok     | `.pi/skills/<id>/SKILL.md` | `~/.pi/agent/skills/<id>/SKILL.md` | Skill'e dönüştürülür + uyarı                           |
+| mcpServers | ❌ yok     | —                          | —                                  | Uygulanmaz, yalnızca uyarı                             |
 
 ## Model frontmatter sözleşmesi
 

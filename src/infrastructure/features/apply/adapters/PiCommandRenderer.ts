@@ -20,7 +20,7 @@ export class PiCommandRenderer extends BaseCommandRenderer {
 
     const firstLine = lines[0] || "";
     if (this.isYamlPropertyLine(firstLine)) {
-      return this.renderWithoutFrontmatter(lines.join("\n"), id);
+      return this.renderWithMalformedFrontmatter(lines, id);
     }
 
     return this.renderWithoutFrontmatter(source, id);
@@ -33,6 +33,33 @@ export class PiCommandRenderer extends BaseCommandRenderer {
   private renderWithoutFrontmatter(source: string, id: string): string {
     const parsed = this.parseMarkdownPrompt(source, id);
     return ["---", `description: ${parsed.description}`, "---", "", parsed.body].join("\n");
+  }
+
+  /**
+   * Render a source that starts with a YAML property line but has no opening `---`
+   * (a common copy-paste mistake). If a closing `---` exists later, the lines before
+   * it are recovered as frontmatter (preserving the user's own fields) rather than
+   * being dumped verbatim into the body under a freshly id-derived description.
+   */
+  private renderWithMalformedFrontmatter(lines: string[], id: string): string {
+    let frontmatterEnd = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === "---") {
+        frontmatterEnd = i;
+        break;
+      }
+    }
+
+    if (frontmatterEnd === -1) {
+      // No closing --- either — nothing to recover.
+      return this.renderWithoutFrontmatter(lines.join("\n"), id);
+    }
+
+    const frontmatterLines = lines.slice(0, frontmatterEnd);
+    const bodyLines = lines.slice(frontmatterEnd + 1);
+    const updatedFrontmatter = this.ensureDescription(frontmatterLines, id, bodyLines.join("\n"));
+
+    return ["---", ...updatedFrontmatter, "---", ...bodyLines].join("\n");
   }
 
   private renderWithExistingFrontmatter(lines: string[], id: string): string {
