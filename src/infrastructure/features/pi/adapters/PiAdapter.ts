@@ -8,12 +8,14 @@ import type {
   ApplyPlatformScope,
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import { AgentRendererFactory } from "@/infrastructure/features/apply/adapters/AgentRendererFactory";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import { CommandRendererFactory } from "@/infrastructure/features/apply/adapters/CommandRendererFactory";
 import {
   mergeJsonObjectFile,
   renderPiMcpConfig,
   resolveApplyScope,
+  syncAgentsAsMarkdown,
   syncAgentsAsSkills,
   syncCommandsAsMarkdownFlattened,
   syncSkills,
@@ -37,15 +39,19 @@ interface PiSettingsPackages {
  *
  * Pi has no native MCP configuration surface either, but the most widely adopted community
  * extension (`pi-mcp-adapter`, ~1M npm downloads/month as of 2026-09-23) reads project- and
- * user-scope `.mcp.json` files. If that extension is detected as installed (declared in Pi's own
- * `settings.json` `packages` list — see `isPackageInstalled()`), MCP servers are written there;
- * otherwise they are dropped with a warning, same as agents' fallback.
+ * user-scope `.mcp.json` files. Same story for agents/personas and the `pi-subagents` extension
+ * (~455K npm downloads/month), which reads `.pi/agents/*.md`. If either extension is detected as
+ * installed (declared in Pi's own `settings.json` `packages` list — see `isPackageInstalled()`),
+ * the corresponding artifact is written to its native location; otherwise it falls back to the
+ * existing degraded behavior (agents → skills, MCP → dropped) with a warning naming the extension.
  */
 export class PiAdapter implements IApplyPlatformAdapter {
   readonly platformName = "pi" as const;
   private static readonly MCP_ADAPTER_PACKAGE = "pi-mcp-adapter";
+  private static readonly SUBAGENTS_PACKAGE = "pi-subagents";
   private readonly sourceLoader = new ApplySourceLoader();
   private readonly commandRenderer = CommandRendererFactory.getRenderer("pi");
+  private readonly agentRenderer = AgentRendererFactory.getRenderer("pi");
   private static readonly markers = {
     start: "<!-- agent-ctrl:pi:start -->",
     end: "<!-- agent-ctrl:pi:end -->",
@@ -74,6 +80,8 @@ export class PiAdapter implements IApplyPlatformAdapter {
       target.scope === "project" ? resolve(request.projectPath, ".pi", "prompts") : resolve(userRoot, "prompts");
     const skillsRoot =
       target.scope === "project" ? resolve(request.projectPath, ".pi", "skills") : resolve(userRoot, "skills");
+    const agentsRoot =
+      target.scope === "project" ? resolve(request.projectPath, ".pi", "agents") : resolve(userRoot, "agents");
 
     const source = request.mergedSnapshot
       ? {
@@ -99,6 +107,11 @@ export class PiAdapter implements IApplyPlatformAdapter {
           }
         }),
         rm(skillsRoot, { recursive: true, force: true }).catch((error) => {
+          if (error.code !== "ENOENT") {
+            throw error;
+          }
+        }),
+        rm(agentsRoot, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
             throw error;
           }
@@ -146,16 +159,41 @@ export class PiAdapter implements IApplyPlatformAdapter {
       modelWarnings.push(...skillsResult.warnings);
     }
 
-    // Pi has no persona/subagent concept — write agents as skills with a warning.
+    // Agents: apply natively to .pi/agents/ via the `pi-subagents` community extension if
+    // it is installed, otherwise Pi has no persona/subagent concept — degrade to skills
+    // with an actionable warning.
+    let agentsAppliedViaPlugin = false;
     if (source.agents.length > 0) {
-      source.warnings.push(
-        "Pi has no native agent/persona format. Agents are being written as skills instead. " +
-          "For native .pi/agents/ support, install the community 'pi-subagents' extension: pi install npm:pi-subagents"
+      const subagentsInstalled = await this.isPackageInstalled(
+        PiAdapter.SUBAGENTS_PACKAGE,
+        request.projectPath,
+        userRoot,
+        target.scope
       );
-      const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun), "pi");
-      changed = agentsResult.changed || changed;
-      fileChanges.push(...agentsResult.paths);
-      modelWarnings.push(...agentsResult.warnings);
+
+      if (subagentsInstalled) {
+        const agentsResult = await syncAgentsAsMarkdown(
+          source.agents,
+          agentsRoot,
+          Boolean(request.dryRun),
+          true,
+          this.agentRenderer,
+          "pi"
+        );
+        changed = agentsResult.changed || changed;
+        fileChanges.push(...agentsResult.paths);
+        modelWarnings.push(...agentsResult.warnings);
+        agentsAppliedViaPlugin = true;
+      } else {
+        source.warnings.push(
+          "Pi has no native agent/persona format. Agents are being written as skills instead. " +
+            "For native .pi/agents/ support, install the community 'pi-subagents' extension: pi install npm:pi-subagents"
+        );
+        const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun), "pi");
+        changed = agentsResult.changed || changed;
+        fileChanges.push(...agentsResult.paths);
+        modelWarnings.push(...agentsResult.warnings);
+      }
     }
 
     // MCP servers: apply via the `pi-mcp-adapter` community extension if it is installed,
@@ -188,15 +226,25 @@ export class PiAdapter implements IApplyPlatformAdapter {
       }
     }
 
+    const appliedViaExtension: string[] = [];
+    if (agentsAppliedViaPlugin) {
+      appliedViaExtension.push("agents via pi-subagents");
+    }
+    if (mcpAppliedViaPlugin) {
+      appliedViaExtension.push("MCP servers via pi-mcp-adapter");
+    }
+    const message =
+      appliedViaExtension.length > 0
+        ? `Applied Pi AGENTS.md, prompt templates, and skills; also applied ${appliedViaExtension.join(" and ")}.`
+        : "Applied Pi AGENTS.md, prompt templates, and skills.";
+
     return {
       platform: this.platformName,
       configPath: target.configPath,
       scope: target.scope,
       surface: target.surface,
       status: toStatus(changed),
-      message: mcpAppliedViaPlugin
-        ? "Applied Pi AGENTS.md, prompt templates, skills, and MCP servers (via pi-mcp-adapter)."
-        : "Applied Pi AGENTS.md, prompt templates, and skills.",
+      message,
       artifactCounts: {
         rules: source.rules.length,
         commands: source.commands.length,

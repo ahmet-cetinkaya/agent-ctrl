@@ -70,3 +70,22 @@ agent-ctrl apply pi
 - Sonuç mesajında "(via pi-mcp-adapter)" ifadesi bulunur.
 - "MCP servers were not applied" uyarısı YOKTUR.
 - `.pi/settings.json`'daki `source` değeri `npm:some-other-package` gibi ilgisiz bir paketse veya dosya bozuk JSON içeriyorsa: davranış Senaryo 2'deki fallback ile birebir aynıdır (regresyon yok).
+
+## Senaryo 7 — `pi-subagents` tespit edilince agent'lar native olarak uygulanır (elle)
+
+```bash
+mkdir -p .pi
+echo '{"packages":[{"source":"npm:pi-subagents"}]}' > .pi/settings.json
+mkdir -p agents
+echo -e '# Architect\n\nBe explicit.' > agents/architect.md
+
+agent-ctrl apply pi
+```
+
+**Beklenen**:
+
+- `.pi/agents/architect.md` oluşur, `name: architect` ve bir `description:` içerir.
+- Sonuç mesajında "agents via pi-subagents" ifadesi bulunur.
+- "Agents are being written as skills instead" uyarısı YOKTUR; `.pi/skills/architect/` OLUŞMAZ.
+- `pi-mcp-adapter` VE `pi-subagents` aynı anda bildirilmişse: her ikisi de aynı çalıştırmada bağımsız olarak uygulanır (bkz. Senaryo 6 + bu senaryo birlikte).
+- `.pi/settings.json`'daki `source` değeri ilgisiz bir paketse veya dosya bozuk JSON içeriyorsa: davranış Senaryo 2'deki skill-dönüştürme fallback'i ile birebir aynıdır (regresyon yok).

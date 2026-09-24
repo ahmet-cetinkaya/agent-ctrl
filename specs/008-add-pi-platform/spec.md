@@ -96,14 +96,33 @@ Bir kullanıcı, `model`/`models` frontmatter alanı içeren bir command/agent/s
 
 ---
 
+### User Story 7 - `pi-subagents` kuruluysa agent'lar native olarak uygulansın (Priority: P2)
+
+Bir kullanıcı, projesinde veya kişisel Pi kurulumunda `pi-subagents` topluluk eklentisini zaten kurmuşsa, `agent-ctrl apply pi`'nin agent personalarını skill'e dönüştürmek yerine, o eklentinin okuduğu native `.pi/agents/*.md` dosyasına fiilen yazmasını ister — MCP için User Story 6'da yapılanla aynı desen.
+
+**Why this priority**: `pi-subagents` de en popüler ikinci Pi eklentisi (npm registry API ile doğrulanan ~455K indirme/ay); "agent" (agent-ctrl'in davranış prompt'u) ile "subagent" (bu eklentinin ve Claude Code/Cursor/Antigravity'nin kullandığı terim) aynı kavram olduğu netleştirildikten sonra, MCP'dekiyle aynı gerekçeyle P2.
+
+**Independent Test**: `.pi/settings.json`'da `packages: [{ source: "npm:pi-subagents" }]` bildirilmiş bir projede agent içeren bir yapılandırmayla `agent-ctrl apply pi` çalıştırılır; `.pi/agents/<id>.md`'de agent'ın `name`/`description` frontmatter'lı doğru biçimde yazıldığı ve "Agents are being written as skills instead" uyarısının ARTIK görünmediği doğrulanır.
+
+**Acceptance Scenarios**:
+
+1. **Given** proje kökünde `.pi/settings.json` → `packages: [{ source: "npm:pi-subagents" }]` ve `agents/architect.md`, **When** `agent-ctrl apply pi` çalıştırılır, **Then** `.pi/agents/architect.md` oluşur, `name: architect` içerir, sonuç mesajı "agents via pi-subagents" ifadesini içerir, "Agents are being written as skills instead" uyarısı YOKTUR ve `.pi/skills/architect/` OLUŞMAZ.
+2. **Given** eklenti proje dosyasında değil, kullanıcının kişisel `settings.json`'ında bildirilmiş, proje kapsamında apply çalıştırılıyor, **When** `agent-ctrl apply pi` çalıştırılır, **Then** eklenti yine tespit edilir ve agent `.pi/agents/`'a uygulanır.
+3. **Given** `.pi/settings.json` bozuk JSON içeriyor veya `pi-subagents` yerine başka bir paket bildiriyor, **When** `agent-ctrl apply pi` çalıştırılır, **Then** apply akışı kesintiye uğramaz ve sistem User Story 4'teki skill-dönüştürme fallback'ine döner.
+4. **Given** `pi-subagents` tespit edilmiş ve kaynak agent dosyasında zaten bir `model:`/`tools:` frontmatter alanı varsa, **When** `agent-ctrl apply pi` çalıştırılır, **Then** bu alanlar `.pi/agents/<id>.md` çıktısında AYNEN korunur (agent-ctrl kendisi bir `model` alanı yazmaz/dönüştürmez).
+
+---
+
 ### Edge Cases
 
 - Proje köşesinde `AGENTS.md` zaten mevcutsa ve elle eklenmiş içerik taşıyorsa: yalnızca yönetilen işaretçi (marker) bölümü güncellenir, dosyanın kalanı korunur (mevcut `upsertManagedRuleDocument` davranışı).
-- `--override` bayrağıyla çalıştırıldığında: `.pi/prompts/` ve `.pi/skills/` dizinleri temizlenip yeniden yazılır; `AGENTS.md` dosyası marker mekanizmasıyla güncellendiği için ayrıca silinmez.
+- `--override` bayrağıyla çalıştırıldığında: `.pi/prompts/`, `.pi/skills/` VE `.pi/agents/` dizinleri temizlenip yeniden yazılır; `AGENTS.md` dosyası marker mekanizmasıyla güncellendiği için ayrıca silinmez.
 - Hiç kural/komut/skill/agent/MCP sunucusu yoksa: `AGENTS.md`'de "No managed Pi rules were found." mesajı yazılır, diğer dizinler oluşturulmaz, hiçbir uyarı üretilmez.
 - `--scope user` ve özel `--user-config-root` birlikte verildiğinde: varsayılan `~/.pi/agent` yerine verilen kök kullanılır.
 - `pi-mcp-adapter` tespiti için okunan `settings.json` bozuk JSON içeriyorsa veya dosya mevcut değilse: apply akışı kesintiye uğramaz, sistem "kurulu değil" varsayar ve mevcut fallback uyarısına döner.
 - `pi-mcp-adapter` HEM proje HEM kullanıcı `settings.json`'ında farklı biçimlerde bildirilmişse (örn. biri sürüm eki içeriyor): herhangi birinde geçerli bir eşleşme bulunması yeterlidir (OR mantığı).
+- `pi-mcp-adapter` VE `pi-subagents` AYNI ANDA tespit edilirse: her iki tespit birbirinden bağımsızdır, ikisi de kendi native yüzeyine (`.mcp.json` ve `.pi/agents/`) yazılır; `message` alanında ikisi de "and" ile birleştirilerek raporlanır.
+- Kaynak agent dosyasında zaten `model:` frontmatter alanı varsa VE `pi-subagents` tespit edilmişse: `.pi/agents/<id>.md` çıktısında bu alan aynen korunur (agent-ctrl bunu ne yazar ne dönüştürür — bkz. FR-005a).
 
 ## Requirements _(mandatory)_
 
@@ -113,7 +132,8 @@ Bir kullanıcı, `model`/`models` frontmatter alanı içeren bir command/agent/s
 - **FR-002**: Sistem, kuralları proje kapsamında proje kökündeki `AGENTS.md`'ye, kullanıcı kapsamında `~/.pi/agent/AGENTS.md`'ye (veya verilen `--user-config-root`'a) yönetilen bir bölüm olarak yazmalıdır.
 - **FR-003**: Sistem, komutları proje kapsamında `.pi/prompts/`'a, kullanıcı kapsamında `<userRoot>/prompts/`'a, dosya adı komut kimliğinin son segmentinden türetilmiş `description` frontmatter'lı düz markdown olarak yazmalıdır.
 - **FR-004**: Sistem, skill'leri proje kapsamında `.pi/skills/`'a, kullanıcı kapsamında `<userRoot>/skills/`'a `SKILL.md` + ek varlık dosyalarıyla birebir kopyalamalıdır.
-- **FR-005**: Sistem, agent personalarını Pi'nin persona/subagent dosya biçimi olmadığından skill dizinine (`.pi/skills/` veya `<userRoot>/skills/`) dönüştürülmüş olarak yazmalı ve gerekçeli bir uyarı üretmelidir.
+- **FR-005**: Sistem, `pi-subagents` topluluk eklentisi tespit edilmediği sürece agent personalarını Pi'nin persona/subagent dosya biçimi olmadığından skill dizinine (`.pi/skills/` veya `<userRoot>/skills/`) dönüştürülmüş olarak yazmalı ve gerekçeli bir uyarı üretmelidir.
+- **FR-005a**: Sistem, `pi-subagents`'ın kurulu olup olmadığını FR-006a'daki AYNI manifest tespit mekanizmasıyla (`packages: [{ source: "npm:pi-subagents"[@sürüm] }]`) tespit etmelidir. Tespit edilirse agent'lar `.pi/agents/<id>.md` (proje) / `<userRoot>/agents/<id>.md` (kullanıcı) dosyasına `name`/`description` frontmatter'lı (mevcut `tools`/`model` gibi diğer alanlar korunarak) yazılmalı ve FR-005'teki uyarı üretilmemelidir. Sistem bu yüzeyde bir `model` alanı KENDİSİ yazmamalı/dönüştürmemelidir (bkz. research.md Karar 10).
 - **FR-006**: Sistem, `pi-mcp-adapter` topluluk eklentisi tespit edilmediği sürece MCP sunucu tanımlarını Pi'ye hiçbir dosyaya yazmamalı ve gerekçeli bir uyarı üretmelidir (Pi'nin native MCP yapılandırma yüzeyi yoktur).
 - **FR-006a**: Sistem, `pi-mcp-adapter`'ın kurulu olup olmadığını Pi'nin `packages: [{ source: "npm:pi-mcp-adapter"[@sürüm] }]` manifest alanını (proje: `.pi/settings.json`; kullanıcı: `<userRoot>/settings.json`; proje kapsamında her ikisi de kontrol edilir) okuyarak tespit etmelidir. Tespit edilirse MCP sunucuları `.mcp.json` (proje) / `<userRoot>/mcp.json` (kullanıcı) dosyasına standart `mcpServers` biçiminde yazılmalı ve FR-006'daki uyarı üretilmemelidir.
 - **FR-007**: Sistem, `model`/`models` frontmatter alanını Pi'nin tüm artifact türlerinde (`command`, `agent`, `skill`) düşürmeli ve gerekçeli bir uyarı üretmelidir (mevcut cross-platform model frontmatter mekanizmasına bir capability matrix satırı eklenerek).
@@ -136,3 +156,4 @@ Bir kullanıcı, `model`/`models` frontmatter alanı içeren bir command/agent/s
 - **SC-004**: Mevcut 10 platformun apply çıktıları, bu özellik nedeniyle içerik olarak değişmez (yalnızca ekleme; %100 geriye uyumluluk).
 - **SC-005**: Tüm davranış birim (`PiAdapter.test.ts`) ve sözleşme (`PlatformCustomizationSurfaceContract.test.ts`) testleriyle kapsanır; `bun test`, `bunx tsc --noEmit` ve `scripts/lint.sh` hatasız geçer.
 - **SC-006**: `pi-mcp-adapter` tespit edildiğinde MCP sunucuları doğru dosyaya (proje: `.mcp.json`; kullanıcı: `<userRoot>/mcp.json`) doğru `mcpServers` biçiminde yazılır; tespit edilmediğinde (dosya yok, bozuk JSON, farklı paket) davranış FR-006'daki fallback ile birebir aynıdır (regresyon yok).
+- **SC-007**: `pi-subagents` tespit edildiğinde agent'lar doğru dosyaya (proje: `.pi/agents/<id>.md`; kullanıcı: `<userRoot>/agents/<id>.md`) `name`/`description` frontmatter'lı olarak yazılır, mevcut `tools`/`model` alanları korunur; tespit edilmediğinde davranış FR-005'teki skill-dönüştürme fallback'i ile birebir aynıdır (regresyon yok).

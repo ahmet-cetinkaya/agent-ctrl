@@ -59,7 +59,7 @@
 
 **Gerekçe**: Pi'nin çekirdeği kasıtlı olarak minimaldir — hem MCP hem de subagent desteği, npm registry API ile doğrulanan (2026-09-23) indirme sayılarına göre net favori olan iki topluluk eklentisiyle (`pi-mcp-adapter`: ~1.01M indirme/ay, `pi-subagents`: ~455K indirme/ay — ikisi de aynı yazar, Nico Bailon) kapatılabiliyor. Kullanıcıya "desteklenmiyor" demek yerine "şu eklentiyle destekleniyor, kurulum komutu bu" demek, aynı anayasal V ilkesinin ("actionable diagnostics") doğal bir uzantısı.
 
-**Bu adımda reddedilen, Karar 9'da MCP için kabul edilen alternatif**: `.mcp.json`/`.pi/agents/*.md` dosyalarını doğrudan yazmak (her iki eklenti de bu konumları/biçimi okuyor, yani kuruluysa "otomatik çalışırdı"). Bu adımda reddedildi çünkü: (1) MCP sunucu tanımları potansiyel kimlik bilgisi taşıyabilir — eklenti kurulu olmayan kullanıcıda bile bu dosyayı diske yazmak, Karar 6'daki bilinçli "hiçbir dosyaya yazma" güvenlik gerekçesini tersine çevirir; (2) bu, üçüncü taraf bir paketin varlığını zımnen zorunlu kılan/varsayan daha büyük bir davranış değişikliğidir ve kullanıcı onayı gerektirir — sadece uyarı metnini iyileştirmekten farklı bir karardır. **Kullanıcı bu davranış değişikliğini MCP için açıkça talep etti (2026-09-23) — bkz. Karar 9.** Agents/`pi-subagents` tarafı için bu ret hâlâ geçerlidir (talep edilmedi).
+**Bu adımda reddedilen, Karar 9'da MCP için kabul edilen alternatif**: `.mcp.json`/`.pi/agents/*.md` dosyalarını doğrudan yazmak (her iki eklenti de bu konumları/biçimi okuyor, yani kuruluysa "otomatik çalışırdı"). Bu adımda reddedildi çünkü: (1) MCP sunucu tanımları potansiyel kimlik bilgisi taşıyabilir — eklenti kurulu olmayan kullanıcıda bile bu dosyayı diske yazmak, Karar 6'daki bilinçli "hiçbir dosyaya yazma" güvenlik gerekçesini tersine çevirir; (2) bu, üçüncü taraf bir paketin varlığını zımnen zorunlu kılan/varsayan daha büyük bir davranış değişikliğidir ve kullanıcı onayı gerektirir — sadece uyarı metnini iyileştirmekten farklı bir karardır. **Kullanıcı bu davranış değişikliğini MCP için açıkça talep etti (2026-09-23) — bkz. Karar 9.** Agents/`pi-subagents` tarafı için de kullanıcı aynı deseni ayrıca, ayrı bir onayla talep etti (2026-09-24) — bkz. Karar 10.
 
 ## Karar 9 — MCP için eklenti tespiti: kuruluysa `.mcp.json`'a yaz, değilse Karar 6/8'deki fallback'e düş
 
@@ -71,9 +71,22 @@
 
 **Gerekçe**: Kullanıcı bunu açıkça talep etti: "ilgili pluginin olup olmadığını kontrol edip, eğer varsa plugine göre ilgili yerlere mcp apply yapabilir miyiz?" (2026-09-23). Karar 8'de reddedilen "doğrudan yaz" alternatifinin güvenlik itirazı (_eklenti kurulu olmayan kullanıcıya bile potansiyel kimlik bilgisi içeren dosya yazmak_) burada dosya tabanlı, best-effort bir tespit kapısıyla çözülüyor: yalnızca eklentinin zaten kurulu OLDUĞU (yani kullanıcının MCP'yi bilerek etkinleştirdiği) durumlarda yazılıyor.
 
-**Kapsam dışı bırakılan (bilinçli)**: `pi-subagents` için aynı tespit + `.pi/agents/*.md`'ye doğrudan yazma. Kullanıcı yalnızca "mcp apply" istedi; agents tarafı hâlâ skill'e dönüştürme + uyarı ile kalıyor. Aynı desen agents için de istenirse ayrı bir karar olarak eklenebilir.
+**Bu adımda kapsam dışı bırakılan (bilinçli), Karar 10'da kabul edilen**: `pi-subagents` için aynı tespit + `.pi/agents/*.md`'ye doğrudan yazma. Kullanıcı bu adımda yalnızca "mcp apply" istedi; agents tarafı hâlâ skill'e dönüştürme + uyarı ile kaldı. **Kullanıcı bunu bir gün sonra (2026-09-24) ayrıca talep etti — bkz. Karar 10.**
 
 **Tespitin sınırı**: Dosya tabanlı ve best-effort — Pi'nin ".pi/ yalnızca proje trust'ı verildikten sonra yüklenir" çalışma zamanı kısıtlamasını gözlemleyemez; `.pi/settings.json`'da paket bildirilmiş ama trust henüz verilmemiş olsa bile "kurulu" sayılır. Bozuk JSON veya eksik dosya → "kurulu değil" (apply akışını asla kesintiye uğratmaz).
+
+## Karar 10 — Agents için de aynı eklenti-tespiti deseni: kuruluysa `.pi/agents/*.md`'ye native yaz
+
+**Karar**: `PiAdapter`, agent artifact'leri işlerken de Karar 9'daki AYNI `isPackageInstalled()` yardımcı fonksiyonunu `"pi-subagents"` paket adıyla çağırır:
+
+- **Tespit edilirse**: agent'lar `syncAgentsAsMarkdown` ile yeni `PiAgentRenderer` (name + description frontmatter; ForgeCode'un `id`+`title` yerine `name` kullanır, çünkü `pi-subagents`'ın şeması `name`'i zorunlu kılıyor) kullanılarak `.pi/agents/<id>.md` (proje) / `<userRoot>/agents/<id>.md` (kullanıcı)'ya yazılır. Uyarı ÜRETİLMEZ; `message`'a "agents via pi-subagents" eklenir. `--override` ile `.pi/agents/` de temizlenir (yeni `agentsRoot` — `promptsRoot`/`skillsRoot` ile birlikte).
+- **Tespit edilmezse**: Karar 5/8'deki mevcut davranış (skill'e dönüştür + eklentiyi adlandıran uyarı) değişmeden devam eder.
+
+**Gerekçe**: Kullanıcı bunu MCP'den bir gün sonra, "agent (behavior prompt) ile subagent aynı şey mi?" sorusuna verdiğim yanıtı (agent-ctrl'in `agents/` artifact'i ile Claude Code/Cursor/Antigravity'nin "subagent" dediği şeyin aynı kavram olduğu, ve `pi-subagents`'ın kendi şemasının — `name`/`description`/`model`/`tools` — bunu doğrudan doğruladığı) onayladıktan sonra açıkça istedi. Karar 9'daki güvenlik itirazı burada geçerli değil (agent tanımları, MCP sunucu tanımlarının aksine, tipik olarak kimlik bilgisi taşımaz) — asıl gerekçe yalnızca "kullanıcı onayı gerektiren davranış değişikliği" kısıtıydı, o da artık verildi.
+
+**Model frontmatter'a dokunulmadı**: `pi-subagents`'ın şeması bir `model` alanı destekliyor olsa da, `ModelCapabilityMatrix["pi"].agent` hâlâ `drop()`. Değer biçimi (agent-ctrl'in kanonik `provider/model-id`'si ile `pi-subagents`'ın beklediği biçim aynı mı?) resmi dokümantasyonda kesin olarak doğrulanmadı — 007 özelliğinin "tahmin etme, yalnızca doğrulanmış format kuralı" ilkesine göre, kesinleşmeden `passthrough()`'a geçmek riskli olurdu. Var olan bir `model:` alanı (kullanıcı elle eklemişse) frontmatter'da korunur (silinmez), ama agent-ctrl kendisi bir `model:` yazmaz/dönüştürmez.
+
+**Tespitin sınırı**: Karar 9 ile birebir aynı (dosya tabanlı, best-effort, bozuk/eksik `settings.json` → "kurulu değil").
 
 ## Kaynaklar
 

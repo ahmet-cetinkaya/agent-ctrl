@@ -1,6 +1,7 @@
 import type { IAgentRenderer } from "./IAgentRenderer";
 import { ForgeCodeAgentRenderer } from "./ForgeCodeAgentRenderer";
 import { OpenCodeAgentRenderer } from "./OpenCodeAgentRenderer";
+import { PiAgentRenderer } from "./PiAgentRenderer";
 
 /**
  * Factory for creating platform-specific agent renderers.
@@ -13,6 +14,7 @@ export class AgentRendererFactory {
     // Kilo is an OpenCode fork sharing the same agent frontmatter schema
     // (tools as a boolean map), so it reuses the OpenCode renderer.
     kilo: AgentRendererFactory.opencodeRenderer,
+    pi: new PiAgentRenderer(),
   };
 
   static getRenderer(platform: string): IAgentRenderer {

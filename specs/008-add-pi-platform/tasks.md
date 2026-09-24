@@ -150,6 +150,27 @@
 
 ---
 
+## Phase 10: User Story 7 - `pi-subagents` kuruluysa agent'lar native olarak uygulansın (Priority: P2)
+
+**Goal**: `pi-subagents` topluluk eklentisi tespit edildiğinde agent'ları `.pi/agents/*.md`'ye fiilen yazmak; tespit edilmediğinde Phase 6'daki skill-dönüştürme fallback'ini değiştirmeden korumak. Phase 9 (MCP) ile aynı desen, farklı paket/hedef.
+
+**Independent Test**: `.pi/settings.json`'da eklenti bildirilmiş bir projede `apply pi` → `.pi/agents/<id>.md` doğru biçimde yazılır, "Agents are being written as skills instead" uyarısı görünmez (bkz. quickstart.md Senaryo 7)
+
+**Not**: Bu faz, kullanıcının "agent (behavior prompt) ile subagent aynı şey mi?" sorusunu netleştirdikten sonra açık talebiyle (2026-09-24) eklendi — bkz. `research.md` Karar 10.
+
+### Implementation for User Story 7
+
+- [x] T029 Create `PiAgentRenderer` (`IAgentRenderer`) in `src/infrastructure/features/apply/adapters/PiAgentRenderer.ts`: injects `name` (always corrected to the true agent id) + `description` (only when missing — an existing user-authored description is never overwritten) frontmatter, preserving every other field (`tools`, `model`, `systemPromptMode`, ...) verbatim; handles existing/missing/malformed (missing opening `---`) frontmatter the same way `PiCommandRenderer` does. Register `pi: new PiAgentRenderer()` in `AgentRendererFactory.ts`
+- [x] T030 [P] Unit tests in `tests/unit/infrastructure/features/apply/adapters/PiAgentRenderer.test.ts` (mirrors `OpenCodeAgentRenderer.test.ts` convention): no-frontmatter case, name-update-preserves-other-fields (including a precise assertion that an existing `description` is NOT overwritten — a real bug caught during TDD before this task closed), malformed-frontmatter recovery (precise frontmatter/body split assertion, same technique as the earlier `PiCommandRenderer` regression test), fully-malformed fallback, horizontal-rule-in-body non-interference
+- [x] T031 Wire the detection into the agents block of `PiAdapter.applyApplyIntegration()`: compute `agentsRoot` (`.pi/agents` project / `<userRoot>/agents` user) alongside `promptsRoot`/`skillsRoot`; if `isPackageInstalled("pi-subagents", ...)` → `syncAgentsAsMarkdown(source.agents, agentsRoot, dryRun, true, this.agentRenderer, "pi")`, no warning; else → existing `syncAgentsAsSkills` fallback unchanged. Add `agentsRoot` to the `--override` cleanup `Promise.all`. Update `message` construction to combine "agents via pi-subagents" and/or "MCP servers via pi-mcp-adapter" when either/both applied
+- [x] T032 [P] Unit tests in `PiAdapter.test.ts` (`describe("pi-subagents plugin detection")`): project-declared plugin → applied natively (and NOT also written as a degraded skill); personally-declared plugin detected in project scope; unrelated package → fallback warning; `--override` cleans `.pi/agents/`
+- [x] T033 [P] Update `docs/platforms/PI.md` ("Community Extensions for Missing Surfaces") to describe both surfaces as detection-aware with a unified table/explanation
+- [x] T034 Re-run full gates: `bun test` (1058 pass), `bunx tsc --noEmit`, `scripts/lint.sh` — all green; manual isolated (`AGENT_CTRL_HOME`) CLI verification with both `pi-subagents` and `pi-mcp-adapter` declared simultaneously
+
+**Checkpoint**: US7 bağımsız çalışır ve US1-US6'yı regresyona uğratmaz
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

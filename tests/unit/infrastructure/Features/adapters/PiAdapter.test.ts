@@ -150,4 +150,82 @@ describe("PiAdapter", () => {
       expect(result.warnings!.some((w) => w.includes("MCP servers were not applied"))).toBe(true);
     });
   });
+
+  describe("pi-subagents plugin detection", () => {
+    it("applies agents natively to .pi/agents/ when pi-subagents is declared in the project's .pi/settings.json", async () => {
+      await mkdir(resolve(projectPath, ".pi"), { recursive: true });
+      await writeFile(
+        resolve(projectPath, ".pi", "settings.json"),
+        JSON.stringify({ packages: [{ source: "npm:pi-subagents" }] })
+      );
+
+      const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+      expect(result.warnings!.some((w) => w.includes("Agents are being written as skills"))).toBe(false);
+      expect(result.message).toContain("via pi-subagents");
+
+      const agentPath = resolve(projectPath, ".pi", "agents", "architect.md");
+      await expect(access(agentPath)).resolves.toBeNull();
+      const agentContent = await readFile(agentPath, "utf-8");
+      expect(agentContent).toContain("name: architect");
+
+      // Not also written as a degraded skill
+      const skillFallbackExists = await access(resolve(projectPath, ".pi", "skills", "architect", "SKILL.md"))
+        .then(() => true)
+        .catch(() => false);
+      expect(skillFallbackExists).toBe(false);
+    });
+
+    it("detects a personally-installed pi-subagents (~/.pi/agent/settings.json) even in project scope", async () => {
+      await writeFile(
+        resolve(userRootPath, "settings.json"),
+        JSON.stringify({ packages: [{ source: "npm:pi-subagents@0.71.0" }] })
+      );
+
+      const result = await adapter.applyApplyIntegration({
+        projectPath,
+        targetScope: "project",
+        userConfigRootPath: userRootPath,
+      });
+
+      expect(result.message).toContain("via pi-subagents");
+      await expect(access(resolve(projectPath, ".pi", "agents", "architect.md"))).resolves.toBeNull();
+    });
+
+    it("falls back to the skill-degrade warning when settings.json declares an unrelated package", async () => {
+      await mkdir(resolve(projectPath, ".pi"), { recursive: true });
+      await writeFile(
+        resolve(projectPath, ".pi", "settings.json"),
+        JSON.stringify({ packages: [{ source: "npm:some-other-extension" }] })
+      );
+
+      const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+      expect(result.warnings!.some((w) => w.includes("Agents are being written as skills"))).toBe(true);
+      const nativeAgentExists = await access(resolve(projectPath, ".pi", "agents", "architect.md"))
+        .then(() => true)
+        .catch(() => false);
+      expect(nativeAgentExists).toBe(false);
+    });
+
+    it("cleans .pi/agents/ on override, independent of pi-mcp-adapter detection", async () => {
+      await mkdir(resolve(projectPath, ".pi"), { recursive: true });
+      await writeFile(
+        resolve(projectPath, ".pi", "settings.json"),
+        JSON.stringify({ packages: [{ source: "npm:pi-subagents" }] })
+      );
+      await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+      const staleAgentPath = resolve(projectPath, ".pi", "agents", "_stale.md");
+      await writeFile(staleAgentPath, "---\nname: _stale\n---\n\nStale");
+
+      await adapter.applyApplyIntegration({ projectPath, targetScope: "project", override: true });
+
+      const staleExists = await access(staleAgentPath)
+        .then(() => true)
+        .catch(() => false);
+      expect(staleExists).toBe(false);
+      await expect(access(resolve(projectPath, ".pi", "agents", "architect.md"))).resolves.toBeNull();
+    });
+  });
 });

@@ -20,9 +20,10 @@ Bu özellik yeni bir çekirdek veri türü tanımlamaz; mevcut platform-adaptör
 
 | Koşul                                                       | Uyarı metni                                                                                                                                                                                        |
 | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `agents.length > 0`                                         | `"Pi has no native agent/persona format. Agents are being written as skills instead. For native .pi/agents/ support, install the community 'pi-subagents' extension: pi install npm:pi-subagents"` |
+| `agents.length > 0` VE `pi-subagents` tespit edilmedi       | `"Pi has no native agent/persona format. Agents are being written as skills instead. For native .pi/agents/ support, install the community 'pi-subagents' extension: pi install npm:pi-subagents"` |
+| `agents.length > 0` VE `pi-subagents` tespit edildi         | Uyarı YOK — `.pi/agents/<id>.md`/`<userRoot>/agents/<id>.md`'ye yazılır, `message`'a "agents via pi-subagents" eklenir                                                                             |
 | `mcpServers.length > 0` VE `pi-mcp-adapter` tespit edilmedi | `"Pi has no native MCP configuration surface. MCP servers were not applied. For MCP support, install the community 'pi-mcp-adapter' extension: pi install npm:pi-mcp-adapter"`                     |
-| `mcpServers.length > 0` VE `pi-mcp-adapter` tespit edildi   | Uyarı YOK — `.mcp.json`/`<userRoot>/mcp.json`'a yazılır, `message` alanına `"(via pi-mcp-adapter)"` eklenir                                                                                        |
+| `mcpServers.length > 0` VE `pi-mcp-adapter` tespit edildi   | Uyarı YOK — `.mcp.json`/`<userRoot>/mcp.json`'a yazılır, `message`'a "MCP servers via pi-mcp-adapter" eklenir                                                                                      |
 | `model`/`models` desteklenmeyen alan                        | `ModelFrontmatterResolver`'ın ürettiği genel düşürme uyarısı (bkz. 007 data-model.md)                                                                                                              |
 
 ## `PiSettingsPackages` (eklenti tespiti girdisi)
