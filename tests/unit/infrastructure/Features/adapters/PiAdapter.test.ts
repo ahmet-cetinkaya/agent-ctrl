@@ -47,9 +47,11 @@ describe("PiAdapter", () => {
     await expect(access(architectSkillPath)).resolves.toBeNull();
     expect(await readFile(architectSkillPath, "utf-8")).toContain("name: architect");
     expect(result.warnings!.some((w) => w.includes("Agents are being written as skills"))).toBe(true);
+    expect(result.warnings!.some((w) => w.includes("pi install npm:pi-subagents"))).toBe(true);
 
-    // MCP servers are not supported
-    expect(result.warnings!.some((w) => w.includes("MCP servers will not be applied"))).toBe(true);
+    // MCP servers are not supported, but the warning points to the popular community extension
+    expect(result.warnings!.some((w) => w.includes("MCP servers were not applied"))).toBe(true);
+    expect(result.warnings!.some((w) => w.includes("pi install npm:pi-mcp-adapter"))).toBe(true);
   });
 
   it("writes user-scope rules under the configured user root", async () => {
@@ -84,5 +86,68 @@ describe("PiAdapter", () => {
       .then(() => true)
       .catch(() => false);
     expect(promptExists).toBe(false);
+  });
+
+  describe("pi-mcp-adapter plugin detection", () => {
+    it("applies MCP servers to .mcp.json when pi-mcp-adapter is declared in the project's .pi/settings.json", async () => {
+      await mkdir(resolve(projectPath, ".pi"), { recursive: true });
+      await writeFile(
+        resolve(projectPath, ".pi", "settings.json"),
+        JSON.stringify({ packages: [{ source: "npm:pi-mcp-adapter" }] })
+      );
+
+      const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+      expect(result.warnings!.some((w) => w.includes("MCP servers were not applied"))).toBe(false);
+      expect(result.message).toContain("via pi-mcp-adapter");
+
+      const mcpConfigPath = resolve(projectPath, ".mcp.json");
+      const mcpConfig = JSON.parse(await readFile(mcpConfigPath, "utf-8"));
+      expect(mcpConfig.mcpServers.context7).toEqual({
+        command: "npx",
+        args: ["-y", "@upstash/context7-mcp"],
+      });
+    });
+
+    it("detects a personally-installed plugin (~/.pi/agent/settings.json) even in project scope", async () => {
+      await writeFile(
+        resolve(userRootPath, "settings.json"),
+        JSON.stringify({ packages: [{ source: "npm:pi-mcp-adapter@2.37.0" }] })
+      );
+
+      const result = await adapter.applyApplyIntegration({
+        projectPath,
+        targetScope: "project",
+        userConfigRootPath: userRootPath,
+      });
+
+      expect(result.message).toContain("via pi-mcp-adapter");
+      await expect(access(resolve(projectPath, ".mcp.json"))).resolves.toBeNull();
+    });
+
+    it("falls back to the warning when settings.json declares an unrelated package", async () => {
+      await mkdir(resolve(projectPath, ".pi"), { recursive: true });
+      await writeFile(
+        resolve(projectPath, ".pi", "settings.json"),
+        JSON.stringify({ packages: [{ source: "npm:some-other-extension" }] })
+      );
+
+      const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+      expect(result.warnings!.some((w) => w.includes("MCP servers were not applied"))).toBe(true);
+      const mcpExists = await access(resolve(projectPath, ".mcp.json"))
+        .then(() => true)
+        .catch(() => false);
+      expect(mcpExists).toBe(false);
+    });
+
+    it("falls back to the warning without throwing when settings.json is malformed JSON", async () => {
+      await mkdir(resolve(projectPath, ".pi"), { recursive: true });
+      await writeFile(resolve(projectPath, ".pi", "settings.json"), "{ not valid json");
+
+      const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+      expect(result.warnings!.some((w) => w.includes("MCP servers were not applied"))).toBe(true);
+    });
   });
 });

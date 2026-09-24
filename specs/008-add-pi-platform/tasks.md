@@ -129,6 +129,27 @@
 
 ---
 
+## Phase 9: User Story 6 - `pi-mcp-adapter` kuruluysa MCP sunucuları fiilen uygulansın (Priority: P2)
+
+**Goal**: `pi-mcp-adapter` topluluk eklentisi tespit edildiğinde MCP sunucularını `.mcp.json`/`<userRoot>/mcp.json`'a fiilen yazmak; tespit edilmediğinde Phase 6'daki fallback'i değiştirmeden korumak.
+
+**Independent Test**: `.pi/settings.json`'da eklenti bildirilmiş bir projede `apply pi` → `.mcp.json` doğru biçimde yazılır, uyarı görünmez (bkz. quickstart.md Senaryo 6)
+
+**Not**: Bu faz, kullanıcının açık talebiyle (2026-09-23) sonradan eklendi — bkz. `research.md` Karar 9.
+
+### Implementation for User Story 6
+
+- [x] T023 Create `PiMcpConfigRenderer` (`IMcpConfigRenderer`) in `src/infrastructure/features/apply/adapters/PiMcpConfigRenderer.ts`: identical `{ mcpServers: {...} }` shape to `ForgeCodeMcpConfigRenderer`; register `["pi", new PiMcpConfigRenderer()]` in `McpConfigRendererFactory.ts`; add `renderPiMcpConfig()` convenience wrapper in `PlatformSyncUtils.ts` (mirroring `renderForgeCodeMcpConfig`)
+- [x] T024 Implement `PiAdapter.isPackageInstalled(packageName, projectPath, userRoot, targetScope)` + private `settingsDeclaresPackage()`: reads `.pi/settings.json` (project) and/or `<userRoot>/settings.json` (personal — always checked; project scope checks both, user scope checks only the user file), parses `packages[].source`, matches `"npm:<name>"` or `"npm:<name>@<version>"`; returns `false` (never throws) on missing file/malformed JSON/non-array `packages`
+- [x] T025 Wire the detection into the MCP block of `PiAdapter.applyApplyIntegration()`: if `isPackageInstalled("pi-mcp-adapter", ...)` → `mergeJsonObjectFile(mcpConfigPath, (existing) => renderPiMcpConfig(existing, source.mcpServers), dryRun)` where `mcpConfigPath` is `.mcp.json` (project) / `resolve(userRoot, "mcp.json")` (user); else → existing Phase 6 warning unchanged. Update `message` to append `"(via pi-mcp-adapter)"` when applied via the plugin
+- [x] T026 [P] Unit tests in `PiAdapter.test.ts` (`describe("pi-mcp-adapter plugin detection")`): project-declared plugin → applied to `.mcp.json`; personally-declared plugin (`<userRoot>/settings.json`) detected in project scope; unrelated package declared → fallback warning; malformed JSON → fallback warning, no throw
+- [x] T027 [P] Update `docs/platforms/PI.md` ("Community Extensions for Missing Surfaces") and `README.md` if needed to document the detection-aware MCP behavior and its file-based, best-effort limitation
+- [x] T028 Re-run full gates: `bun test` (1047 pass), `bunx tsc --noEmit`, `scripts/lint.sh` — all green; manual isolated (`AGENT_CTRL_HOME`) CLI verification of both the detected and not-detected paths
+
+**Checkpoint**: US6 bağımsız çalışır ve US1-US5'i regresyona uğratmaz
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies

@@ -30,7 +30,7 @@ agent-ctrl apply pi
 - `.pi/prompts/fix-lint.md` oluşur, frontmatter'ında `description` bulunur.
 - `.pi/skills/git-workflow/SKILL.md` bire bir kopyalanır.
 - `.pi/skills/architect/SKILL.md` oluşur; sonuç uyarılarında "Agents are being written as skills instead." bulunur.
-- MCP sunucusu varsa hiçbir dosya yazılmaz; "MCP servers will not be applied." uyarısı görünür.
+- MCP sunucusu varsa VE `pi-mcp-adapter` kurulu değilse: hiçbir dosya yazılmaz; "MCP servers were not applied" uyarısı görünür (kurulu ise bkz. Senaryo 6).
 
 ## Senaryo 3 — Kullanıcı kapsamı (elle)
 
@@ -52,3 +52,21 @@ agent-ctrl apply pi --scope user
 2. `.pi/prompts/` içine elle bir dosya ekle (`_temp.md`).
 3. `agent-ctrl apply pi --override` çalıştır.
 4. `_temp.md`'nin silindiğini, yönetilen dosyaların yeniden yazıldığını doğrula.
+
+## Senaryo 6 — `pi-mcp-adapter` tespit edilince MCP fiilen uygulanır (elle)
+
+```bash
+mkdir -p .pi
+echo '{"packages":[{"source":"npm:pi-mcp-adapter"}]}' > .pi/settings.json
+mkdir -p mcps
+echo '{"mcpServers":{"context7":{"command":"npx","args":["-y","@upstash/context7-mcp"]}}}' > mcps/context7.json
+
+agent-ctrl apply pi
+```
+
+**Beklenen**:
+
+- `.mcp.json` oluşur, `context7` sunucusunu `{ "mcpServers": { "context7": {...} } }` biçiminde içerir.
+- Sonuç mesajında "(via pi-mcp-adapter)" ifadesi bulunur.
+- "MCP servers were not applied" uyarısı YOKTUR.
+- `.pi/settings.json`'daki `source` değeri `npm:some-other-package` gibi ilgisiz bir paketse veya dosya bozuk JSON içeriyorsa: davranış Senaryo 2'deki fallback ile birebir aynıdır (regresyon yok).

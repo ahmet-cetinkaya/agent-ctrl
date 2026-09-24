@@ -462,6 +462,14 @@ export function renderForgeCodeMcpConfig(
   return renderer.renderConfig(existing, servers);
 }
 
+export function renderPiMcpConfig(
+  existing: Record<string, unknown>,
+  servers: ApplyMcpServer[]
+): Record<string, unknown> {
+  const renderer = McpConfigRendererFactory.getRenderer("pi");
+  return renderer.renderConfig(existing, servers);
+}
+
 export function renderSettingsMcpConfig(
   existing: Record<string, unknown>,
   servers: ApplyMcpServer[]

@@ -61,8 +61,24 @@ Bir kullanıcı, `agents/` personaları veya `mcps/` sunucu tanımları içeren 
 
 **Acceptance Scenarios**:
 
-1. **Given** `agents/architect.md`, **When** `agent-ctrl apply pi` çalıştırılır, **Then** `.pi/skills/architect/SKILL.md` üretilir ve sonuç uyarılarında "Pi does not support custom agents. Agents are being written as skills instead." mesajı bulunur.
-2. **Given** `mcps/context7.json`, **When** `agent-ctrl apply pi` çalıştırılır, **Then** hiçbir MCP yapılandırma dosyası yazılmaz ve sonuç uyarılarında "Pi does not support MCP server configuration. MCP servers will not be applied." mesajı bulunur.
+1. **Given** `agents/architect.md`, **When** `agent-ctrl apply pi` çalıştırılır, **Then** `.pi/skills/architect/SKILL.md` üretilir ve sonuç uyarılarında agent'ların skill olarak yazıldığını ve native destek için `pi-subagents` topluluk eklentisinin (`pi install npm:pi-subagents`) kurulabileceğini belirten bir mesaj bulunur.
+2. **Given** `mcps/context7.json` ve `pi-mcp-adapter` eklentisi kurulu DEĞİL (bkz. User Story 6), **When** `agent-ctrl apply pi` çalıştırılır, **Then** hiçbir MCP yapılandırma dosyası yazılmaz ve sonuç uyarılarında MCP desteği için `pi-mcp-adapter` topluluk eklentisinin (`pi install npm:pi-mcp-adapter`) kurulabileceğini belirten bir mesaj bulunur.
+
+---
+
+### User Story 6 - `pi-mcp-adapter` kuruluysa MCP sunucuları fiilen uygulansın (Priority: P2)
+
+Bir kullanıcı, projesinde veya kişisel Pi kurulumunda `pi-mcp-adapter` topluluk eklentisini zaten kurmuşsa, `agent-ctrl apply pi`'nin MCP sunucularını "desteklenmiyor" diye atlamak yerine, o eklentinin okuduğu dosyaya fiilen yazmasını ister.
+
+**Why this priority**: En popüler Pi eklentisi (npm registry API ile doğrulanan ~1.01M indirme/ay) MCP'yi ekliyorsa, bunu göz ardı etmek kullanıcıya gereksiz elle iş yükler; ama eklenti kurulu değilken aynı şeyi yapmak (bkz. Karar 8'in reddettiği alternatif) potansiyel kimlik bilgisi içeren bir dosyayı istemsizce diske yazar — bu yüzden P1 değil, tespit mekanizması riski netleştirdiği için P2.
+
+**Independent Test**: `.pi/settings.json` (veya kullanıcı kökündeki `settings.json`) içinde `packages: [{ source: "npm:pi-mcp-adapter" }]` bildirilmiş bir projede MCP sunucusu içeren bir yapılandırmayla `agent-ctrl apply pi` çalıştırılır; `.mcp.json`'da (proje) veya `<userRoot>/mcp.json`'da (kullanıcı) sunucunun doğru biçimde yazıldığı ve "MCP servers were not applied" uyarısının ARTIK görünmediği doğrulanır.
+
+**Acceptance Scenarios**:
+
+1. **Given** proje kökünde `.pi/settings.json` → `packages: [{ source: "npm:pi-mcp-adapter" }]` ve `mcps/context7.json`, **When** `agent-ctrl apply pi` çalıştırılır, **Then** `.mcp.json` oluşur/güncellenir, `{ "mcpServers": { "context7": {...} } }` biçimini içerir, sonuç mesajı "(via pi-mcp-adapter)" ifadesini içerir ve "MCP servers were not applied" uyarısı YOKTUR.
+2. **Given** eklenti proje dosyasında değil, kullanıcının kişisel `settings.json`'ında (`~/.pi/agent/settings.json` veya `--path` ile verilen kök) bildirilmiş, proje kapsamında apply çalıştırılıyor, **When** `agent-ctrl apply pi` çalıştırılır, **Then** eklenti yine tespit edilir ve MCP `.mcp.json`'a uygulanır (kişisel kurulumlar Pi'nin kendi çalışma zamanında her projeye uygulanır).
+3. **Given** `.pi/settings.json` bozuk JSON içeriyor veya `packages` alanında `pi-mcp-adapter` yerine başka bir paket bildiriyor, **When** `agent-ctrl apply pi` çalıştırılır, **Then** apply akışı kesintiye uğramaz ve sistem "kurulu değil" varsayarak User Story 4'teki fallback uyarı davranışına döner.
 
 ---
 
@@ -86,6 +102,8 @@ Bir kullanıcı, `model`/`models` frontmatter alanı içeren bir command/agent/s
 - `--override` bayrağıyla çalıştırıldığında: `.pi/prompts/` ve `.pi/skills/` dizinleri temizlenip yeniden yazılır; `AGENTS.md` dosyası marker mekanizmasıyla güncellendiği için ayrıca silinmez.
 - Hiç kural/komut/skill/agent/MCP sunucusu yoksa: `AGENTS.md`'de "No managed Pi rules were found." mesajı yazılır, diğer dizinler oluşturulmaz, hiçbir uyarı üretilmez.
 - `--scope user` ve özel `--user-config-root` birlikte verildiğinde: varsayılan `~/.pi/agent` yerine verilen kök kullanılır.
+- `pi-mcp-adapter` tespiti için okunan `settings.json` bozuk JSON içeriyorsa veya dosya mevcut değilse: apply akışı kesintiye uğramaz, sistem "kurulu değil" varsayar ve mevcut fallback uyarısına döner.
+- `pi-mcp-adapter` HEM proje HEM kullanıcı `settings.json`'ında farklı biçimlerde bildirilmişse (örn. biri sürüm eki içeriyor): herhangi birinde geçerli bir eşleşme bulunması yeterlidir (OR mantığı).
 
 ## Requirements _(mandatory)_
 
@@ -96,11 +114,12 @@ Bir kullanıcı, `model`/`models` frontmatter alanı içeren bir command/agent/s
 - **FR-003**: Sistem, komutları proje kapsamında `.pi/prompts/`'a, kullanıcı kapsamında `<userRoot>/prompts/`'a, dosya adı komut kimliğinin son segmentinden türetilmiş `description` frontmatter'lı düz markdown olarak yazmalıdır.
 - **FR-004**: Sistem, skill'leri proje kapsamında `.pi/skills/`'a, kullanıcı kapsamında `<userRoot>/skills/`'a `SKILL.md` + ek varlık dosyalarıyla birebir kopyalamalıdır.
 - **FR-005**: Sistem, agent personalarını Pi'nin persona/subagent dosya biçimi olmadığından skill dizinine (`.pi/skills/` veya `<userRoot>/skills/`) dönüştürülmüş olarak yazmalı ve gerekçeli bir uyarı üretmelidir.
-- **FR-006**: Sistem, MCP sunucu tanımlarını Pi'ye hiçbir dosyaya yazmamalı ve gerekçeli bir uyarı üretmelidir (Pi'nin native MCP yapılandırma yüzeyi yoktur).
+- **FR-006**: Sistem, `pi-mcp-adapter` topluluk eklentisi tespit edilmediği sürece MCP sunucu tanımlarını Pi'ye hiçbir dosyaya yazmamalı ve gerekçeli bir uyarı üretmelidir (Pi'nin native MCP yapılandırma yüzeyi yoktur).
+- **FR-006a**: Sistem, `pi-mcp-adapter`'ın kurulu olup olmadığını Pi'nin `packages: [{ source: "npm:pi-mcp-adapter"[@sürüm] }]` manifest alanını (proje: `.pi/settings.json`; kullanıcı: `<userRoot>/settings.json`; proje kapsamında her ikisi de kontrol edilir) okuyarak tespit etmelidir. Tespit edilirse MCP sunucuları `.mcp.json` (proje) / `<userRoot>/mcp.json` (kullanıcı) dosyasına standart `mcpServers` biçiminde yazılmalı ve FR-006'daki uyarı üretilmemelidir.
 - **FR-007**: Sistem, `model`/`models` frontmatter alanını Pi'nin tüm artifact türlerinde (`command`, `agent`, `skill`) düşürmeli ve gerekçeli bir uyarı üretmelidir (mevcut cross-platform model frontmatter mekanizmasına bir capability matrix satırı eklenerek).
 - **FR-008**: `--override` bayrağı verildiğinde sistem, önceden yazılmış `.pi/prompts/` ve `.pi/skills/` (veya kullanıcı kapsamı eşdeğerleri) içeriğini temizleyip yeniden yazmalıdır.
 - **FR-009**: `agent-ctrl apply pi` çağrısı `request` içinde `targetScope`/`userConfigRootPath` verilmeden yapıldığında, varsayılan kapsam `"user"` ve varsayılan kullanıcı kökü `~/.pi/agent` olmalıdır (diğer platform adaptörleriyle tutarlı varsayılan davranış).
-- **FR-010**: Kullanıcı dokümantasyonu (README, `docs/platforms/PI.md`) Pi'nin desteklenen platform listesine eklenmesini, model frontmatter destek matrisindeki yerini ve platforma özgü davranışları (agent→skill, MCP yok) açıklamalıdır.
+- **FR-010**: Kullanıcı dokümantasyonu (README, `docs/platforms/PI.md`) Pi'nin desteklenen platform listesine eklenmesini, model frontmatter destek matrisindeki yerini, platforma özgü davranışları (agent→skill, MCP eklenti-tespitli) ve `pi-mcp-adapter`/`pi-subagents` topluluk eklentilerini açıklamalıdır.
 
 ### Key Entities _(include if feature involves data)_
 
@@ -116,3 +135,4 @@ Bir kullanıcı, `model`/`models` frontmatter alanı içeren bir command/agent/s
 - **SC-003**: Model desteklenmeyen her Pi yüzeyinde, kullanıcıya gösterilen uyarı olmadan `model`/`models` bilgisi içeren tek bir çıktı dosyası üretilmez (sessiz kayıp sıfır; 007 özelliğiyle aynı garanti).
 - **SC-004**: Mevcut 10 platformun apply çıktıları, bu özellik nedeniyle içerik olarak değişmez (yalnızca ekleme; %100 geriye uyumluluk).
 - **SC-005**: Tüm davranış birim (`PiAdapter.test.ts`) ve sözleşme (`PlatformCustomizationSurfaceContract.test.ts`) testleriyle kapsanır; `bun test`, `bunx tsc --noEmit` ve `scripts/lint.sh` hatasız geçer.
+- **SC-006**: `pi-mcp-adapter` tespit edildiğinde MCP sunucuları doğru dosyaya (proje: `.mcp.json`; kullanıcı: `<userRoot>/mcp.json`) doğru `mcpServers` biçiminde yazılır; tespit edilmediğinde (dosya yok, bozuk JSON, farklı paket) davranış FR-006'daki fallback ile birebir aynıdır (regresyon yok).

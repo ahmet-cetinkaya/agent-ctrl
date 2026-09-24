@@ -32,13 +32,15 @@
 
 ## Karar 5 — Agent (persona) hedefi: skill'e dönüştür + uyarı
 
-**Karar**: Pi'de birinci sınıf bir persona/subagent dosya biçimi YOK (yalnızca extension/skill/prompt-template mekanizmalarıyla dolaylı olarak taklit edilebilir). agent-ctrl, `syncAgentsAsSkills` ile agent'ları `.pi/skills/`'e skill olarak yazar ve "Pi does not support custom agents. Agents are being written as skills instead." uyarısı üretir.
+**Karar**: Pi'de birinci sınıf bir persona/subagent dosya biçimi YOK (yalnızca extension/skill/prompt-template mekanizmalarıyla dolaylı olarak taklit edilebilir). agent-ctrl, `syncAgentsAsSkills` ile agent'ları `.pi/skills/`'e skill olarak yazar ve gerekçeli bir uyarı üretir.
 
 **Gerekçe**: Bu tam olarak Windsurf ve Cursor adaptörlerinin, "persona yok ama native skill var" durumunda izlediği kodlanmış emsaldir (`WindsurfAdapter.ts:91-97`, `CursorAdapter.ts:76-82`). Alternatif olan Gemini'nin "sessizce düşür + genel uyarı" (`countUnsupportedArtifacts`) emsali, Pi'nin native bir skill hedefi olduğu için daha az bilgilendirici olurdu; bu yüzden reddedildi.
 
 ## Karar 6 — MCP hedefi: uygulanmaz + uyarı
 
-**Karar**: Pi'ye hiçbir MCP yapılandırma dosyası yazılmaz; `mcpServers.length > 0` olduğunda "Pi does not support MCP server configuration. MCP servers will not be applied." uyarısı üretilir. Yeni bir `IMcpConfigRenderer` implementasyonu YOKTUR.
+> **GÜNCELLEME (Karar 9'a bakınız)**: Bu kararın "hiçbir dosyaya yazılmaz" kısmı, `pi-mcp-adapter` eklentisi tespit edildiğinde YAZAR şeklinde revize edildi. Aşağıdaki orijinal karar/gerekçe, eklenti YOKKEN geçerli fallback davranışını doğru şekilde tanımlamaya devam ediyor.
+
+**Karar**: Pi'ye hiçbir MCP yapılandırma dosyası yazılmaz; `mcpServers.length > 0` olduğunda gerekçeli bir uyarı üretilir. Yeni bir `IMcpConfigRenderer` implementasyonu YOKTUR.
 
 **Gerekçe**: Pi'nin tüm resmi dokümantasyon sayfaları (`configuration.md`, `settings.md`, `providers.md`, `custom-provider.md`, `cli.md`) taranmış, hiçbir `mcp.json`/MCP ayarı bulunamamıştır — MCP entegrasyonu yalnızca elle yazılmış bir TypeScript extension (`pi.registerProvider()`/`pi.registerTool()`) ile mümkündür, bu agent-ctrl'in üretebileceği statik bir yapılandırma dosyası değildir. Emsal: Windsurf/Cursor adaptörlerinin aynı "MCP desteklenmiyor" kod örüntüsü (`WindsurfAdapter.ts:99-102`, `CursorAdapter.ts:98-101`).
 
@@ -48,10 +50,37 @@
 
 **Gerekçe**: Pi dokümantasyonu (`models.md`), model seçiminin CLI bayrağı (`pi --model <provider/id>`) veya `settings.json`'ın `defaultProvider`/`defaultModel` alanları üzerinden oturum/global kapsamlı olduğunu, `SKILL.md` veya prompt template dosyalarında YAML frontmatter tabanlı model pinning'i OLMADIĞINI gösteriyor. Bu, Cursor/Gemini/Windsurf/Antigravity için zaten var olan "tümü düşür" satırlarıyla aynı örüntüdür.
 
+## Karar 8 — Desteklenmeyen yüzeyler için uyarı metninde en popüler topluluk eklentisini adlandır
+
+**Karar**: Agent→skill ve MCP→uygulanmaz uyarı metinleri, her yüzey için doğrulanmış en popüler topluluk eklentisini ve kurulum komutunu adlandıracak şekilde güncellendi:
+
+- Agents: `"Pi has no native agent/persona format. Agents are being written as skills instead. For native .pi/agents/ support, install the community 'pi-subagents' extension: pi install npm:pi-subagents"`
+- MCP: `"Pi has no native MCP configuration surface. MCP servers were not applied. For MCP support, install the community 'pi-mcp-adapter' extension: pi install npm:pi-mcp-adapter"`
+
+**Gerekçe**: Pi'nin çekirdeği kasıtlı olarak minimaldir — hem MCP hem de subagent desteği, npm registry API ile doğrulanan (2026-09-23) indirme sayılarına göre net favori olan iki topluluk eklentisiyle (`pi-mcp-adapter`: ~1.01M indirme/ay, `pi-subagents`: ~455K indirme/ay — ikisi de aynı yazar, Nico Bailon) kapatılabiliyor. Kullanıcıya "desteklenmiyor" demek yerine "şu eklentiyle destekleniyor, kurulum komutu bu" demek, aynı anayasal V ilkesinin ("actionable diagnostics") doğal bir uzantısı.
+
+**Bu adımda reddedilen, Karar 9'da MCP için kabul edilen alternatif**: `.mcp.json`/`.pi/agents/*.md` dosyalarını doğrudan yazmak (her iki eklenti de bu konumları/biçimi okuyor, yani kuruluysa "otomatik çalışırdı"). Bu adımda reddedildi çünkü: (1) MCP sunucu tanımları potansiyel kimlik bilgisi taşıyabilir — eklenti kurulu olmayan kullanıcıda bile bu dosyayı diske yazmak, Karar 6'daki bilinçli "hiçbir dosyaya yazma" güvenlik gerekçesini tersine çevirir; (2) bu, üçüncü taraf bir paketin varlığını zımnen zorunlu kılan/varsayan daha büyük bir davranış değişikliğidir ve kullanıcı onayı gerektirir — sadece uyarı metnini iyileştirmekten farklı bir karardır. **Kullanıcı bu davranış değişikliğini MCP için açıkça talep etti (2026-09-23) — bkz. Karar 9.** Agents/`pi-subagents` tarafı için bu ret hâlâ geçerlidir (talep edilmedi).
+
+## Karar 9 — MCP için eklenti tespiti: kuruluysa `.mcp.json`'a yaz, değilse Karar 6/8'deki fallback'e düş
+
+**Karar**: `PiAdapter`, `applyApplyIntegration` sırasında Pi'nin kendi paket manifestini (`packages: [{ source: "npm:<ad>[@sürüm]" }]` — proje: `.pi/settings.json`, kişisel: `<userRoot>/settings.json`) okuyarak `pi-mcp-adapter`'ın kurulu olup olmadığını denetler:
+
+- **Tespit edilirse**: MCP sunucuları `pi-mcp-adapter`'ın okuduğu tam konuma — proje kapsamında `.mcp.json`, kullanıcı kapsamında `<userRoot>/mcp.json` — standart `{ "mcpServers": {...} } ` biçiminde (yeni `PiMcpConfigRenderer`, ForgeCode'un aynı biçimiyle) yazılır. Uyarı ÜRETİLMEZ; `message` alanına "(via pi-mcp-adapter)" eklenir.
+- **Tespit edilmezse**: Karar 6/8'deki mevcut davranış (hiçbir dosyaya yazma + eklentiyi adlandıran uyarı) değişmeden devam eder.
+- Proje kapsamında denetim HEM proje HEM kullanıcı `settings.json`'ını kontrol eder (Pi'nin kendi çalışma zamanı davranışı: kişisel paketler her projeye uygulanır); kullanıcı kapsamında yalnızca kullanıcı dosyası kontrol edilir.
+
+**Gerekçe**: Kullanıcı bunu açıkça talep etti: "ilgili pluginin olup olmadığını kontrol edip, eğer varsa plugine göre ilgili yerlere mcp apply yapabilir miyiz?" (2026-09-23). Karar 8'de reddedilen "doğrudan yaz" alternatifinin güvenlik itirazı (_eklenti kurulu olmayan kullanıcıya bile potansiyel kimlik bilgisi içeren dosya yazmak_) burada dosya tabanlı, best-effort bir tespit kapısıyla çözülüyor: yalnızca eklentinin zaten kurulu OLDUĞU (yani kullanıcının MCP'yi bilerek etkinleştirdiği) durumlarda yazılıyor.
+
+**Kapsam dışı bırakılan (bilinçli)**: `pi-subagents` için aynı tespit + `.pi/agents/*.md`'ye doğrudan yazma. Kullanıcı yalnızca "mcp apply" istedi; agents tarafı hâlâ skill'e dönüştürme + uyarı ile kalıyor. Aynı desen agents için de istenirse ayrı bir karar olarak eklenebilir.
+
+**Tespitin sınırı**: Dosya tabanlı ve best-effort — Pi'nin ".pi/ yalnızca proje trust'ı verildikten sonra yüklenir" çalışma zamanı kısıtlamasını gözlemleyemez; `.pi/settings.json`'da paket bildirilmiş ama trust henüz verilmemiş olsa bile "kurulu" sayılır. Bozuk JSON veya eksik dosya → "kurulu değil" (apply akışını asla kesintiye uğratmaz).
+
 ## Kaynaklar
 
 - https://github.com/earendil-works/pi
 - https://www.npmjs.com/package/@mariozechner/pi-coding-agent
 - https://pi.dev (docs: `configuration.md`, `models.md`, `skills.md`, `prompt-templates.md`, `extensions.md`, `settings.md`, `cli.md`)
 - https://agentskills.io/specification
+- https://github.com/nicobailon/pi-mcp-adapter · https://www.npmjs.com/package/pi-mcp-adapter (indirme istatistiği: `api.npmjs.org/downloads/point/last-month/pi-mcp-adapter`)
+- https://github.com/nicobailon/pi-subagents · https://www.npmjs.com/package/pi-subagents (indirme istatistiği: `api.npmjs.org/downloads/point/last-month/pi-subagents`)
 - Repo içi emsaller: `src/infrastructure/features/forgecode/adapters/ForgeCodeAdapter.ts`, `src/infrastructure/features/windsurf/adapters/WindsurfAdapter.ts`, `src/infrastructure/features/cursor/adapters/CursorAdapter.ts`, `src/core/domain/shared/modelFrontmatter/ModelCapabilityMatrix.ts`

@@ -3,6 +3,7 @@ import { OpenCodeMcpConfigRenderer } from "./OpenCodeMcpConfigRenderer";
 import { SettingsMcpConfigRenderer } from "./SettingsMcpConfigRenderer";
 import { CodexMcpConfigRenderer } from "./CodexMcpConfigRenderer";
 import { ForgeCodeMcpConfigRenderer } from "./ForgeCodeMcpConfigRenderer";
+import { PiMcpConfigRenderer } from "./PiMcpConfigRenderer";
 
 /**
  * Factory for creating platform-specific MCP config renderers.
@@ -15,6 +16,7 @@ export class McpConfigRendererFactory {
       ["codex", new CodexMcpConfigRenderer()],
       ["forgecode", new ForgeCodeMcpConfigRenderer()],
       ["opencode", new OpenCodeMcpConfigRenderer()],
+      ["pi", new PiMcpConfigRenderer()],
       ["settings", new SettingsMcpConfigRenderer()],
     ]);
   }

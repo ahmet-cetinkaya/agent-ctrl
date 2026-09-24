@@ -26,8 +26,8 @@ touch ~/.pi/agent/AGENTS.md
 - Rules → `~/.pi/agent/AGENTS.md` (managed section, upserted between markers).
 - Commands → `~/.pi/agent/prompts/<name>.md` (frontmatter: `description`).
 - Skills → `~/.pi/agent/skills/<skill-id>/SKILL.md` (+ assets, copied verbatim).
-- Agents → written into `~/.pi/agent/skills/` as skills, since Pi has no persona concept (a warning is reported).
-- MCP servers → **not applied**; Pi has no native MCP configuration surface (a warning is reported).
+- Agents → written into `~/.pi/agent/skills/` as skills, since Pi has no persona concept (a warning is reported, pointing to `pi-subagents` — see below).
+- MCP servers → applied to `~/.pi/agent/mcp.json` **if** the `pi-mcp-adapter` extension is detected as installed (see below); otherwise not applied, with a warning pointing to it.
 
 ---
 
@@ -44,7 +44,26 @@ touch AGENTS.md
 - Commands → `.pi/prompts/<name>.md`.
 - Skills → `.pi/skills/<skill-id>/SKILL.md` (+ assets).
 - Agents → `.pi/skills/` as skills (warning reported — no native persona surface).
-- MCP servers → not applied (warning reported).
+- MCP servers → applied to `.mcp.json` **if** `pi-mcp-adapter` is detected as installed; otherwise not applied, with a warning.
+
+## Community Extensions for Missing Surfaces
+
+Pi's core is intentionally minimal — MCP and native subagents are both add-ons, not built-in. `agent-ctrl` names the most widely adopted community extension for each surface (by npm download volume, verified via the npm registry API):
+
+| Surface         | Extension                                                        | Installs it                     | Verified popularity                                                                                        |
+| --------------- | ---------------------------------------------------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| MCP servers     | [`pi-mcp-adapter`](https://github.com/nicobailon/pi-mcp-adapter) | `pi install npm:pi-mcp-adapter` | ~1.01M downloads/month — reads `.mcp.json` among other locations                                           |
+| Agents/personas | [`pi-subagents`](https://github.com/nicobailon/pi-subagents)     | `pi install npm:pi-subagents`   | ~455K downloads/month — adds a native `.pi/agents/*.md` (`name`/`description`/`model` frontmatter) surface |
+
+**MCP servers are detection-aware.** `agent-ctrl` checks whether `pi-mcp-adapter` is declared in Pi's own package manifest — `packages: [{ source: "npm:pi-mcp-adapter" }]` inside `.pi/settings.json` (project-installed) or `~/.pi/agent/settings.json` (personally-installed, applies to every project) — before deciding what to do:
+
+- **Detected** → MCP servers are written to `.mcp.json` (project scope) or `~/.pi/agent/mcp.json` (user scope), the exact locations `pi-mcp-adapter` reads, in the standard `{ "mcpServers": {...} }` shape. The apply message includes "via pi-mcp-adapter" as confirmation.
+- **Not detected** → nothing is written; a warning names the extension and its install command.
+
+> [!NOTE]
+> Detection is file-based and best-effort: it reads the declaration, not Pi's live runtime state, so a package declared in `.pi/settings.json` before "project trust" has been interactively granted is still treated as installed. `pi-subagents` (agents) is **not** detection-aware — agents are always written as skills, with a warning naming the extension — since writing directly to its `.pi/agents/*.md` surface would be a larger, still-undecided behavior change (see `specs/008-add-pi-platform/research.md`, Karar 8/9).
+>
+> These are third-party community packages, not maintained by `agent-ctrl` or by Pi's authors (`earendil-works`).
 
 ## Model Frontmatter
 
@@ -55,3 +74,5 @@ Pi has no per-skill or per-prompt `model` frontmatter — model selection is sco
 - [Pi GitHub Repository](https://github.com/earendil-works/pi)
 - [Pi Documentation](https://pi.dev)
 - [Agent Skills Specification](https://agentskills.io/specification)
+- [pi-mcp-adapter](https://github.com/nicobailon/pi-mcp-adapter) — community MCP extension
+- [pi-subagents](https://github.com/nicobailon/pi-subagents) — community agent/persona extension
