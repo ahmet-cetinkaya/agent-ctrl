@@ -10,6 +10,7 @@ import { CodexAdapter } from "@/infrastructure/features/codex/adapters/CodexAdap
 import { CursorAdapter } from "@/infrastructure/features/cursor/adapters/CursorAdapter";
 import { WindsurfAdapter } from "@/infrastructure/features/windsurf/adapters/WindsurfAdapter";
 import { ForgeCodeAdapter } from "@/infrastructure/features/forgecode/adapters/ForgeCodeAdapter";
+import { PiAdapter } from "@/infrastructure/features/pi/adapters/PiAdapter";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 import { SUPPORTED_APPLY_PLATFORMS } from "@/core/domain/shared/types/SupportedApplyPlatform";
@@ -29,6 +30,7 @@ export class PlatformAdapterRegistry {
     gemini: () => new GeminiAdapter(),
     kilo: () => new KiloAdapter(),
     opencode: () => new OpenCodeAdapter(),
+    pi: () => new PiAdapter(),
     qwen: () => new QwenAdapter(),
     windsurf: () => new WindsurfAdapter(),
   };

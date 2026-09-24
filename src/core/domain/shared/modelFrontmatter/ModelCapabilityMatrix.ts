@@ -12,6 +12,7 @@ import type { ModelCapability, ModelCapabilityMatrixTable } from "./types";
  * - qwen: subagents accept inherit/fast/model-id (constrained) — override required
  * - codex: prompts have no frontmatter; agents are TOML with a model field
  * - cursor/gemini/windsurf/antigravity: no model support on agent-ctrl's write surfaces
+ * - pi: no per-skill/per-prompt model frontmatter (model choice is session/CLI/settings scoped)
  */
 const passthrough = (support: "set" | "drop" = "set"): ModelCapability => ({
   support,
@@ -68,6 +69,16 @@ export const MODEL_CAPABILITY_MATRIX: ModelCapabilityMatrixTable = {
   windsurf: {
     command: drop(),
     agent: drop(),
+    skill: drop(),
+  },
+  pi: {
+    // Core Pi has no per-artifact model field, but the `pi-subagents` extension's
+    // .pi/agents/*.md surface does — and PiAdapter only routes the "agent" kind there
+    // when that extension is detected (the skill-degrade fallback uses the "skill"
+    // kind below). Pi's own model format is provider/model-id, identical to the
+    // canonical form, so the value passes through verbatim.
+    command: drop(),
+    agent: passthrough(),
     skill: drop(),
   },
   antigravity: {

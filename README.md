@@ -24,6 +24,7 @@ A centralized CLI tool for managing AI agent configurations using a **standard d
 ![Gemini](https://img.shields.io/badge/Gemini-4285F4)
 ![KiloCode](https://img.shields.io/badge/KiloCode-F8F674)
 ![OpenCode](https://img.shields.io/badge/OpenCode-black)
+![Pi](https://img.shields.io/badge/Pi-1E1E1E)
 ![QwenCode](https://img.shields.io/badge/QwenCode-6C63F5)
 ![Windsurf](https://img.shields.io/badge/Windsurf-007ACC)
 
@@ -118,15 +119,16 @@ Precedence: `models.<platform>` > `model` > (absent).
 
 Platform behavior:
 
-| Platform                                 | Commands                        | Agents                                 | Notes                                                     |
-| ---------------------------------------- | ------------------------------- | -------------------------------------- | --------------------------------------------------------- |
-| Claude Code                              | `model: <id>` (prefix stripped) | `model: <id>`                          | Skills keep the value verbatim                            |
-| OpenCode                                 | `model: <provider/model-id>`    | `model: <provider/model-id>`           |                                                           |
-| Kilo Code                                | dropped + warning               | `model: <provider/model-id>`           | Commands are written as skills                            |
-| Forge Code                               | dropped + warning               | `model: <id>` + `provider: <provider>` | Split into two fields                                     |
-| Qwen                                     | dropped + warning               | override only (`models.qwen`)          | Constrained vocabulary; canonical value drops with a hint |
-| Codex                                    | dropped + warning               | TOML `model = "<provider/model-id>"`   |                                                           |
-| Cursor / Gemini / Windsurf / Antigravity | dropped + warning               | dropped + warning (or unsupported)     |                                                           |
+| Platform                                 | Commands                        | Agents                                             | Notes                                                                                          |
+| ---------------------------------------- | ------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Claude Code                              | `model: <id>` (prefix stripped) | `model: <id>`                                      | Skills keep the value verbatim                                                                 |
+| OpenCode                                 | `model: <provider/model-id>`    | `model: <provider/model-id>`                       |                                                                                                |
+| Kilo Code                                | dropped + warning               | `model: <provider/model-id>`                       | Commands are written as skills                                                                 |
+| Forge Code                               | dropped + warning               | `model: <id>` + `provider: <provider>`             | Split into two fields                                                                          |
+| Qwen                                     | dropped + warning               | override only (`models.qwen`)                      | Constrained vocabulary; canonical value drops with a hint                                      |
+| Codex                                    | dropped + warning               | TOML `model = "<provider/model-id>"`               |                                                                                                |
+| Cursor / Gemini / Windsurf / Antigravity | dropped + warning               | dropped + warning (or unsupported)                 |                                                                                                |
+| Pi                                       | dropped + warning               | `model: <provider/model-id>` (with `pi-subagents`) | Agents surface exists only via the `pi-subagents` extension; skills/prompts are session-scoped |
 
 Unsupported surfaces drop the field and report why in the apply warnings. The `models` map is agent-ctrl configuration and is never written to any target file.
 
@@ -182,7 +184,7 @@ Key behavior:
 - **Opt-in:** Projects without a `settings/` directory are unaffected.
 - **Platform-scoped:** Only the directory matching the applied platform is copied; others are ignored.
 - **Override semantics:** Platform-specific files completely replace existing files (no merge, no backups — Git provides history).
-- **Validation:** Directory names must match a supported platform (`claude`, `gemini`, `cursor`, `codex`, `qwen`, `windsurf`, `opencode`, `kilo`, `forgecode`, `antigravity`). Invalid names are skipped with a warning.
+- **Validation:** Directory names must match a supported platform (`claude`, `gemini`, `cursor`, `codex`, `qwen`, `windsurf`, `opencode`, `kilo`, `forgecode`, `antigravity`, `pi`). Invalid names are skipped with a warning.
 - **Verbose mode:** `agent-ctrl apply <platform> --verbose` prints a settings discovery summary.
 
 ---

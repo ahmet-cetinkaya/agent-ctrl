@@ -148,6 +148,23 @@ export async function syncCommandsAsMarkdownFlattened(
       };
     })
   );
+
+  // Flattening keeps only the last path segment, so distinct namespaced commands can
+  // collide on the same output filename. Detect and warn instead of letting the last
+  // writer silently win.
+  const names = new Map<string, string[]>();
+  for (const command of commands) {
+    const leaf = command.id.split("/").pop() as string;
+    names.set(leaf, [...(names.get(leaf) ?? []), command.id]);
+  }
+  for (const [leaf, ids] of names) {
+    if (ids.length > 1) {
+      warnings.push(
+        `commands: ${ids.length} commands flatten to the same file name '${leaf}${commandRenderer.fileExtension}' (${ids.join(", ")}) — only the last one wins. Rename them or keep unique leaf names.`
+      );
+    }
+  }
+
   const result = await syncRenderedFiles(targetRoot, rendered, dryRun);
   return { ...result, warnings };
 }
@@ -459,6 +476,14 @@ export function renderForgeCodeMcpConfig(
   servers: ApplyMcpServer[]
 ): Record<string, unknown> {
   const renderer = McpConfigRendererFactory.getRenderer("forgecode");
+  return renderer.renderConfig(existing, servers);
+}
+
+export function renderPiMcpConfig(
+  existing: Record<string, unknown>,
+  servers: ApplyMcpServer[]
+): Record<string, unknown> {
+  const renderer = McpConfigRendererFactory.getRenderer("pi");
   return renderer.renderConfig(existing, servers);
 }
 
