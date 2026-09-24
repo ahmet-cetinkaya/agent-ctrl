@@ -12,13 +12,19 @@ import { ListAgentsQuery } from "@/core/application/features/agent/queries/ListA
 import { ListCommandsQuery } from "@/core/application/features/command/queries/ListCommandsQuery";
 import { ListMcpServersQuery } from "@/core/application/features/mcp/queries/ListMcpServersQuery";
 import { UserError } from "@/core/domain/shared/errors/UserError";
-import { captureConsole, cleanupTempDir, createTempConfigRoot } from "../../helpers/catalogTestUtils";
+import {
+  captureConsole,
+  cleanupTempDir,
+  createTempConfigRoot,
+  mockProcessExit,
+} from "../../helpers/catalogTestUtils";
 
 describe("LS command action behavior", () => {
   let homePath: string;
   let configRootPath: string;
   let originalAgentCtrlHome: string | undefined;
   let consoleCapture: ReturnType<typeof captureConsole>;
+  let exitMock: ReturnType<typeof mockProcessExit>;
 
   beforeEach(async () => {
     const temp = await createTempConfigRoot("ls-cli-action-");
@@ -29,9 +35,15 @@ describe("LS command action behavior", () => {
     process.env.AGENT_CTRL_HOME = homePath;
 
     consoleCapture = captureConsole();
+    // Several tests below assert that failing queries exit the CLI (EXIT:1). This file
+    // must mock process.exit itself: previously it silently relied on a mock leaked by
+    // another test file (ApplyCliAction never restores it), so running this file alone
+    // or in a different order called the REAL process.exit and killed the runner.
+    exitMock = mockProcessExit();
   });
 
   afterEach(async () => {
+    exitMock.restore();
     consoleCapture.restore();
     if (originalAgentCtrlHome === undefined) {
       delete process.env.AGENT_CTRL_HOME;

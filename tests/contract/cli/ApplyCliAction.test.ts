@@ -143,17 +143,25 @@ describe("Apply CLI action behavior", () => {
   });
 
   it("rejects --path together with --project", async () => {
+    const originalExit = process.exit;
     process.exit = ((code?: number) => {
       throw new Error(`EXIT:${code}`);
     }) as typeof process.exit;
 
-    await expect(
-      createApplyCommand().parseAsync(["node", "test", "opencode", "--project", "--path", "/tmp/x"])
-    ).rejects.toThrow("EXIT:");
+    try {
+      await expect(
+        createApplyCommand().parseAsync(["node", "test", "opencode", "--project", "--path", "/tmp/x"])
+      ).rejects.toThrow("EXIT:");
+    } finally {
+      // Restore so the mock does not leak into other test files that expect the real
+      // (or their own) process.exit behavior.
+      process.exit = originalExit;
+    }
   });
 
   it("prints user-facing error details when apply command returns user error", async () => {
     const originalExecute = ApplyCommand.prototype.execute;
+    const originalExit = process.exit;
     ApplyCommand.prototype.execute = async function mockedExecute() {
       return {
         success: false,
@@ -173,11 +181,13 @@ describe("Apply CLI action behavior", () => {
       expect(allOutput.includes("invalid usage")).toBe(true);
     } finally {
       ApplyCommand.prototype.execute = originalExecute;
+      process.exit = originalExit;
     }
   });
 
   it("handles explicit SystemError with system exit semantics", async () => {
     const originalExecute = ApplyCommand.prototype.execute;
+    const originalExit = process.exit;
     ApplyCommand.prototype.execute = async function mockedExecute() {
       return {
         success: false,
@@ -197,6 +207,7 @@ describe("Apply CLI action behavior", () => {
       expect(allOutput.includes("system failure")).toBe(true);
     } finally {
       ApplyCommand.prototype.execute = originalExecute;
+      process.exit = originalExit;
     }
   });
 
