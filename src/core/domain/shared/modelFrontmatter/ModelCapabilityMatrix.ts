@@ -72,8 +72,13 @@ export const MODEL_CAPABILITY_MATRIX: ModelCapabilityMatrixTable = {
     skill: drop(),
   },
   pi: {
+    // Core Pi has no per-artifact model field, but the `pi-subagents` extension's
+    // .pi/agents/*.md surface does — and PiAdapter only routes the "agent" kind there
+    // when that extension is detected (the skill-degrade fallback uses the "skill"
+    // kind below). Pi's own model format is provider/model-id, identical to the
+    // canonical form, so the value passes through verbatim.
     command: drop(),
-    agent: drop(),
+    agent: passthrough(),
     skill: drop(),
   },
   antigravity: {

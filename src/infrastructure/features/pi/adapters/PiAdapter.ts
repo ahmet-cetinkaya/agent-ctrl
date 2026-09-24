@@ -59,9 +59,7 @@ export class PiAdapter implements IApplyPlatformAdapter {
 
   async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
-    const userRoot = request?.userConfigRootPath
-      ? resolve(request.userConfigRootPath)
-      : resolve(homedir(), ".pi", "agent");
+    const userRoot = this.resolveUserRoot(request);
 
     return {
       configPath: scope === "project" ? resolve(projectPath, "AGENTS.md") : resolve(userRoot, "AGENTS.md"),
@@ -72,9 +70,7 @@ export class PiAdapter implements IApplyPlatformAdapter {
 
   async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
-    const userRoot = request.userConfigRootPath
-      ? resolve(request.userConfigRootPath)
-      : resolve(homedir(), ".pi", "agent");
+    const userRoot = this.resolveUserRoot(request);
 
     const promptsRoot =
       target.scope === "project" ? resolve(request.projectPath, ".pi", "prompts") : resolve(userRoot, "prompts");
@@ -98,8 +94,10 @@ export class PiAdapter implements IApplyPlatformAdapter {
     const fileChanges: string[] = [];
     const modelWarnings: string[] = [];
 
-    // Clean existing managed artifacts if override is enabled
-    if (request.override) {
+    // Clean existing managed artifacts if override is enabled (never during dry-run:
+    // rm() is a destructive, un-dry-runnable action, so a --dry-run --override preview
+    // must not delete anything).
+    if (request.override && !request.dryRun) {
       await Promise.all([
         rm(promptsRoot, { recursive: true, force: true }).catch((error) => {
           if (error.code !== "ENOENT") {
@@ -250,11 +248,30 @@ export class PiAdapter implements IApplyPlatformAdapter {
         commands: source.commands.length,
         skills: source.skills.length,
         agents: source.agents.length,
-        mcpServers: source.mcpServers.length,
+        // Report only servers actually applied — when pi-mcp-adapter is absent the
+        // servers are dropped with a warning, and counting them here would make the
+        // CLI summary claim they were synced.
+        mcpServers: mcpAppliedViaPlugin ? source.mcpServers.length : 0,
       },
       fileChanges,
       warnings: [...source.warnings, ...modelWarnings],
     };
+  }
+
+  /**
+   * Resolves Pi's user-scope configuration root: an explicit request override wins,
+   * then Pi's own documented `PI_CODING_AGENT_DIR` env var, then the default
+   * `~/.pi/agent` (see https://pi.dev — configuration docs).
+   */
+  private resolveUserRoot(request?: ApplyIntegrationRequest): string {
+    if (request?.userConfigRootPath) {
+      return resolve(request.userConfigRootPath);
+    }
+    const envDir = process.env.PI_CODING_AGENT_DIR;
+    if (envDir && envDir.trim().length > 0) {
+      return resolve(envDir);
+    }
+    return resolve(homedir(), ".pi", "agent");
   }
 
   /**

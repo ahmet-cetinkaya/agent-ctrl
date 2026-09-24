@@ -88,6 +88,45 @@ describe("PiAdapter", () => {
     expect(promptExists).toBe(false);
   });
 
+  it("does not delete anything when override is combined with dry-run", async () => {
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+    const promptPath = resolve(projectPath, ".pi", "prompts", "fix-lint.md");
+    await expect(access(promptPath)).resolves.toBeNull();
+
+    const result = await adapter.applyApplyIntegration({
+      projectPath,
+      targetScope: "project",
+      override: true,
+      dryRun: true,
+    });
+
+    expect(["success", "unchanged"]).toContain(result.status);
+    // dry-run must be a full preview: no file may be deleted by the override cleanup.
+    await expect(access(promptPath)).resolves.toBeNull();
+  });
+
+  it("honors PI_CODING_AGENT_DIR when no explicit user config root is given", async () => {
+    const envDir = await mkdtemp(join(tmpdir(), "pi-envdir-"));
+    process.env.PI_CODING_AGENT_DIR = envDir;
+    try {
+      const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "user" });
+      expect(result.configPath).toBe(resolve(envDir, "AGENTS.md"));
+      await expect(access(resolve(envDir, "AGENTS.md"))).resolves.toBeNull();
+    } finally {
+      delete process.env.PI_CODING_AGENT_DIR;
+      await rm(envDir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports zero mcpServers in artifactCounts when the plugin is absent and servers are dropped", async () => {
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+    expect(result.warnings!.some((w) => w.includes("MCP servers were not applied"))).toBe(true);
+    expect(result.artifactCounts!.mcpServers).toBe(0);
+    expect(result.artifactCounts!.rules).toBeGreaterThan(0);
+  });
+
   describe("pi-mcp-adapter plugin detection", () => {
     it("applies MCP servers to .mcp.json when pi-mcp-adapter is declared in the project's .pi/settings.json", async () => {
       await mkdir(resolve(projectPath, ".pi"), { recursive: true });
@@ -174,6 +213,26 @@ describe("PiAdapter", () => {
         .then(() => true)
         .catch(() => false);
       expect(skillFallbackExists).toBe(false);
+    });
+
+    it("passes the canonical model frontmatter through verbatim on the native agents surface", async () => {
+      await mkdir(resolve(projectPath, ".pi"), { recursive: true });
+      await writeFile(
+        resolve(projectPath, ".pi", "settings.json"),
+        JSON.stringify({ packages: [{ source: "npm:pi-subagents" }] })
+      );
+      // Overwrite the fixture agent with one carrying a model field.
+      await mkdir(resolve(projectPath, ".agent-ctrl", "agents"), { recursive: true });
+      await writeFile(
+        resolve(projectPath, ".agent-ctrl", "agents", "architect.md"),
+        "---\nname: architect\ndescription: Plans systems\nmodel: anthropic/claude-sonnet-4-5\n---\n\nBe explicit."
+      );
+
+      const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+      expect(result.warnings!.some((w) => w.includes("model: dropped"))).toBe(false);
+      const agentContent = await readFile(resolve(projectPath, ".pi", "agents", "architect.md"), "utf-8");
+      expect(agentContent).toContain("model: anthropic/claude-sonnet-4-5");
     });
 
     it("detects a personally-installed pi-subagents (~/.pi/agent/settings.json) even in project scope", async () => {

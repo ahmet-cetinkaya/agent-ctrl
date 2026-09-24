@@ -27,7 +27,7 @@ export class PiCommandRenderer extends BaseCommandRenderer {
   }
 
   private isYamlPropertyLine(line: string): boolean {
-    return line.includes(":") && !line.startsWith("#") && !line.startsWith("-");
+    return /^[A-Za-z][A-Za-z0-9_-]*:\s/.test(line);
   }
 
   private renderWithoutFrontmatter(source: string, id: string): string {
@@ -37,9 +37,10 @@ export class PiCommandRenderer extends BaseCommandRenderer {
 
   /**
    * Render a source that starts with a YAML property line but has no opening `---`
-   * (a common copy-paste mistake). If a closing `---` exists later, the lines before
-   * it are recovered as frontmatter (preserving the user's own fields) rather than
-   * being dumped verbatim into the body under a freshly id-derived description.
+   * (a common copy-paste mistake). The closing `---` only counts as a frontmatter
+   * delimiter when EVERY line before it is a `key: value` property — a `---`
+   * preceded by plain prose (e.g. a body that happens to start with "Time: 10 min"
+   * and contains a horizontal rule) is body content, not frontmatter.
    */
   private renderWithMalformedFrontmatter(lines: string[], id: string): string {
     let frontmatterEnd = -1;
@@ -50,14 +51,16 @@ export class PiCommandRenderer extends BaseCommandRenderer {
       }
     }
 
-    if (frontmatterEnd === -1) {
-      // No closing --- either — nothing to recover.
+    const candidateLines = frontmatterEnd > 0 ? lines.slice(0, frontmatterEnd) : [];
+    const allProperties = candidateLines.length > 0 && candidateLines.every((line) => this.isYamlPropertyLine(line));
+
+    if (frontmatterEnd === -1 || !allProperties) {
+      // No closing --- before real prose — treat the whole source as body.
       return this.renderWithoutFrontmatter(lines.join("\n"), id);
     }
 
-    const frontmatterLines = lines.slice(0, frontmatterEnd);
     const bodyLines = lines.slice(frontmatterEnd + 1);
-    const updatedFrontmatter = this.ensureDescription(frontmatterLines, id, bodyLines.join("\n"));
+    const updatedFrontmatter = this.ensureDescription(candidateLines, id, bodyLines.join("\n"));
 
     return ["---", ...updatedFrontmatter, "---", ...bodyLines].join("\n");
   }

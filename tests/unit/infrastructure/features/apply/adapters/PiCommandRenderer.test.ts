@@ -75,6 +75,34 @@ Run the linter and fix issues.`;
       expect(body).toBe("Run the linter and fix issues.");
     });
 
+    it("should not mistake a body starting with a 'key: value'-looking line followed by a horizontal rule for malformed frontmatter", () => {
+      const source = `Time: about 10 minutes
+
+Do the thing.
+
+---
+
+Notes.`;
+      const result = renderer.renderCommand(source, "dev/fix-lint");
+
+      // The whole source is body — the '---' is a horizontal rule, not a frontmatter
+      // delimiter, so no prose may be swallowed into the YAML block.
+      const lines = result.split("\n");
+      expect(lines[0]).toBe("---");
+      const closingIndex = lines.indexOf("---", 1);
+      const frontmatter = lines.slice(1, closingIndex);
+      const body = lines
+        .slice(closingIndex + 1)
+        .join("\n")
+        .trim();
+
+      expect(frontmatter).toHaveLength(1); // only the synthesized description
+      expect(frontmatter[0]).toMatch(/^description: /);
+      expect(body).toContain("Time: about 10 minutes");
+      expect(body).toContain("Do the thing.");
+      expect(body).toContain("Notes.");
+    });
+
     it("should fall back to a derived description when frontmatter is fully malformed (no closing ---)", () => {
       const source = `description: Fix all lint issues
 Run the linter and fix issues.`;

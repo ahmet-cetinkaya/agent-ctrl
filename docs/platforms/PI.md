@@ -38,7 +38,7 @@ mkdir -p .pi/skills .pi/prompts
 touch AGENTS.md
 ```
 
-`agent-ctrl apply pi` (project scope, the default when a project-local surface is detected) writes:
+`agent-ctrl apply pi --project` (project scope; without `--project` the default is the user scope, same as every other platform) writes:
 
 - Rules → `AGENTS.md` at the project root (managed section, upserted between markers).
 - Commands → `.pi/prompts/<name>.md`.
@@ -63,11 +63,13 @@ Pi's core is intentionally minimal — MCP and native subagents are both add-ons
 > [!NOTE]
 > Detection is file-based and best-effort: it reads the declaration, not Pi's live runtime state, so a package declared in `.pi/settings.json` before "project trust" has been interactively granted is still treated as installed. A malformed or missing `settings.json` is treated as "not installed" and never interrupts the apply run.
 >
-> These are third-party community packages, not maintained by `agent-ctrl` or by Pi's authors (`earendil-works`). `agent-ctrl` never writes a `model` field into `.pi/agents/*.md` itself (see Model Frontmatter below) — an existing one is only preserved verbatim if the source agent already had it.
+> These are third-party community packages, not maintained by `agent-ctrl` or by Pi's authors (`earendil-works`). When `pi-subagents` is detected, the agent surface also honors the canonical `model` frontmatter (see Model Frontmatter below).
 
 ## Model Frontmatter
 
-Pi has no per-skill or per-prompt `model` frontmatter — model selection is scoped to the CLI flag (`pi --model <provider/id>`) or `settings.json`'s `defaultProvider`/`defaultModel` fields, never to an individual skill or prompt file. `agent-ctrl` therefore drops the canonical `model`/`models` frontmatter field for all artifact kinds on this platform and reports why in the apply warnings.
+Core Pi has no per-skill or per-prompt `model` frontmatter — model selection is scoped to the CLI flag (`pi --model <provider/id>`) or `settings.json`'s `defaultProvider`/`defaultModel` fields. `agent-ctrl` therefore drops the canonical `model`/`models` field for commands and skills on this platform and reports why in the apply warnings.
+
+The exception is agents **when `pi-subagents` is detected**: its `.pi/agents/*.md` schema has a `model` field that expects the same `provider/model-id` shape as agent-ctrl's canonical value, so the canonical `model` passes through verbatim (and `models.pi` overrides apply) on that surface. When `pi-subagents` is not installed, agents degrade to skills and the field drops with a warning like every other Pi surface.
 
 ## Source Documentation References
 

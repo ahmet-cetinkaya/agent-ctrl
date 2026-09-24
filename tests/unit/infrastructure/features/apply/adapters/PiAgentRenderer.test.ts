@@ -77,6 +77,33 @@ Review the diff carefully.`;
       expect(body).toBe("Review the diff carefully.");
     });
 
+    it("should not mistake a body starting with a 'key: value'-looking line followed by a horizontal rule for malformed frontmatter", () => {
+      const source = `Time: about 10 minutes
+
+Do the thing.
+
+---
+
+Notes.`;
+      const result = renderer.renderAgent(source, "code-reviewer");
+
+      const lines = result.split("\n");
+      expect(lines[0]).toBe("---");
+      const closingIndex = lines.indexOf("---", 1);
+      const frontmatter = lines.slice(1, closingIndex);
+      const body = lines
+        .slice(closingIndex + 1)
+        .join("\n")
+        .trim();
+
+      // Only the synthesized name/description in frontmatter; all prose stays in body.
+      expect(frontmatter).toContain("name: code-reviewer");
+      expect(frontmatter.some((l) => l.includes("Time:"))).toBe(false);
+      expect(body).toContain("Time: about 10 minutes");
+      expect(body).toContain("Do the thing.");
+      expect(body).toContain("Notes.");
+    });
+
     it("should fall back to a derived name/description when frontmatter is fully malformed (no closing ---)", () => {
       const source = `name: reviewer
 Review the diff carefully.`;

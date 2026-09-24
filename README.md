@@ -119,16 +119,16 @@ Precedence: `models.<platform>` > `model` > (absent).
 
 Platform behavior:
 
-| Platform                                 | Commands                        | Agents                                 | Notes                                                     |
-| ---------------------------------------- | ------------------------------- | -------------------------------------- | --------------------------------------------------------- |
-| Claude Code                              | `model: <id>` (prefix stripped) | `model: <id>`                          | Skills keep the value verbatim                            |
-| OpenCode                                 | `model: <provider/model-id>`    | `model: <provider/model-id>`           |                                                           |
-| Kilo Code                                | dropped + warning               | `model: <provider/model-id>`           | Commands are written as skills                            |
-| Forge Code                               | dropped + warning               | `model: <id>` + `provider: <provider>` | Split into two fields                                     |
-| Qwen                                     | dropped + warning               | override only (`models.qwen`)          | Constrained vocabulary; canonical value drops with a hint |
-| Codex                                    | dropped + warning               | TOML `model = "<provider/model-id>"`   |                                                           |
-| Cursor / Gemini / Windsurf / Antigravity | dropped + warning               | dropped + warning (or unsupported)     |                                                           |
-| Pi                                       | dropped + warning               | dropped + warning                      | No per-skill/per-prompt model field (session-scoped only) |
+| Platform                                 | Commands                        | Agents                                             | Notes                                                                                          |
+| ---------------------------------------- | ------------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Claude Code                              | `model: <id>` (prefix stripped) | `model: <id>`                                      | Skills keep the value verbatim                                                                 |
+| OpenCode                                 | `model: <provider/model-id>`    | `model: <provider/model-id>`                       |                                                                                                |
+| Kilo Code                                | dropped + warning               | `model: <provider/model-id>`                       | Commands are written as skills                                                                 |
+| Forge Code                               | dropped + warning               | `model: <id>` + `provider: <provider>`             | Split into two fields                                                                          |
+| Qwen                                     | dropped + warning               | override only (`models.qwen`)                      | Constrained vocabulary; canonical value drops with a hint                                      |
+| Codex                                    | dropped + warning               | TOML `model = "<provider/model-id>"`               |                                                                                                |
+| Cursor / Gemini / Windsurf / Antigravity | dropped + warning               | dropped + warning (or unsupported)                 |                                                                                                |
+| Pi                                       | dropped + warning               | `model: <provider/model-id>` (with `pi-subagents`) | Agents surface exists only via the `pi-subagents` extension; skills/prompts are session-scoped |
 
 Unsupported surfaces drop the field and report why in the apply warnings. The `models` map is agent-ctrl configuration and is never written to any target file.
 

@@ -31,7 +31,7 @@ export class PiAgentRenderer extends BaseAgentRenderer implements IAgentRenderer
   }
 
   private isYamlPropertyLine(line: string): boolean {
-    return line.includes(":") && !line.startsWith("#") && !line.startsWith("-");
+    return /^[A-Za-z][A-Za-z0-9_-]*:\s/.test(line);
   }
 
   private renderWithNewFrontmatter(id: string, parsed: ParsedAgentPrompt): string {
@@ -61,9 +61,10 @@ export class PiAgentRenderer extends BaseAgentRenderer implements IAgentRenderer
 
   /**
    * Render a source that starts with a YAML property line but has no opening `---`.
-   * If a closing `---` exists later, the lines before it are recovered as frontmatter
-   * (preserving the user's own fields, e.g. `tools`/`model`) rather than being dumped
-   * verbatim into the body under a freshly derived name/description.
+   * The closing `---` only counts as a frontmatter delimiter when EVERY line before it
+   * is a `key: value` property — a `---` preceded by plain prose (e.g. a body that
+   * happens to start with "Time: 10 min" and contains a horizontal rule) is body
+   * content, not frontmatter.
    */
   private renderWithMalformedFrontmatter(lines: string[], id: string, parsed: ParsedAgentPrompt): string {
     let frontmatterEnd = -1;
@@ -74,14 +75,16 @@ export class PiAgentRenderer extends BaseAgentRenderer implements IAgentRenderer
       }
     }
 
-    if (frontmatterEnd === -1) {
-      // No closing --- either — nothing to recover.
+    const candidateLines = frontmatterEnd > 0 ? lines.slice(0, frontmatterEnd) : [];
+    const allProperties = candidateLines.length > 0 && candidateLines.every((line) => this.isYamlPropertyLine(line));
+
+    if (frontmatterEnd === -1 || !allProperties) {
+      // No closing --- before real prose — treat the whole source as body.
       return this.renderWithNewFrontmatter(id, parsed);
     }
 
-    const frontmatterLines = lines.slice(0, frontmatterEnd);
     const bodyLines = lines.slice(frontmatterEnd + 1);
-    const updatedFrontmatter = this.updateAgentFrontmatter(frontmatterLines, id, parsed);
+    const updatedFrontmatter = this.updateAgentFrontmatter(candidateLines, id, parsed);
 
     return ["---", ...updatedFrontmatter, "---", ...bodyLines].join("\n");
   }
