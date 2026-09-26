@@ -17,7 +17,7 @@ import {
   resolveApplyScope,
   syncAgentsAsMarkdown,
   syncAgentsAsSkills,
-  syncCommandsAsMarkdownFlattened,
+  syncCommandsAsMarkdown,
   syncSkills,
   toStatus,
   upsertManagedRuleDocument,
@@ -128,13 +128,19 @@ export class PiAdapter implements IApplyPlatformAdapter {
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
 
-    // Sync commands to prompts/ as prompt templates
+    // Sync commands to prompts/ as prompt templates. Pi has no folder-based namespace
+    // concept (a command's slash-name is always just its filename — see
+    // PiCommandRenderer's doc comment), so a namespaced source id like "ac/plan" is
+    // encoded into the filename with a "-" separator ("ac-plan.md") rather than fully
+    // flattened to "plan.md": this keeps the namespace visible and avoids distinct
+    // namespaced commands silently colliding on the same output file.
     if (source.commands.length > 0) {
-      const commandsResult = await syncCommandsAsMarkdownFlattened(
+      const commandsResult = await syncCommandsAsMarkdown(
         source.commands,
         promptsRoot,
         Boolean(request.dryRun),
         this.commandRenderer,
+        "-",
         "pi"
       );
       changed = commandsResult.changed || changed;

@@ -31,8 +31,10 @@ describe("PiAdapter", () => {
     // Rules are upserted into a managed AGENTS.md section
     await expect(access(resolve(projectPath, "AGENTS.md"))).resolves.toBeNull();
 
-    // Commands are written as prompt templates under .pi/prompts/
-    const promptPath = resolve(projectPath, ".pi", "prompts", "fix-lint.md");
+    // Commands are written as prompt templates under .pi/prompts/, namespace-prefixed
+    // with "-" since Pi has no folder-based namespace concept (fixture id "dev/fix-lint"
+    // → "dev-fix-lint.md", not a bare "fix-lint.md" that would drop the namespace).
+    const promptPath = resolve(projectPath, ".pi", "prompts", "dev-fix-lint.md");
     await expect(access(promptPath)).resolves.toBeNull();
     expect(await readFile(promptPath, "utf-8")).toContain("description:");
 
@@ -91,7 +93,7 @@ describe("PiAdapter", () => {
   it("does not delete anything when override is combined with dry-run", async () => {
     await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
 
-    const promptPath = resolve(projectPath, ".pi", "prompts", "fix-lint.md");
+    const promptPath = resolve(projectPath, ".pi", "prompts", "dev-fix-lint.md");
     await expect(access(promptPath)).resolves.toBeNull();
 
     const result = await adapter.applyApplyIntegration({
