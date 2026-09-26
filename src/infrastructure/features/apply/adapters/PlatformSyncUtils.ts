@@ -238,9 +238,14 @@ export async function syncCommandsAsSkills(
     const skillName = command.id.replaceAll("/", "-");
     const parsed = parseMarkdownPrompt(source, command.id);
 
-    const skillMd = ["---", `name: ${skillName}`, `description: ${parsed.description}`, "---", "", source.trim()].join(
-      "\n"
-    );
+    const skillMd = [
+      "---",
+      `name: ${skillName}`,
+      `description: ${toSafeYamlScalar(parsed.description)}`,
+      "---",
+      "",
+      source.trim(),
+    ].join("\n");
 
     const skillDir = resolve(targetRoot, skillName);
     const targetPath = resolve(skillDir, "SKILL.md");
@@ -369,7 +374,7 @@ export async function syncAgentsAsSkills(
     const skillMd = [
       "---",
       `name: ${skillName}`,
-      `description: Custom agent: ${agent.id}`,
+      `description: ${toSafeYamlScalar(`Custom agent: ${agent.id}`)}`,
       "---",
       "",
       source.trim(),
@@ -624,7 +629,7 @@ function renderSkillMarkdown(
 
   void renderer; // Reserved for future platform-specific skill rendering
   const parsed = parseMarkdownPrompt(source, skillName);
-  const lines = ["---", `name: ${skillName}`, `description: ${parsed.description}`];
+  const lines = ["---", `name: ${skillName}`, `description: ${toSafeYamlScalar(parsed.description)}`];
   if (compatibility) {
     lines.push(`compatibility: ${compatibility}`);
   }
@@ -651,6 +656,33 @@ function getFrontmatterScalar(source: string, key: string): string | null {
 
 function escapeTomlString(value: string): string {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+}
+
+/**
+ * Renders a value as a safe single-line YAML scalar for hand-built frontmatter blocks.
+ *
+ * A plain (unquoted) YAML scalar cannot contain a colon followed by whitespace, a space
+ * followed by `#`, a leading indicator character, or an embedded newline — each is ambiguous
+ * with mapping/comment/flow syntax. Some parsers (e.g. plain js-yaml) tolerate this in practice,
+ * but stricter ones reject it outright (seen in the wild as "Nested mappings are not allowed in
+ * compact mappings" for an unquoted `description: Custom agent: <name>` value). Quoting is only
+ * applied when actually needed, so already-safe values keep their existing unquoted rendering.
+ */
+function toSafeYamlScalar(value: string): string {
+  const needsQuoting =
+    value === "" ||
+    /^\s|\s$/.test(value) ||
+    /: |:$/.test(value) ||
+    / #/.test(value) ||
+    /\n/.test(value) ||
+    /^[-?:,[\]{}#&*!|>'"%@`]/.test(value);
+
+  if (!needsQuoting) {
+    return value;
+  }
+
+  const escaped = value.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+  return `"${escaped}"`;
 }
 
 function parseMarkdownPrompt(source: string, id: string): ParsedMarkdownPrompt {

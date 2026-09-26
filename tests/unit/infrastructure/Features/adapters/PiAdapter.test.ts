@@ -47,7 +47,12 @@ describe("PiAdapter", () => {
     // does not prove the file landed correctly).
     const architectSkillPath = resolve(projectPath, ".pi", "skills", "architect", "SKILL.md");
     await expect(access(architectSkillPath)).resolves.toBeNull();
-    expect(await readFile(architectSkillPath, "utf-8")).toContain("name: architect");
+    const architectSkillContent = await readFile(architectSkillPath, "utf-8");
+    expect(architectSkillContent).toContain("name: architect");
+    // The generated "Custom agent: <id>" description contains an unquoted "colon-space",
+    // which is invalid as a plain YAML scalar (some parsers reject it outright — see
+    // "Nested mappings are not allowed in compact mappings"). It must be quoted.
+    expect(architectSkillContent).toContain('description: "Custom agent: architect"');
     expect(result.warnings!.some((w) => w.includes("Agents are being written as skills"))).toBe(true);
     expect(result.warnings!.some((w) => w.includes("pi install npm:pi-subagents"))).toBe(true);
 
