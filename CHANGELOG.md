@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-09-26
+
+### Fixed
+
+- Preserve command namespaces when applying to the Pi platform (e.g. `ac/plan` now becomes `ac-plan` instead of dropping the `ac` prefix to a bare `plan`, which could also collide with other commands sharing the same leaf name)
+
 ## [0.10.0] - 2026-09-24
 
 ### Added
