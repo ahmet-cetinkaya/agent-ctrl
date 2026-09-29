@@ -32,15 +32,19 @@ export class PiCommandRenderer extends BaseCommandRenderer {
 
   private renderWithoutFrontmatter(source: string, id: string): string {
     const parsed = this.parseMarkdownPrompt(source, id);
-    return ["---", `description: ${parsed.description}`, "---", "", parsed.body].join("\n");
+    return ["---", `description: ${parsed.description}`, "---", "", this.ensureArguments(parsed.body)].join("\n");
+  }
+
+  private ensureArguments(body: string): string {
+    return /\$(?:ARGUMENTS|@|\d+)/.test(body) ? body : `${body}\n\n$ARGUMENTS`;
   }
 
   /**
    * Render a source that starts with a YAML property line but has no opening `---`
-   * (a common copy-paste mistake). The closing `---` only counts as a frontmatter
-   * delimiter when EVERY line before it is a `key: value` property — a `---`
-   * preceded by plain prose (e.g. a body that happens to start with "Time: 10 min"
-   * and contains a horizontal rule) is body content, not frontmatter.
+   (a common copy-paste mistake). The closing `---` only counts as a frontmatter
+   delimiter when EVERY line before it is a `key: value` property — a `---`
+   preceded by plain prose (e.g. a body that happens to start with "Time: 10 min"
+   and contains a horizontal rule) is body content, not frontmatter.
    */
   private renderWithMalformedFrontmatter(lines: string[], id: string): string {
     let frontmatterEnd = -1;
@@ -62,7 +66,7 @@ export class PiCommandRenderer extends BaseCommandRenderer {
     const bodyLines = lines.slice(frontmatterEnd + 1);
     const updatedFrontmatter = this.ensureDescription(candidateLines, id, bodyLines.join("\n"));
 
-    return ["---", ...updatedFrontmatter, "---", ...bodyLines].join("\n");
+    return ["---", ...updatedFrontmatter, "---", this.ensureArguments(bodyLines.join("\n"))].join("\n");
   }
 
   private renderWithExistingFrontmatter(lines: string[], id: string): string {
@@ -83,7 +87,7 @@ export class PiCommandRenderer extends BaseCommandRenderer {
     const bodyLines = lines.slice(frontmatterEnd + 1);
     const updatedFrontmatter = this.ensureDescription(frontmatterLines, id, bodyLines.join("\n"));
 
-    return ["---", ...updatedFrontmatter, "---", ...bodyLines].join("\n");
+    return ["---", ...updatedFrontmatter, "---", this.ensureArguments(bodyLines.join("\n"))].join("\n");
   }
 
   private ensureDescription(frontmatterLines: string[], id: string, body: string): string[] {

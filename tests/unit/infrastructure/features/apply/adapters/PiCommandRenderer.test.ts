@@ -72,7 +72,7 @@ Run the linter and fix issues.`;
       // leak into the body as raw text.
       expect(frontmatter).toContain("description: Fix all lint issues");
       expect(frontmatter).toContain("argument-hint: [path]");
-      expect(body).toBe("Run the linter and fix issues.");
+      expect(body).toBe("Run the linter and fix issues.\n\n$ARGUMENTS");
     });
 
     it("should not mistake a body starting with a 'key: value'-looking line followed by a horizontal rule for malformed frontmatter", () => {
@@ -117,6 +117,19 @@ Run the linter and fix issues.`;
 
       expect(result).toContain("---");
       expect(result).toContain("description:");
+    });
+
+    it("should include Pi's all-arguments placeholder for a command without one", () => {
+      const result = renderer.renderCommand("Run the requested check", "custom-test");
+
+      expect(result).toContain("Run the requested check\n\n$ARGUMENTS");
+    });
+
+    it("should preserve an explicit Pi argument placeholder without duplicating it", () => {
+      const source = "Run this check for $ARGUMENTS";
+      const result = renderer.renderCommand(source, "custom-test");
+
+      expect(result.match(/\$ARGUMENTS/g)).toHaveLength(1);
     });
   });
 });
