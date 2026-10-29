@@ -11,6 +11,8 @@ import type {
 import { AgentRendererFactory } from "@/infrastructure/features/apply/adapters/AgentRendererFactory";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import { CommandRendererFactory } from "@/infrastructure/features/apply/adapters/CommandRendererFactory";
+import type { IAgentRenderer } from "@/infrastructure/features/apply/adapters/IAgentRenderer";
+import type { ICommandRenderer } from "@/infrastructure/features/apply/adapters/ICommandRenderer";
 import {
   mergeJsonObjectFile,
   renderPiMcpConfig,
@@ -44,18 +46,91 @@ interface PiSettingsPackages {
  * installed (declared in Pi's own `settings.json` `packages` list — see `isPackageInstalled()`),
  * the corresponding artifact is written to its native location; otherwise it falls back to the
  * existing degraded behavior (agents → skills, MCP → dropped) with a warning naming the extension.
+ *
+ * The Pi-family forks (senpi, `@code-yeongyu/senpi`; OmO Native, `omo-ai`) keep this engine's
+ * directory layout but brand it: config lives under `~/.senpi/agent` / `~/.omo/agent` (env
+ * `SENPI_CODING_AGENT_DIR` / `OMO_CODING_AGENT_DIR`, legacy `PI_CODING_AGENT_DIR` still honored),
+ * project-scope directories use `.senpi/` / `.omo/` instead of `.pi/`, and MCP is BUILT INTO the
+ * engine (builtin `mcp` extension reading `<agentDir>/mcp.json` user-scope and
+ * `.<configDir>/mcp.json` project-scope, same `{ mcpServers: ... }` shape), so no package
+ * detection gates MCP there. Instantiate via `PiAdapter.forSenpi()` / `PiAdapter.forOmoNative()`.
  */
+export interface PiBrandProfile {
+  /** agent-ctrl platform id (`platformName` on the adapter). */
+  readonly platform: "pi" | "senpi" | "omonative";
+  /** Human-facing product name used in user-visible messages. */
+  readonly displayName: string;
+  /** Home config directory name: `.pi`, `.senpi`, or `.omo`. */
+  readonly configDirName: string;
+  /** Env vars carrying an explicit agent dir override, most specific first. */
+  readonly agentDirEnvNames: readonly string[];
+  /** CLI command name for install hints (e.g. `pi install npm:pi-subagents`). */
+  readonly installCommand: string;
+  /** True when the engine ships the builtin MCP extension (no package detection needed). */
+  readonly builtinMcp: boolean;
+}
+
+const PI_BRAND_PROFILE: PiBrandProfile = {
+  platform: "pi",
+  displayName: "Pi",
+  configDirName: ".pi",
+  agentDirEnvNames: ["PI_CODING_AGENT_DIR"],
+  installCommand: "pi",
+  builtinMcp: false,
+};
+
+const SENPI_BRAND_PROFILE: PiBrandProfile = {
+  platform: "senpi",
+  displayName: "Senpi",
+  configDirName: ".senpi",
+  // Senpi keeps pi's env var readable as a legacy prefix (LEGACY_ENV_PREFIXES = ["SENPI", "PI"]).
+  agentDirEnvNames: ["SENPI_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR"],
+  installCommand: "senpi",
+  builtinMcp: true,
+};
+
+const OMO_NATIVE_BRAND_PROFILE: PiBrandProfile = {
+  platform: "omonative",
+  displayName: "OmO Native",
+  configDirName: ".omo",
+  // omo-ai resolves OMO_ → SENPI_ → PI_ (see its lib/agent-dir.js AGENT_DIR_ENV_NAMES).
+  agentDirEnvNames: ["OMO_CODING_AGENT_DIR", "SENPI_CODING_AGENT_DIR", "PI_CODING_AGENT_DIR"],
+  installCommand: "omo",
+  builtinMcp: true,
+};
+
 export class PiAdapter implements IApplyPlatformAdapter {
-  readonly platformName = "pi" as const;
   private static readonly MCP_ADAPTER_PACKAGE = "pi-mcp-adapter";
   private static readonly SUBAGENTS_PACKAGE = "pi-subagents";
   private readonly sourceLoader = new ApplySourceLoader();
-  private readonly commandRenderer = CommandRendererFactory.getRenderer("pi");
-  private readonly agentRenderer = AgentRendererFactory.getRenderer("pi");
-  private static readonly markers = {
-    start: "<!-- agent-ctrl:pi:start -->",
-    end: "<!-- agent-ctrl:pi:end -->",
-  };
+  private readonly brand: PiBrandProfile;
+  readonly platformName: "pi" | "senpi" | "omonative";
+  private readonly commandRenderer: ICommandRenderer;
+  private readonly agentRenderer: IAgentRenderer;
+  private readonly markers: { start: string; end: string };
+
+  constructor(brand: PiBrandProfile = PI_BRAND_PROFILE) {
+    this.brand = brand;
+    this.platformName = brand.platform;
+    // Renderers are format-level (prompt templates / pi-subagents frontmatter), shared by
+    // every Pi-family fork.
+    this.commandRenderer = CommandRendererFactory.getRenderer("pi");
+    this.agentRenderer = AgentRendererFactory.getRenderer("pi");
+    this.markers = {
+      start: `<!-- agent-ctrl:${brand.platform}:start -->`,
+      end: `<!-- agent-ctrl:${brand.platform}:end -->`,
+    };
+  }
+
+  /** Adapter for senpi (`@code-yeongyu/senpi`), the branded engine fork with builtin MCP. */
+  static forSenpi(): PiAdapter {
+    return new PiAdapter(SENPI_BRAND_PROFILE);
+  }
+
+  /** Adapter for OmO Native (`omo-ai`), the omo-branded senpi distribution with builtin MCP. */
+  static forOmoNative(): PiAdapter {
+    return new PiAdapter(OMO_NATIVE_BRAND_PROFILE);
+  }
 
   async resolveTarget(projectPath: string, request?: ApplyIntegrationRequest): Promise<ApplyConfigTarget> {
     const scope = resolveApplyScope(request?.targetScope, "user", true);
@@ -63,8 +138,12 @@ export class PiAdapter implements IApplyPlatformAdapter {
 
     return {
       configPath: scope === "project" ? resolve(projectPath, "AGENTS.md") : resolve(userRoot, "AGENTS.md"),
+      // Settings/<platform>/ files go to the config dir (~/.pi, ~/.senpi, ~/.omo), not the
+      // agent subdir where the other artifacts live: forks treat the config dir root as
+      // the settings surface (e.g. ~/.senpi/settings.json, ~/.omo/omo.jsonc).
+      settingsDirectory: resolve(userRoot, ".."),
       scope,
-      surface: "pi-agents-md-prompts-skills",
+      surface: `${this.platformName}-agents-md-prompts-skills`,
     };
   }
 
@@ -73,11 +152,17 @@ export class PiAdapter implements IApplyPlatformAdapter {
     const userRoot = this.resolveUserRoot(request);
 
     const promptsRoot =
-      target.scope === "project" ? resolve(request.projectPath, ".pi", "prompts") : resolve(userRoot, "prompts");
+      target.scope === "project"
+        ? resolve(request.projectPath, this.brand.configDirName, "prompts")
+        : resolve(userRoot, "prompts");
     const skillsRoot =
-      target.scope === "project" ? resolve(request.projectPath, ".pi", "skills") : resolve(userRoot, "skills");
+      target.scope === "project"
+        ? resolve(request.projectPath, this.brand.configDirName, "skills")
+        : resolve(userRoot, "skills");
     const agentsRoot =
-      target.scope === "project" ? resolve(request.projectPath, ".pi", "agents") : resolve(userRoot, "agents");
+      target.scope === "project"
+        ? resolve(request.projectPath, this.brand.configDirName, "agents")
+        : resolve(userRoot, "agents");
 
     const source = request.mergedSnapshot
       ? {
@@ -121,8 +206,8 @@ export class PiAdapter implements IApplyPlatformAdapter {
     const rulesResult = await upsertManagedRuleDocument(
       target.configPath,
       source.rules,
-      PiAdapter.markers,
-      "No managed Pi rules were found.",
+      this.markers,
+      `No managed ${this.brand.displayName} rules were found.`,
       Boolean(request.dryRun)
     );
     changed = rulesResult.changed || changed;
@@ -141,7 +226,7 @@ export class PiAdapter implements IApplyPlatformAdapter {
         Boolean(request.dryRun),
         this.commandRenderer,
         "-",
-        "pi"
+        this.platformName
       );
       changed = commandsResult.changed || changed;
       fileChanges.push(...commandsResult.paths);
@@ -156,7 +241,7 @@ export class PiAdapter implements IApplyPlatformAdapter {
         Boolean(request.dryRun),
         undefined,
         undefined,
-        "pi"
+        this.platformName
       );
       changed = skillsResult.changed || changed;
       fileChanges.push(...skillsResult.paths);
@@ -190,30 +275,43 @@ export class PiAdapter implements IApplyPlatformAdapter {
         agentsAppliedViaPlugin = true;
       } else {
         source.warnings.push(
-          "Pi has no native agent/persona format. Agents are being written as skills instead. " +
-            "For native .pi/agents/ support, install the community 'pi-subagents' extension: pi install npm:pi-subagents"
+          `${this.brand.displayName} has no native agent/persona format. Agents are being written as skills instead. ` +
+            `For native ${this.brand.configDirName}/agents/ support, install the community 'pi-subagents' extension: ${this.brand.installCommand} install npm:pi-subagents`
         );
-        const agentsResult = await syncAgentsAsSkills(source.agents, skillsRoot, Boolean(request.dryRun), "pi");
+        const agentsResult = await syncAgentsAsSkills(
+          source.agents,
+          skillsRoot,
+          Boolean(request.dryRun),
+          this.platformName
+        );
         changed = agentsResult.changed || changed;
         fileChanges.push(...agentsResult.paths);
         modelWarnings.push(...agentsResult.warnings);
       }
     }
 
-    // MCP servers: apply via the `pi-mcp-adapter` community extension if it is installed,
-    // otherwise Pi has no native MCP surface — drop with an actionable warning.
+    // MCP servers. The senpi/OmO forks ship MCP built into the engine (builtin `mcp`
+    // extension reading `<agentDir>/mcp.json` user-scope and `.<configDir>/mcp.json`
+    // project-scope), so MCP always applies there. Upstream Pi has no native MCP
+    // surface: it applies via the `pi-mcp-adapter` community extension when detected,
+    // otherwise MCP is dropped with an actionable warning.
     let mcpAppliedViaPlugin = false;
+    let mcpAppliedNatively = false;
     if (source.mcpServers.length > 0) {
-      const pluginInstalled = await this.isPackageInstalled(
-        PiAdapter.MCP_ADAPTER_PACKAGE,
-        request.projectPath,
-        userRoot,
-        target.scope
-      );
+      const pluginInstalled = this.brand.builtinMcp
+        ? true
+        : await this.isPackageInstalled(PiAdapter.MCP_ADAPTER_PACKAGE, request.projectPath, userRoot, target.scope);
 
       if (pluginInstalled) {
+        // User scope always lands in <agentDir>/mcp.json. Project scope differs: the
+        // forks' builtin MCP reads .<configDir>/mcp.json, while pi-mcp-adapter reads
+        // Claude-style .mcp.json directly in the project root.
         const mcpConfigPath =
-          target.scope === "project" ? resolve(request.projectPath, ".mcp.json") : resolve(userRoot, "mcp.json");
+          target.scope === "user"
+            ? resolve(userRoot, "mcp.json")
+            : this.brand.builtinMcp
+              ? resolve(request.projectPath, this.brand.configDirName, "mcp.json")
+              : resolve(request.projectPath, ".mcp.json");
         const mcpResult = await mergeJsonObjectFile(
           mcpConfigPath,
           (existing) => renderPiMcpConfig(existing, source.mcpServers),
@@ -221,7 +319,11 @@ export class PiAdapter implements IApplyPlatformAdapter {
         );
         changed = mcpResult.changed || changed;
         fileChanges.push(...mcpResult.paths);
-        mcpAppliedViaPlugin = true;
+        if (this.brand.builtinMcp) {
+          mcpAppliedNatively = true;
+        } else {
+          mcpAppliedViaPlugin = true;
+        }
       } else {
         source.warnings.push(
           "Pi has no native MCP configuration surface. MCP servers were not applied. " +
@@ -237,10 +339,13 @@ export class PiAdapter implements IApplyPlatformAdapter {
     if (mcpAppliedViaPlugin) {
       appliedViaExtension.push("MCP servers via pi-mcp-adapter");
     }
+    if (mcpAppliedNatively) {
+      appliedViaExtension.push("MCP servers via builtin MCP config");
+    }
     const message =
       appliedViaExtension.length > 0
-        ? `Applied Pi AGENTS.md, prompt templates, and skills; also applied ${appliedViaExtension.join(" and ")}.`
-        : "Applied Pi AGENTS.md, prompt templates, and skills.";
+        ? `Applied ${this.brand.displayName} AGENTS.md, prompt templates, and skills; also applied ${appliedViaExtension.join(" and ")}.`
+        : `Applied ${this.brand.displayName} AGENTS.md, prompt templates, and skills.`;
 
     return {
       platform: this.platformName,
@@ -254,10 +359,10 @@ export class PiAdapter implements IApplyPlatformAdapter {
         commands: source.commands.length,
         skills: source.skills.length,
         agents: source.agents.length,
-        // Report only servers actually applied — when pi-mcp-adapter is absent the
-        // servers are dropped with a warning, and counting them here would make the
-        // CLI summary claim they were synced.
-        mcpServers: mcpAppliedViaPlugin ? source.mcpServers.length : 0,
+        // Report only servers actually applied — when pi-mcp-adapter is absent (upstream
+        // Pi) the servers are dropped with a warning, and counting them here would make
+        // the CLI summary claim they were synced.
+        mcpServers: mcpAppliedViaPlugin || mcpAppliedNatively ? source.mcpServers.length : 0,
       },
       fileChanges,
       warnings: [...source.warnings, ...modelWarnings],
@@ -265,19 +370,23 @@ export class PiAdapter implements IApplyPlatformAdapter {
   }
 
   /**
-   * Resolves Pi's user-scope configuration root: an explicit request override wins,
-   * then Pi's own documented `PI_CODING_AGENT_DIR` env var, then the default
-   * `~/.pi/agent` (see https://pi.dev — configuration docs).
+   * Resolves this brand's user-scope configuration root: an explicit request override
+   * wins, then the brand's documented `*_CODING_AGENT_DIR` env vars (most specific
+   * prefix first), then the default `~/<configDir>/agent` (see https://pi.dev —
+   * configuration docs — for upstream Pi; senpi/omo resolve identically under their
+   * own config dir names).
    */
   private resolveUserRoot(request?: ApplyIntegrationRequest): string {
     if (request?.userConfigRootPath) {
       return resolve(request.userConfigRootPath);
     }
-    const envDir = process.env.PI_CODING_AGENT_DIR;
-    if (envDir && envDir.trim().length > 0) {
-      return resolve(envDir);
+    for (const envName of this.brand.agentDirEnvNames) {
+      const envDir = process.env[envName];
+      if (envDir && envDir.trim().length > 0) {
+        return resolve(envDir);
+      }
     }
-    return resolve(homedir(), ".pi", "agent");
+    return resolve(homedir(), this.brand.configDirName, "agent");
   }
 
   /**
@@ -299,7 +408,7 @@ export class PiAdapter implements IApplyPlatformAdapter {
   ): Promise<boolean> {
     const candidatePaths =
       targetScope === "project"
-        ? [resolve(projectPath, ".pi", "settings.json"), resolve(userRoot, "settings.json")]
+        ? [resolve(projectPath, this.brand.configDirName, "settings.json"), resolve(userRoot, "settings.json")]
         : [resolve(userRoot, "settings.json")];
 
     for (const settingsPath of candidatePaths) {

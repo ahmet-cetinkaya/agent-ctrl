@@ -17,6 +17,8 @@ export class CommandRendererFactory {
       ["gemini", new GeminiCommandRenderer()],
       ["opencode", new OpenCodeCommandRenderer()],
       ["pi", new PiCommandRenderer()],
+      ["senpi", new PiCommandRenderer()],
+      ["omonative", new PiCommandRenderer()],
       ["workflow", new WorkflowCommandRenderer()],
     ]);
   }

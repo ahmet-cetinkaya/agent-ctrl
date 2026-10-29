@@ -6,9 +6,11 @@ export const SUPPORTED_APPLY_PLATFORMS = [
   "forgecode",
   "gemini",
   "kilo",
+  "omonative",
   "opencode",
   "pi",
   "qwen",
+  "senpi",
   "windsurf",
 ] as const;
 
@@ -20,9 +22,11 @@ export const PLATFORM_DISPLAY_NAMES: Record<SupportedApplyPlatform, string> = {
   forgecode: "Forge Code",
   gemini: "Gemini Query",
   kilo: "Kilo Code",
+  omonative: "OmO Native",
   opencode: "OpenCode",
   pi: "Pi",
   qwen: "Qwen",
+  senpi: "Senpi",
   windsurf: "Windsurf",
 };
 

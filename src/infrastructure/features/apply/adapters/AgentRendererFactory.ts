@@ -15,6 +15,10 @@ export class AgentRendererFactory {
     // (tools as a boolean map), so it reuses the OpenCode renderer.
     kilo: AgentRendererFactory.opencodeRenderer,
     pi: new PiAgentRenderer(),
+    // The senpi / OmO Native forks keep pi's agent frontmatter schema (pi-subagents)
+    // and command (prompt template) format, so they reuse the Pi renderers.
+    senpi: new PiAgentRenderer(),
+    omonative: new PiAgentRenderer(),
   };
 
   static getRenderer(platform: string): IAgentRenderer {

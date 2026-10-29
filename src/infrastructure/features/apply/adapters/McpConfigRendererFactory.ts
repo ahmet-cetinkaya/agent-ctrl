@@ -17,6 +17,9 @@ export class McpConfigRendererFactory {
       ["forgecode", new ForgeCodeMcpConfigRenderer()],
       ["opencode", new OpenCodeMcpConfigRenderer()],
       ["pi", new PiMcpConfigRenderer()],
+      // The senpi / OmO Native builtin MCP config keeps pi's { mcpServers: ... } shape.
+      ["senpi", new PiMcpConfigRenderer()],
+      ["omonative", new PiMcpConfigRenderer()],
       ["settings", new SettingsMcpConfigRenderer()],
     ]);
   }

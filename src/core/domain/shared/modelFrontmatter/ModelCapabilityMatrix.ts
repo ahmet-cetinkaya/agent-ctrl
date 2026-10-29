@@ -81,6 +81,17 @@ export const MODEL_CAPABILITY_MATRIX: ModelCapabilityMatrixTable = {
     agent: passthrough(),
     skill: drop(),
   },
+  // The senpi and OmO Native forks keep this engine's model handling verbatim.
+  senpi: {
+    command: drop(),
+    agent: passthrough(),
+    skill: drop(),
+  },
+  omonative: {
+    command: drop(),
+    agent: passthrough(),
+    skill: drop(),
+  },
   antigravity: {
     // Agent vocab is constrained to inherit|flash|pro, but agent-ctrl does not
     // write antigravity agents yet; all current surfaces drop with a warning.

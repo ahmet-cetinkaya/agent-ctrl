@@ -76,9 +76,24 @@ export function createApplyCommand(): Command {
       }
 
       if (!platform) {
+        // Clack's grouped multiselect prints a heading row for EVERY group, and a bare
+        // "Other platforms" heading is noise — so the hierarchy is drawn with indented
+        // labels in one flat list instead: the forks render as sub-entries under Pi.
         const selected = await PromptService.selectMany<SupportedApplyPlatform>({
           message: "Select platforms to apply configuration to",
-          options: SUPPORTED_APPLY_PLATFORMS.map((p) => ({ value: p, label: getPlatformDisplayName(p) })),
+          options: SUPPORTED_APPLY_PLATFORMS.flatMap<
+            { value: SupportedApplyPlatform; label: string },
+            { value: SupportedApplyPlatform; label: string }[]
+          >((p) => {
+            if (p === "pi") {
+              return [
+                { value: p, label: "Pi (pi.dev)" },
+                { value: "senpi", label: "├─ Senpi (pi fork — ~/.senpi)" },
+                { value: "omonative", label: "└─ OmO Native (pi fork — ~/.omo)" },
+              ];
+            }
+            return p === "senpi" || p === "omonative" ? [] : [{ value: p, label: getPlatformDisplayName(p) }];
+          }),
           required: true,
         });
 

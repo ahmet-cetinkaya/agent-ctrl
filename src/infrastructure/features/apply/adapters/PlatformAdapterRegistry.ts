@@ -29,9 +29,11 @@ export class PlatformAdapterRegistry {
     forgecode: () => new ForgeCodeAdapter(),
     gemini: () => new GeminiAdapter(),
     kilo: () => new KiloAdapter(),
+    omonative: () => PiAdapter.forOmoNative(),
     opencode: () => new OpenCodeAdapter(),
     pi: () => new PiAdapter(),
     qwen: () => new QwenAdapter(),
+    senpi: () => PiAdapter.forSenpi(),
     windsurf: () => new WindsurfAdapter(),
   };
 
