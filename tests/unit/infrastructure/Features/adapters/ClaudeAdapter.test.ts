@@ -153,6 +153,25 @@ describe("ClaudeAdapter", () => {
       await expect(access(resolve(homePath, ".claude", "commands", "dev", "ignore.txt"))).rejects.toBeDefined();
     });
 
+    it("writes commands passed in the options, such as profile commands outside the project", async () => {
+      const profileCommandsPath = await mkdtemp(join(tmpdir(), "claude-profile-commands-"));
+      try {
+        const profileCommandPath = resolve(profileCommandsPath, "rust-test.md");
+        await writeFile(profileCommandPath, "# Rust Test\n", "utf-8");
+
+        const writeResult = await adapter.writeConfig(
+          { rules: [], skills: [], agents: [], mcpServers: [] },
+          { commands: [{ id: "rust-test", filename: "rust-test.md", path: profileCommandPath }] }
+        );
+
+        expect(writeResult.success).toBe(true);
+        const written = await readFile(resolve(homePath, ".claude", "commands", "rust-test.md"), "utf-8");
+        expect(written).toContain("# Rust Test");
+      } finally {
+        await rm(profileCommandsPath, { recursive: true, force: true });
+      }
+    });
+
     it("replaces only managed section and preserves user content", async () => {
       const claudePath = resolve(homePath, ".claude", "CLAUDE.md");
       const rulePath = resolve(projectPath, "rules", "rule-b.md");

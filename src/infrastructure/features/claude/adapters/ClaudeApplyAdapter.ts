@@ -61,13 +61,14 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
         },
         {
           cleanExistingArtifacts: request.override,
+          commands: source.commands,
         }
       );
       if (!writeResult.success) {
         throw writeResult.error;
       }
     } else {
-      await adapter.collectModelWarnings(desiredConfig.data);
+      await adapter.collectModelWarnings(desiredConfig.data, source.commands);
     }
 
     const modelWarnings = [...new Set(adapter.collectedWarnings)];

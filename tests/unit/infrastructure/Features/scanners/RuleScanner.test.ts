@@ -74,6 +74,38 @@ describe("RuleScanner", () => {
       expect(result.warnings[1]).toContain("invalid extension");
     });
 
+    it("should find rules in subfolders and keep equally named files distinct", async () => {
+      await mkdir(resolve(testDir, "rust"), { recursive: true });
+      await mkdir(resolve(testDir, "typescript"), { recursive: true });
+      await writeFile(resolve(testDir, "rust", "coding-style.md"), "# Rust");
+      await writeFile(resolve(testDir, "typescript", "coding-style.md"), "# TypeScript");
+      await writeFile(resolve(testDir, "safety.md"), "# Safety");
+
+      const result = await scanner.scan(testDir);
+
+      expect(result.warnings).toEqual([]);
+      expect(result.artifacts.map((a) => a.id).sort()).toEqual([
+        "rust/coding-style",
+        "safety",
+        "typescript/coding-style",
+      ]);
+      expect(result.artifacts.map((a) => a.filename).sort()).toEqual([
+        "rust/coding-style.md",
+        "safety.md",
+        "typescript/coding-style.md",
+      ]);
+    });
+
+    it("should warn with the relative path for non-markdown files in subfolders", async () => {
+      await mkdir(resolve(testDir, "rust"), { recursive: true });
+      await writeFile(resolve(testDir, "rust", "notes.txt"), "notes");
+
+      const result = await scanner.scan(testDir);
+
+      expect(result.artifacts).toEqual([]);
+      expect(result.warnings).toEqual(["Skipped rust/notes.txt (invalid extension)"]);
+    });
+
     it("should handle mixed case extensions", async () => {
       await writeFile(resolve(testDir, "agent1.MD"), "# Agent 1");
       await writeFile(resolve(testDir, "agent2.MarkDown"), "# Agent 2");

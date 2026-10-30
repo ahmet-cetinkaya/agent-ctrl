@@ -65,6 +65,8 @@ export interface PlatformConfig {
 
 export interface WriteConfigOptions {
   cleanExistingArtifacts?: boolean;
+  /** Commands to write, when the caller already merged them (for example project plus profile). */
+  commands?: readonly CommandArtifact[];
 }
 
 export type ApplyPlatformScope = "project" | "user";

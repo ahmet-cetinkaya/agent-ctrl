@@ -1,3 +1,4 @@
+import type { CommandArtifact } from "@/infrastructure/features/command/scanners/CommandScanner";
 import { homedir } from "node:os";
 import { dirname, resolve, relative, extname } from "node:path";
 import { readFile, writeFile, access, mkdir, cp, readdir, rm } from "node:fs/promises";
@@ -44,7 +45,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
     return this.modelWarnings;
   }
 
-  async collectModelWarnings(config: PlatformConfig): Promise<void> {
+  async collectModelWarnings(config: PlatformConfig, commands?: readonly CommandArtifact[]): Promise<void> {
     await Promise.all(
       config.skills.map(async (skill) => {
         const source = await readFile(resolve(skill.path, "SKILL.md"), "utf-8");
@@ -58,16 +59,10 @@ export class ClaudeAdapter implements IPlatformAdapter {
       })
     );
 
-    const commandsRoot = resolve(this.projectPath, ".agent-ctrl", "commands");
-    const commandsExist = await access(commandsRoot)
-      .then(() => true)
-      .catch(() => false);
-    if (!commandsExist) return;
-
-    const commandPaths = await this.collectMarkdownFiles(commandsRoot);
+    const commandSources = await this.resolveCommandSources(commands);
     await Promise.all(
-      commandPaths.map(async (commandPath) => {
-        const source = await readFile(commandPath, "utf-8");
+      commandSources.map(async ({ sourcePath }) => {
+        const source = await readFile(sourcePath, "utf-8");
         this.modelWarnings.push(...applyModelFrontmatter(source, "claude", "command").warnings);
       })
     );
@@ -146,7 +141,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
 
       await this.syncSkills(config);
       await this.syncAgents(config);
-      await this.syncCommands();
+      await this.syncCommands(options?.commands);
       await this.writeClaudeMcpConfig(config, options?.cleanExistingArtifacts);
 
       return ok(undefined);
@@ -301,35 +296,53 @@ export class ClaudeAdapter implements IPlatformAdapter {
     }
   }
 
-  private async syncCommands(): Promise<void> {
-    const commandsRoot = resolve(this.projectPath, ".agent-ctrl", "commands");
-    const commandsExist = await access(commandsRoot)
-      .then(() => true)
-      .catch(() => false);
-    if (!commandsExist) {
+  private async syncCommands(commands?: readonly CommandArtifact[]): Promise<void> {
+    const commandSources = await this.resolveCommandSources(commands);
+    if (commandSources.length === 0) {
       return;
     }
 
     const targetRoot = resolve(this.claudeRoot, "commands");
     await mkdir(targetRoot, { recursive: true });
-    const markdownFiles = await this.collectMarkdownFiles(commandsRoot);
 
     const renderer = new OpenCodeCommandRenderer();
 
-    for (const filePath of markdownFiles) {
-      const rel = relative(commandsRoot, filePath);
-      const dest = resolve(targetRoot, rel);
+    for (const { sourcePath, relativePath } of commandSources) {
+      const dest = resolve(targetRoot, relativePath);
       await mkdir(dirname(dest), { recursive: true });
 
       // Read the source file, render it with the command renderer, then write
-      const source = await readFile(filePath, "utf-8");
+      const source = await readFile(sourcePath, "utf-8");
       // Convert file path to command id: remove .md extension and use forward slashes
-      const id = rel.replace(extname(rel), "").replace(/\\/g, "/");
+      const id = relativePath.replace(extname(relativePath), "").replace(/\\/g, "/");
       const transformed = applyModelFrontmatter(source, "claude", "command");
       this.modelWarnings.push(...transformed.warnings);
       const rendered = renderer.renderCommand(transformed.content, id);
       await writeFile(dest, `${rendered}\n`, "utf-8");
     }
+  }
+
+  /**
+   * Commands to write: the merged snapshot (project plus profile commands) when the caller has one,
+   * otherwise the markdown files under the project's `.agent-ctrl/commands`.
+   */
+  private async resolveCommandSources(
+    commands?: readonly CommandArtifact[]
+  ): Promise<Array<{ sourcePath: string; relativePath: string }>> {
+    if (commands) {
+      return commands.map((command) => ({ sourcePath: command.path, relativePath: `${command.id}.md` }));
+    }
+
+    const commandsRoot = resolve(this.projectPath, ".agent-ctrl", "commands");
+    const commandsExist = await access(commandsRoot)
+      .then(() => true)
+      .catch(() => false);
+    if (!commandsExist) {
+      return [];
+    }
+
+    const markdownFiles = await this.collectMarkdownFiles(commandsRoot);
+    return markdownFiles.map((filePath) => ({ sourcePath: filePath, relativePath: relative(commandsRoot, filePath) }));
   }
 
   private async cleanManagedArtifacts(): Promise<void> {
