@@ -35,7 +35,12 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
       target.scope === "project"
         ? resolve(request.projectPath, "CLAUDE.md")
         : resolve(claudeHome, ".claude", "CLAUDE.md");
-    const adapter = new ClaudeAdapter(request.projectPath, claudeHome, configPath);
+    const adapter = new ClaudeAdapter(
+      request.projectPath,
+      claudeHome,
+      configPath,
+      target.scope === "project" ? request.projectPath : undefined
+    );
 
     const source = request.mergedSnapshot
       ? {
@@ -96,7 +101,7 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
     fileChanges.push(...skillPaths, ...agentPaths, ...commandPaths);
 
     if (source.mcpServers.length > 0) {
-      fileChanges.push(resolve(claudeRoot, "..", ".claude.json"));
+      fileChanges.push(adapter.claudeMcpConfigPath);
     }
 
     const warnings = [

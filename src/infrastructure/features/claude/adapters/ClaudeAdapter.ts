@@ -45,6 +45,8 @@ export class ClaudeAdapter implements IPlatformAdapter {
   readonly configPath: string;
   readonly claudeMcpConfigPath: string;
   private readonly projectPath: string;
+  /** Set when MCP servers belong to one project's local scope inside the home `.claude.json`. */
+  private readonly localScopeProjectPath?: string;
   private readonly claudeRoot: string;
   private readonly placeholderResolver = new McpPlaceholderResolver();
   private readonly modelWarnings: string[] = [];
@@ -53,14 +55,23 @@ export class ClaudeAdapter implements IPlatformAdapter {
   private static readonly MANAGED_END_MARKER = "<!-- agent-ctrl:end -->";
   /** agent-ctrl owns this folder under `.claude/rules/` and replaces it on every write. */
   private static readonly MANAGED_RULES_DIR = "agent-ctrl";
+  private static readonly PRIVATE_FILE_MODE = 0o600;
 
-  constructor(projectPath: string, claudeHomeOverride?: string, configPathOverride?: string) {
+  constructor(
+    projectPath: string,
+    claudeHomeOverride?: string,
+    configPathOverride?: string,
+    localScopeProjectPath?: string
+  ) {
     const claudeHome = claudeHomeOverride ?? process.env.AGENT_CTRL_CLAUDE_HOME ?? homedir();
     this.projectPath = projectPath;
+    this.localScopeProjectPath = localScopeProjectPath;
     this.claudeRoot = resolve(claudeHome, ".claude");
     this.configPath = configPathOverride ?? resolve(this.claudeRoot, "CLAUDE.md");
     // MCP local-scoped servers are stored in ~/.claude.json (home directory)
-    this.claudeMcpConfigPath = resolve(claudeHome, ".claude.json");
+    // For a project, Claude Code reads them only from there, never from <project>/.claude.json.
+    const mcpHome = localScopeProjectPath ? (process.env.AGENT_CTRL_CLAUDE_HOME ?? homedir()) : claudeHome;
+    this.claudeMcpConfigPath = resolve(mcpHome, ".claude.json");
   }
 
   /** Warnings collected while resolving `model`/`models` frontmatter during sync. */
@@ -415,35 +426,42 @@ export class ClaudeAdapter implements IPlatformAdapter {
       })
     );
 
-    let mergedMcpServers: Record<string, unknown>;
-    const existingDocument = await readFile(this.claudeMcpConfigPath, "utf-8")
-      .then((content) => JSON.parse(content) as unknown)
-      .catch(() => ({}));
-    const normalizedExisting = this.isObject(existingDocument) ? existingDocument : {};
+    const document = await this.readClaudeMcpDocument();
+    const scopeEntry = this.localScopeProjectPath
+      ? this.asObject(this.asObject(document.projects)[this.localScopeProjectPath])
+      : document;
+    const existingMcpServers = cleanExistingMcp ? {} : this.asObject(scopeEntry.mcpServers);
+    const updatedScopeEntry = { ...scopeEntry, mcpServers: { ...existingMcpServers, ...incomingMcpServers } };
 
-    if (cleanExistingMcp) {
-      // When override is enabled, completely replace existing MCP servers with incoming ones
-      // But preserve all other properties in the document
-      mergedMcpServers = incomingMcpServers;
-    } else {
-      // Normal merge: incoming MCP servers override existing ones with the same name
-      const existingMcpServers = this.isObject(normalizedExisting.mcpServers) ? normalizedExisting.mcpServers : {};
-
-      mergedMcpServers = {
-        ...existingMcpServers,
-        ...incomingMcpServers,
-      };
-    }
-
-    // Preserve all other properties in the document
-    const { mcpServers: _existingMcpServers, ...otherProperties } = normalizedExisting;
-    const mergedDocument = {
-      ...otherProperties,
-      mcpServers: mergedMcpServers,
-    };
+    const mergedDocument = this.localScopeProjectPath
+      ? {
+          ...document,
+          projects: { ...this.asObject(document.projects), [this.localScopeProjectPath]: updatedScopeEntry },
+        }
+      : updatedScopeEntry;
 
     await mkdir(dirname(this.claudeMcpConfigPath), { recursive: true });
-    await writeFile(this.claudeMcpConfigPath, `${JSON.stringify(mergedDocument, null, 2)}\n`, "utf-8");
+    // The mode applies only when the file is created: resolved secrets must stay private to the owner.
+    await writeFile(this.claudeMcpConfigPath, `${JSON.stringify(mergedDocument, null, 2)}\n`, {
+      encoding: "utf-8",
+      mode: ClaudeAdapter.PRIVATE_FILE_MODE,
+    });
+  }
+
+  /** A missing file starts empty; an unreadable one throws so the user's live config is never overwritten. */
+  private async readClaudeMcpDocument(): Promise<Record<string, unknown>> {
+    const content = await readFile(this.claudeMcpConfigPath, "utf-8").catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (content === undefined) return {};
+    const parsed: unknown = JSON.parse(content);
+    if (!this.isObject(parsed)) throw new Error(`${this.claudeMcpConfigPath} does not contain a JSON object`);
+    return parsed;
+  }
+
+  private asObject(value: unknown): Record<string, unknown> {
+    return this.isObject(value) ? value : {};
   }
 
   private isObject(value: unknown): value is Record<string, unknown> {
