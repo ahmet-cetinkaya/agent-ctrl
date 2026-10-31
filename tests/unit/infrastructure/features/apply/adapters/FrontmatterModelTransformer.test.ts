@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { applyModelFrontmatter } from "@/infrastructure/features/apply/adapters/FrontmatterModelTransformer";
 
 describe("FrontmatterModelTransformer", () => {
@@ -188,3 +188,55 @@ describe("FrontmatterModelTransformer", () => {
     });
   });
 });
+
+describe("FrontmatterModelTransformer alias routing", () => {
+  const SONNET_VAR = "AGENT_CTRL_OPENCODE_MODEL_SONNET";
+  const HAIKU_VAR = "AGENT_CTRL_OPENCODE_MODEL_HAIKU";
+  const previous = { sonnet: process.env[SONNET_VAR], haiku: process.env[HAIKU_VAR] };
+
+  beforeEach(() => {
+    process.env[SONNET_VAR] = "omniroute/combo/claude-sonnet";
+    delete process.env[HAIKU_VAR];
+  });
+
+  afterEach(() => {
+    restoreEnv(SONNET_VAR, previous.sonnet);
+    restoreEnv(HAIKU_VAR, previous.haiku);
+  });
+
+  it("maps a configured alias for opencode agents and commands", () => {
+    const source = "---\nname: a\nmodel: sonnet\n---\nBody\n";
+
+    for (const kind of ["agent", "command"] as const) {
+      expect(applyModelFrontmatter(source, "opencode", kind).content).toContain("model: omniroute/combo/claude-sonnet");
+    }
+  });
+
+  it("drops an unmapped alias with a warning instead of emitting it", () => {
+    const result = applyModelFrontmatter("---\nname: a\nmodel: haiku\n---\nBody\n", "opencode", "agent");
+
+    expect(result.content).not.toContain("model:");
+    expect(result.warnings.join("\n")).toContain(HAIKU_VAR);
+  });
+
+  it("keeps an explicit provider/model route unchanged", () => {
+    const result = applyModelFrontmatter("---\nmodel: omniroute/custom\n---\nBody\n", "opencode", "agent");
+
+    expect(result.content).toContain("model: omniroute/custom");
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("keeps the alias for claude output", () => {
+    const result = applyModelFrontmatter("---\nmodel: sonnet\n---\nBody\n", "claude", "agent");
+
+    expect(result.content).toContain("model: sonnet");
+  });
+});
+
+function restoreEnv(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+  } else {
+    process.env[name] = value;
+  }
+}

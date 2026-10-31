@@ -11,7 +11,7 @@ import { PlatformAdapterRegistry } from "@/infrastructure/features/apply/adapter
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 import { discoverPlatformSettings } from "@/config/scanner.js";
 import { copyPlatformSettings } from "@/core/filestore/copiers.js";
-import { loadEnvFile } from "@/core/filestore/env-loader.js";
+import { exportModelAliasRoutes, loadEnvFile } from "@/core/filestore/env-loader.js";
 
 export interface ApplyCommandOptions {
   projectPath: string;
@@ -85,6 +85,7 @@ export class ApplyCommand {
         : [];
 
     try {
+      await exportModelAliasRoutes(projectPath);
       const applyResult = await adapter.applyApplyIntegration({
         projectPath,
         dryRun,

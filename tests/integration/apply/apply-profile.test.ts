@@ -264,4 +264,41 @@ describe("Apply Profile Integration", () => {
       expect(result.data.isEmpty).toBe(true);
     });
   });
+
+  describe("model alias routes", () => {
+    const SONNET_VAR = "AGENT_CTRL_OPENCODE_MODEL_SONNET";
+    let previousRoute: string | undefined;
+
+    beforeEach(() => {
+      previousRoute = process.env[SONNET_VAR];
+      delete process.env[SONNET_VAR];
+    });
+
+    afterEach(() => {
+      if (previousRoute === undefined) {
+        delete process.env[SONNET_VAR];
+      } else {
+        process.env[SONNET_VAR] = previousRoute;
+      }
+    });
+
+    it("maps an aliased profile agent model using routes from .agent-ctrl/.env", async () => {
+      await setupBaseConfig();
+      await setupProfile("aliased", {
+        agents: { "reviewer.md": "---\nname: reviewer\ndescription: Reviews\nmodel: sonnet\n---\nBody\n" },
+      });
+      await writeFile(join(configRoot, ".env"), `${SONNET_VAR}=provider/x\n`, "utf-8");
+
+      const result = await new ApplyProfileCommand().execute({
+        projectPath,
+        profileNames: ["aliased"],
+        platform: "opencode",
+        targetScope: "project",
+      });
+
+      expect(result.success).toBe(true);
+      const rendered = await readFile(join(projectPath, ".opencode", "agents", "reviewer.md"), "utf-8");
+      expect(rendered).toContain("model: provider/x");
+    });
+  });
 });
