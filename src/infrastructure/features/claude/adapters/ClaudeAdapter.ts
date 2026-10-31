@@ -1,6 +1,7 @@
 import type { CommandArtifact } from "@/infrastructure/features/command/scanners/CommandScanner";
 import { homedir } from "node:os";
-import { dirname, resolve, relative, extname } from "node:path";
+import { dirname, resolve, relative, extname, isAbsolute } from "node:path";
+import { parse as parseYaml } from "yaml";
 import { readFile, writeFile, access, mkdir, cp, readdir, rm } from "node:fs/promises";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import type {
@@ -19,6 +20,26 @@ import { applyModelFrontmatter } from "@/infrastructure/features/apply/adapters/
 import { McpPlaceholderResolver } from "@/infrastructure/features/mcp/interpolation/McpPlaceholderResolver";
 import { OpenCodeCommandRenderer } from "@/infrastructure/features/apply/adapters/OpenCodeCommandRenderer";
 
+const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
+
+type LoadedRule = { name: string; path: string; content: string };
+
+/**
+ * A rule whose frontmatter declares `paths` is scoped to matching files. Claude Code honors that
+ * only for files under `.claude/rules/`; inside CLAUDE.md the frontmatter is plain text.
+ * Malformed frontmatter counts as unscoped, which keeps the rule in CLAUDE.md as before.
+ */
+function isPathScopedRule(content: string): boolean {
+  const frontmatter = FRONTMATTER_PATTERN.exec(content)?.[1];
+  if (frontmatter === undefined) return false;
+  try {
+    const data: unknown = parseYaml(frontmatter);
+    return typeof data === "object" && data !== null && "paths" in data;
+  } catch {
+    return false;
+  }
+}
+
 export class ClaudeAdapter implements IPlatformAdapter {
   readonly platformName = "claude";
   readonly configPath: string;
@@ -30,6 +51,8 @@ export class ClaudeAdapter implements IPlatformAdapter {
 
   private static readonly MANAGED_START_MARKER = "<!-- agent-ctrl:start -->";
   private static readonly MANAGED_END_MARKER = "<!-- agent-ctrl:end -->";
+  /** agent-ctrl owns this folder under `.claude/rules/` and replaces it on every write. */
+  private static readonly MANAGED_RULES_DIR = "agent-ctrl";
 
   constructor(projectPath: string, claudeHomeOverride?: string, configPathOverride?: string) {
     const claudeHome = claudeHomeOverride ?? process.env.AGENT_CTRL_CLAUDE_HOME ?? homedir();
@@ -129,14 +152,12 @@ export class ClaudeAdapter implements IPlatformAdapter {
         await mkdir(this.claudeRoot, { recursive: true });
       }
 
-      if (config.rules.length > 0) {
-        const existingContent = await readFile(this.configPath, "utf-8").catch(() => "");
-        const mergedContent = this.upsertManagedSection(existingContent, config, await this.loadRuleContents(config));
-        await writeFile(this.configPath, mergedContent, "utf-8");
-      }
-
       if (options?.cleanExistingArtifacts) {
         await this.cleanManagedArtifacts();
+      }
+
+      if (config.rules.length > 0) {
+        await this.writeRules(config);
       }
 
       await this.syncSkills(config);
@@ -362,6 +383,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
           throw error;
         }
       }),
+      rm(this.managedRulesRoot, { recursive: true, force: true }),
     ]);
   }
 
@@ -514,9 +536,49 @@ export class ClaudeAdapter implements IPlatformAdapter {
     }
   }
 
-  private async loadRuleContents(
-    config: PlatformConfig
-  ): Promise<Array<{ name: string; path: string; content: string }>> {
+  /** Paths of the rule files written under `.claude/rules/` for the path-scoped rules in `config`. */
+  async scopedRuleFilePaths(config: PlatformConfig): Promise<string[]> {
+    const rules = await this.loadRuleContents(config);
+    return rules.filter((rule) => isPathScopedRule(rule.content)).map((rule) => this.managedRuleFilePath(rule.name));
+  }
+
+  private get managedRulesRoot(): string {
+    return resolve(this.claudeRoot, "rules", ClaudeAdapter.MANAGED_RULES_DIR);
+  }
+
+  private managedRuleFilePath(ruleName: string): string {
+    const target = resolve(this.managedRulesRoot, `${ruleName}.md`);
+    const fromRoot = relative(this.managedRulesRoot, target);
+    if (fromRoot.startsWith("..") || isAbsolute(fromRoot)) {
+      throw new Error(`Rule name '${ruleName}' resolves outside ${this.managedRulesRoot}`);
+    }
+    return target;
+  }
+
+  private async writeRules(config: PlatformConfig): Promise<void> {
+    const rules = await this.loadRuleContents(config);
+    const scopedRules = rules.filter((rule) => isPathScopedRule(rule.content));
+    const unscopedRules = rules.filter((rule) => !isPathScopedRule(rule.content));
+
+    await this.writeScopedRules(scopedRules);
+
+    const existingContent = await readFile(this.configPath, "utf-8").catch(() => "");
+    const hasManagedSection = existingContent.includes(ClaudeAdapter.MANAGED_START_MARKER);
+    if (unscopedRules.length > 0 || hasManagedSection) {
+      await writeFile(this.configPath, this.upsertManagedSection(existingContent, config, unscopedRules), "utf-8");
+    }
+  }
+
+  private async writeScopedRules(rules: LoadedRule[]): Promise<void> {
+    const targets = rules.map((rule) => ({ path: this.managedRuleFilePath(rule.name), content: rule.content }));
+    await rm(this.managedRulesRoot, { recursive: true, force: true });
+    for (const target of targets) {
+      await mkdir(dirname(target.path), { recursive: true });
+      await writeFile(target.path, target.content, "utf-8");
+    }
+  }
+
+  private async loadRuleContents(config: PlatformConfig): Promise<LoadedRule[]> {
     // Load env variables for interpolation
     const envVariables = await this.loadEnvVariables();
 

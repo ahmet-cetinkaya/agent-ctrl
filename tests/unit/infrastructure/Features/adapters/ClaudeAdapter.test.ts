@@ -101,6 +101,52 @@ describe("ClaudeAdapter", () => {
   });
 
   describe("writeConfig", () => {
+    it("writes path-scoped rules to .claude/rules and keeps unscoped rules in CLAUDE.md (GH #18)", async () => {
+      const rulesDir = resolve(projectPath, "rules");
+      await mkdir(resolve(rulesDir, "rust"), { recursive: true });
+      const scopedPath = resolve(rulesDir, "rust", "testing.md");
+      const unscopedPath = resolve(rulesDir, "safety.md");
+      await writeFile(scopedPath, '---\npaths:\n  - "**/*.rs"\n---\n# Rust Testing\n', "utf-8");
+      await writeFile(unscopedPath, "# Safety\n", "utf-8");
+
+      const result = await adapter.writeConfig({
+        rules: [
+          { name: "rust/testing", path: scopedPath },
+          { name: "safety", path: unscopedPath },
+        ],
+        skills: [],
+        agents: [],
+        mcpServers: [],
+      });
+      expect(result.success).toBe(true);
+
+      const claudeRoot = resolve(homePath, ".claude");
+      const claudeFile = await readFile(resolve(claudeRoot, "CLAUDE.md"), "utf-8");
+      expect(claudeFile).toContain("# Safety");
+      expect(claudeFile).not.toContain("paths:");
+      expect(claudeFile).not.toContain("# Rust Testing");
+
+      const ruleFile = await readFile(resolve(claudeRoot, "rules", "agent-ctrl", "rust", "testing.md"), "utf-8");
+      expect(ruleFile).toContain('paths:\n  - "**/*.rs"');
+      expect(ruleFile).toContain("# Rust Testing");
+    });
+
+    it("replaces previously managed rule files on the next write (GH #18)", async () => {
+      const staleTarget = resolve(homePath, ".claude", "rules", "agent-ctrl", "old.md");
+      const userRule = resolve(homePath, ".claude", "rules", "mine.md");
+      await mkdir(resolve(staleTarget, ".."), { recursive: true });
+      await writeFile(staleTarget, "stale", "utf-8");
+      await writeFile(userRule, "user owned", "utf-8");
+      const scopedPath = resolve(projectPath, "go.md");
+      await writeFile(scopedPath, '---\npaths:\n  - "**/*.go"\n---\n# Go\n', "utf-8");
+
+      await adapter.writeConfig({ rules: [{ name: "go", path: scopedPath }], skills: [], agents: [], mcpServers: [] });
+
+      await expect(access(staleTarget)).rejects.toThrow();
+      expect(await readFile(userRule, "utf-8")).toBe("user owned");
+      expect(await readFile(resolve(homePath, ".claude", "rules", "agent-ctrl", "go.md"), "utf-8")).toContain("# Go");
+    });
+
     it("writes managed CLAUDE.md, mcp settings, skills, agents, and markdown commands", async () => {
       const rulePath = resolve(projectPath, "rules", "rule-a.md");
       const skillPath = resolve(projectPath, "skills", "skill-a");

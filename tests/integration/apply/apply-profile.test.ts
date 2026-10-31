@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, rm, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, mkdir, writeFile, readFile, access } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ApplyProfileCommand } from "@/core/application/features/apply/commands/ApplyProfileCommand";
@@ -78,6 +78,43 @@ describe("Apply Profile Integration", () => {
     }
   }
 
+  describe("several profiles in one apply (GH #19)", () => {
+    it("keeps the rules of every profile and namespaces equal rule names", async () => {
+      const scopedRule = (glob: string, title: string) => `---\npaths:\n  - "${glob}"\n---\n# ${title}\n`;
+      await setupProfile("rust", { rules: { "coding-style.md": scopedRule("**/*.rs", "Rust Style") } });
+      await setupProfile("typescript", { rules: { "coding-style.md": scopedRule("**/*.ts", "TS Style") } });
+
+      const result = await new ApplyProfileCommand().execute({
+        projectPath,
+        profileNames: ["rust", "typescript"],
+        platform: "claude",
+        targetScope: "project",
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data.artifactCounts?.rules).toBe(2);
+
+      const rulesRoot = join(projectPath, ".claude", "rules", "agent-ctrl");
+      expect(await readFile(join(rulesRoot, "rust", "coding-style.md"), "utf-8")).toContain("# Rust Style");
+      expect(await readFile(join(rulesRoot, "typescript", "coding-style.md"), "utf-8")).toContain("# TS Style");
+    });
+
+    it("fails before writing anything when one profile is missing", async () => {
+      await setupProfile("rust", { rules: { "coding-style.md": "# Rust\n" } });
+
+      const result = await new ApplyProfileCommand().execute({
+        projectPath,
+        profileNames: ["rust", "missing"],
+        platform: "claude",
+        targetScope: "project",
+      });
+
+      expect(result.success).toBe(false);
+      await expect(access(join(projectPath, ".claude"))).rejects.toThrow();
+    });
+  });
+
   describe("partial override (T015)", () => {
     it("applies only profile artifacts without base", async () => {
       await setupBaseConfig();
@@ -88,7 +125,7 @@ describe("Apply Profile Integration", () => {
       const command = new ApplyProfileCommand();
       const result = await command.execute({
         projectPath,
-        profileName: "partial",
+        profileNames: ["partial"],
         platform: "opencode",
       });
 
@@ -111,7 +148,7 @@ describe("Apply Profile Integration", () => {
       const command = new ApplyProfileCommand();
       const result = await command.execute({
         projectPath,
-        profileName: "additive",
+        profileNames: ["additive"],
         platform: "opencode",
       });
 
@@ -132,7 +169,7 @@ describe("Apply Profile Integration", () => {
       const command = new ApplyProfileCommand();
       const result = await command.execute({
         projectPath,
-        profileName: "skill-override",
+        profileNames: ["skill-override"],
         platform: "opencode",
       });
 
@@ -162,7 +199,7 @@ describe("Apply Profile Integration", () => {
       const command = new ApplyProfileCommand();
       const result = await command.execute({
         projectPath,
-        profileName: "mcp-merge",
+        profileNames: ["mcp-merge"],
         platform: "opencode",
       });
 
@@ -200,7 +237,7 @@ describe("Apply Profile Integration", () => {
       const command = new ApplyProfileCommand();
       const result = await command.execute({
         projectPath,
-        profileName: "partial-dirs",
+        profileNames: ["partial-dirs"],
         platform: "opencode",
       });
 
@@ -217,7 +254,7 @@ describe("Apply Profile Integration", () => {
       const command = new ApplyProfileCommand();
       const result = await command.execute({
         projectPath,
-        profileName: "empty",
+        profileNames: ["empty"],
         platform: "opencode",
       });
 

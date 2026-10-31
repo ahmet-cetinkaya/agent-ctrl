@@ -9,13 +9,18 @@ import {
   parseSupportedApplyPlatform,
 } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { PlatformAdapterRegistry } from "@/infrastructure/features/apply/adapters/PlatformAdapterRegistry";
-import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
+import {
+  ApplySourceLoader,
+  type ApplySourceSnapshot,
+} from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
+import { createRule } from "@/core/domain/shared/entities/Rule";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 import { resolve } from "node:path";
 
 export interface ApplyProfileCommandOptions {
   projectPath: string;
-  profileName: string;
+  /** One or more profile names; several profiles are merged and applied together. */
+  profileNames: readonly string[];
   platform: string;
   dryRun?: boolean;
   override?: boolean;
@@ -56,7 +61,7 @@ export class ApplyProfileCommand {
   async execute(options: ApplyProfileCommandOptions): Promise<Result<ApplyProfileCommandResult, Error>> {
     const {
       projectPath,
-      profileName,
+      profileNames,
       platform,
       dryRun,
       override,
@@ -75,9 +80,13 @@ export class ApplyProfileCommand {
       );
     }
 
+    if (profileNames.length === 0) {
+      return err(new UserError("At least one profile name is required.", ERROR_IDS.CLI_INVALID_ARGUMENT));
+    }
+    const profileLabel = profileNames.join(", ");
+
     try {
       const configRoot = providedConfigRoot ?? resolve(projectPath, ".agent-ctrl");
-      const profilePath = resolve(configRoot, "profiles", profileName);
 
       if (!(await directoryExists(configRoot))) {
         return err(
@@ -88,20 +97,22 @@ export class ApplyProfileCommand {
         );
       }
 
-      if (!(await directoryExists(profilePath))) {
-        return err(
-          new ProfileError(
-            `Profile '${profileName}' not found in .agent-ctrl/profiles/`,
-            profileName,
-            ERROR_IDS.PROFILE_NOT_FOUND
-          )
-        );
+      for (const profileName of profileNames) {
+        if (!(await directoryExists(resolve(configRoot, "profiles", profileName)))) {
+          return err(
+            new ProfileError(
+              `Profile '${profileName}' not found in .agent-ctrl/profiles/`,
+              profileName,
+              ERROR_IDS.PROFILE_NOT_FOUND
+            )
+          );
+        }
       }
 
       const adapter = this.adapterRegistry.resolve(selectedPlatform);
       const startedAt = Date.now();
 
-      const profileSnapshot = await this.sourceLoader.loadProfile(profilePath);
+      const profileSnapshot = await this.loadProfiles(configRoot, profileNames);
 
       const applyResult = await adapter.applyApplyIntegration({
         projectPath,
@@ -153,7 +164,7 @@ export class ApplyProfileCommand {
       });
     } catch (error) {
       const nodeErr = error as NodeJS.ErrnoException;
-      let message = `Failed to apply profile '${profileName}' to '${selectedPlatform}' platform`;
+      let message = `Failed to apply profile '${profileLabel}' to '${selectedPlatform}' platform`;
 
       if (nodeErr.code === "EACCES") {
         message += ": Permission denied writing platform configuration. Check file/directory permissions.";
@@ -169,5 +180,67 @@ export class ApplyProfileCommand {
 
       return err(new SystemError(message, ERROR_IDS.PLATFORM_CONFIG_WRITE_FAILED));
     }
+  }
+  /**
+   * Loads every named profile into one snapshot so a single apply writes all of them;
+   * applying them one by one let each profile replace the previous one's rules.
+   */
+  private async loadProfiles(configRoot: string, profileNames: readonly string[]): Promise<ApplySourceSnapshot> {
+    const snapshots = await Promise.all(
+      profileNames.map(async (name) => ({
+        name,
+        snapshot: await this.sourceLoader.loadProfile(resolve(configRoot, "profiles", name)),
+      }))
+    );
+    if (snapshots.length === 1) {
+      return snapshots[0].snapshot;
+    }
+
+    const warnings: string[] = [];
+    const combine = <T>(
+      kind: string,
+      pick: (snapshot: ApplySourceSnapshot) => readonly T[],
+      key: (item: T) => string
+    ) => {
+      const byKey = new Map<string, T>();
+      for (const { name, snapshot } of snapshots) {
+        for (const item of pick(snapshot)) {
+          if (byKey.has(key(item))) {
+            warnings.push(`Profile '${name}' replaces ${kind} '${key(item)}' from an earlier profile.`);
+          }
+          byKey.set(key(item), item);
+        }
+      }
+      return [...byKey.values()];
+    };
+
+    return {
+      // Profiles share rule file names (coding-style.md, testing.md, ...), so each rule is
+      // namespaced by its profile to keep every profile's rules.
+      rules: snapshots.flatMap(({ name, snapshot }) =>
+        snapshot.rules.map((rule) => createRule(`${name}/${rule.id}`, `${name}/${rule.filename}`, rule.path))
+      ),
+      skills: combine(
+        "skill",
+        (snapshot) => snapshot.skills,
+        (skill) => skill.id
+      ),
+      agents: combine(
+        "agent",
+        (snapshot) => snapshot.agents,
+        (agent) => agent.id
+      ),
+      commands: combine(
+        "command",
+        (snapshot) => snapshot.commands,
+        (command) => command.id
+      ),
+      mcpServers: combine(
+        "MCP server",
+        (snapshot) => snapshot.mcpServers,
+        (server) => server.name
+      ),
+      warnings: [...snapshots.flatMap(({ snapshot }) => snapshot.warnings), ...warnings],
+    };
   }
 }
