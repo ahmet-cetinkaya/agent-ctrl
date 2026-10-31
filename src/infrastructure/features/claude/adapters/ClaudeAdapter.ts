@@ -1,9 +1,8 @@
 import type { CommandArtifact } from "@/infrastructure/features/command/scanners/CommandScanner";
 import { homedir } from "node:os";
-import { randomUUID } from "node:crypto";
 import { dirname, resolve, relative, extname, isAbsolute } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { readFile, writeFile, access, mkdir, cp, readdir, rm, rename, realpath } from "node:fs/promises";
+import { readFile, writeFile, access, mkdir, cp, readdir, rm } from "node:fs/promises";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import type {
   IPlatformAdapter,
@@ -20,6 +19,7 @@ import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 import { applyModelFrontmatter } from "@/infrastructure/features/apply/adapters/FrontmatterModelTransformer";
 import { McpPlaceholderResolver } from "@/infrastructure/features/mcp/interpolation/McpPlaceholderResolver";
 import { OpenCodeCommandRenderer } from "@/infrastructure/features/apply/adapters/OpenCodeCommandRenderer";
+import { writePrivateTextFile } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 
@@ -56,8 +56,6 @@ export class ClaudeAdapter implements IPlatformAdapter {
   private static readonly MANAGED_END_MARKER = "<!-- agent-ctrl:end -->";
   /** agent-ctrl owns this folder under `.claude/rules/` and replaces it on every write. */
   private static readonly MANAGED_RULES_DIR = "agent-ctrl";
-  private static readonly PRIVATE_FILE_MODE = 0o600;
-
   constructor(
     projectPath: string,
     claudeHomeOverride?: string,
@@ -450,24 +448,9 @@ export class ClaudeAdapter implements IPlatformAdapter {
     return `${JSON.stringify(mergedDocument, null, 2)}\n`;
   }
 
-  /**
-   * Writes a private temp file next to the target and renames it over, so a crash or a concurrent
-   * Claude Code session never sees a truncated file, and an existing file's mode is tightened too.
-   */
   private async writeClaudeMcpDocument(content: string | undefined): Promise<void> {
     if (content === undefined) return;
-
-    await mkdir(dirname(this.claudeMcpConfigPath), { recursive: true });
-    // Rename over the symlink target, not the link, so a dotfile-managed ~/.claude.json stays a link.
-    const targetPath = await realpath(this.claudeMcpConfigPath).catch(() => this.claudeMcpConfigPath);
-    const temporaryPath = `${targetPath}.${process.pid}.${randomUUID()}.tmp`;
-    try {
-      await writeFile(temporaryPath, content, { encoding: "utf-8", mode: ClaudeAdapter.PRIVATE_FILE_MODE });
-      await rename(temporaryPath, targetPath);
-    } catch (error) {
-      await rm(temporaryPath, { force: true });
-      throw error;
-    }
+    await writePrivateTextFile(this.claudeMcpConfigPath, content);
   }
 
   /** A missing file starts empty; an unreadable one throws so the user's live config is never overwritten. */

@@ -15,6 +15,10 @@ import type { IAgentRenderer } from "@/infrastructure/features/apply/adapters/IA
 import type { ICommandRenderer } from "@/infrastructure/features/apply/adapters/ICommandRenderer";
 import {
   mergeJsonObjectFile,
+  NO_MCP_ENV_REFERENCES,
+  PI_MCP_ADAPTER_ENV_REFERENCES,
+  prepareMcpServersForScope,
+  withoutMcpServers,
   renderPiMcpConfig,
   resolveApplyScope,
   syncAgentsAsMarkdown,
@@ -312,9 +316,17 @@ export class PiAdapter implements IApplyPlatformAdapter {
             : this.brand.builtinMcp
               ? resolve(request.projectPath, this.brand.configDirName, "mcp.json")
               : resolve(request.projectPath, ".mcp.json");
+        // The forks' builtin MCP documents no run-time substitution, unlike pi-mcp-adapter.
+        const mcp = prepareMcpServersForScope(
+          target.scope,
+          source.mcpServers,
+          this.brand.builtinMcp ? NO_MCP_ENV_REFERENCES : PI_MCP_ADAPTER_ENV_REFERENCES,
+          this.platformName
+        );
+        source.warnings.push(...mcp.warnings);
         const mcpResult = await mergeJsonObjectFile(
           mcpConfigPath,
-          (existing) => renderPiMcpConfig(existing, source.mcpServers),
+          (existing) => renderPiMcpConfig(withoutMcpServers(existing, mcp.withheldNames), mcp.servers),
           Boolean(request.dryRun)
         );
         changed = mcpResult.changed || changed;

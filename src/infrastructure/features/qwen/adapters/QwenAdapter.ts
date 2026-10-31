@@ -10,7 +10,10 @@ import type {
 import { AgentRendererFactory } from "@/infrastructure/features/apply/adapters/AgentRendererFactory";
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
+  GEMINI_ENV_REFERENCES,
   mergeJsonObjectFile,
+  prepareMcpServersForScope,
+  withoutMcpServers,
   renderSettingsMcpConfig,
   resolveApplyScope,
   syncAgentsAsMarkdown,
@@ -144,10 +147,11 @@ export class QwenAdapter implements IApplyPlatformAdapter {
       }
     }
 
+    const mcp = prepareMcpServersForScope(target.scope, source.mcpServers, GEMINI_ENV_REFERENCES, "qwen");
     if (source.mcpServers.length > 0) {
       const settingsResult = await mergeJsonObjectFile(
         resolve(scopeRoot, "settings.json"),
-        (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
+        (existing) => renderSettingsMcpConfig(withoutMcpServers(existing, mcp.withheldNames), mcp.servers),
         Boolean(request.dryRun)
       );
       changed = settingsResult.changed || changed;
@@ -162,7 +166,7 @@ export class QwenAdapter implements IApplyPlatformAdapter {
       status: toStatus(changed),
       message: "Applied Qwen guidance, skills, and MCP servers.",
       fileChanges,
-      warnings: [...source.warnings, ...new Set(modelWarnings)],
+      warnings: [...source.warnings, ...new Set(modelWarnings), ...mcp.warnings],
     };
   }
 }

@@ -200,6 +200,20 @@ Add your own MCP server configurations by creating JSON files in `.agent-ctrl/mc
 }
 ```
 
+**Secrets in project-scope configs:**
+
+`agent-ctrl` resolves `${VAR}` placeholders from `mcps/.env`. A project-scope MCP config is meant to be committed, so `agent-ctrl` never writes a resolved value there. Where the platform reads environment variables from its config at run time, the placeholder is written as the platform's own reference; export those variables before you start the tool (the apply output lists them). A server with a placeholder in a field the platform cannot resolve is skipped with a warning; apply it with `--user` instead.
+
+| Platform                           | Project MCP file                               | Reference written                   | Fields                  |
+| ---------------------------------- | ---------------------------------------------- | ----------------------------------- | ----------------------- |
+| Claude Code                        | none (`~/.claude.json` local scope)            | resolved value, outside the project | all                     |
+| OpenCode, Kilo                     | `opencode.json`, `.kilo/kilo.jsonc`            | `{env:VAR}`                         | command, args, env, url |
+| Gemini CLI, Qwen Code              | `.gemini/settings.json`, `.qwen/settings.json` | `${VAR}`                            | env                     |
+| Pi (`pi-mcp-adapter`)              | `.mcp.json`                                    | `${VAR}`                            | env, url                |
+| Pi forks (builtin MCP), Forge Code | `.<configDir>/mcp.json`, `.mcp.json`           | none: the server is skipped         | none                    |
+
+User-scope configs receive the resolved values and are written with mode `0600`.
+
 ### Profiles (`profiles/`)
 
 Profiles allow you to define named configurations that bundle specific artifacts for targeted platform application.

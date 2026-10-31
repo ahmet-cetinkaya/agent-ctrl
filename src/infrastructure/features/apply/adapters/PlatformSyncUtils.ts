@@ -1,5 +1,6 @@
 import { dirname, relative, resolve } from "node:path";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, readFile, readdir, realpath, rename, rm, writeFile } from "node:fs/promises";
 import type { ApplyPlatformScope, ApplyPlatformStatus } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { Rule } from "@/core/domain/shared/entities/Rule";
 import type { Skill } from "@/core/domain/shared/entities/Skill";
@@ -8,6 +9,7 @@ import type { CommandArtifact } from "@/infrastructure/features/command/scanners
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 import { mergeManagedTextSection, type ManagedTextSectionMarkers } from "./ManagedTextSection";
 import type { ApplyMcpServer } from "./ApplySourceLoader";
+import type { McpUnresolvedFields } from "@/core/domain/shared/interfaces/IMcpConfigLoader";
 import { CommandRendererFactory } from "./CommandRendererFactory";
 import type { ICommandRenderer, ParsedMarkdownPrompt } from "./ICommandRenderer";
 import { AgentRendererFactory } from "./AgentRendererFactory";
@@ -438,7 +440,7 @@ export async function mergeJsonObjectFile(
   const changed = normalizeText(existing ?? "") !== normalizeText(nextContent);
 
   if (changed && !dryRun) {
-    await writeTextFile(filePath, nextContent);
+    await writePrivateTextFile(filePath, nextContent);
   }
 
   return {
@@ -458,7 +460,7 @@ export async function mergeManagedTomlSection(
   const merged = mergeManagedTextSection(existing, body, markers);
 
   if (merged.status === "success" && !dryRun) {
-    await writeTextFile(filePath, merged.content);
+    await writePrivateTextFile(filePath, merged.content);
   }
 
   return {
@@ -469,42 +471,150 @@ export async function mergeManagedTomlSection(
 }
 
 const PLACEHOLDER_PATTERN = /\$\{([^}]+)\}/g;
+const SINGLE_PLACEHOLDER_PATTERN = new RegExp(PLACEHOLDER_PATTERN.source);
 
-function toOpenCodeEnvReference(value: string): string {
-  return value.replace(PLACEHOLDER_PATTERN, (_match, name: string) => `{env:${name}}`);
+type McpReferenceField = keyof McpUnresolvedFields;
+
+/** How a platform reads an environment variable from its own MCP config file at run time. */
+export interface McpEnvReferenceSupport {
+  /** The platform's syntax for one variable, for example `{env:NAME}`. */
+  readonly toReference: (variableName: string) => string;
+  /** The fields where the platform documents the substitution. */
+  readonly fields: readonly McpReferenceField[];
+}
+
+const ALL_MCP_REFERENCE_FIELDS: readonly McpReferenceField[] = ["command", "args", "env", "url"];
+
+/** For platforms that document no run-time substitution in their project MCP file. */
+export const NO_MCP_ENV_REFERENCES: McpEnvReferenceSupport = { toReference: (name) => name, fields: [] };
+
+/** OpenCode, and its fork Kilo: `{env:VAR}` in any config string; an unset variable becomes empty. */
+export const OPENCODE_ENV_REFERENCES: McpEnvReferenceSupport = {
+  toReference: (name) => `{env:${name}}`,
+  fields: ALL_MCP_REFERENCE_FIELDS,
+};
+
+/** Gemini CLI and its fork Qwen Code document `${VAR}` for MCP server `env` values only. */
+export const GEMINI_ENV_REFERENCES: McpEnvReferenceSupport = { toReference: (name) => `\${${name}}`, fields: ["env"] };
+
+/** The pi-mcp-adapter extension documents `${VAR}` in `env` and `url`. */
+export const PI_MCP_ADAPTER_ENV_REFERENCES: McpEnvReferenceSupport = {
+  toReference: (name) => `\${${name}}`,
+  fields: ["env", "url"],
+};
+
+export interface ScopedMcpServers {
+  servers: ApplyMcpServer[];
+  /** Servers left out of the project file; an entry an earlier apply wrote for them must go too. */
+  withheldNames: string[];
+  warnings: string[];
 }
 
 /**
- * Builds the server from its unresolved fields, with each `${VAR}` written as OpenCode's
- * `{env:VAR}`, so OpenCode reads the value from the environment at run time and no secret is
- * written into a file that lives in the repository.
+ * Prepares the servers for the config file of the given scope. A project file is meant to be
+ * committed, so there each `${VAR}` becomes the platform's run-time reference, and a server with a
+ * placeholder in a field the platform cannot resolve is left out: its resolved value is a secret.
  */
-function withOpenCodeEnvReferences(server: ApplyMcpServer): ApplyMcpServer {
-  const unresolved = server.unresolved;
-  if (!unresolved) return server;
+export function prepareMcpServersForScope(
+  scope: ApplyPlatformScope,
+  servers: ApplyMcpServer[],
+  support: McpEnvReferenceSupport,
+  platformLabel: string
+): ScopedMcpServers {
+  if (scope !== "project") return { servers, withheldNames: [], warnings: [] };
+
+  const written: ApplyMcpServer[] = [];
+  const withheldNames: string[] = [];
+  for (const server of servers) {
+    const referenced = withEnvReferences(server, support);
+    if (referenced) written.push(referenced);
+    else withheldNames.push(server.name);
+  }
   return {
-    ...server,
-    command: unresolved.command !== undefined ? toOpenCodeEnvReference(unresolved.command) : server.command,
-    args: unresolved.args?.map(toOpenCodeEnvReference) ?? server.args,
-    env: unresolved.env
-      ? Object.fromEntries(Object.entries(unresolved.env).map(([key, value]) => [key, toOpenCodeEnvReference(value)]))
-      : server.env,
-    url: unresolved.url !== undefined ? toOpenCodeEnvReference(unresolved.url) : server.url,
+    servers: written,
+    withheldNames,
+    warnings: describeProjectMcpServers(written, withheldNames, platformLabel),
   };
 }
 
+/** OpenCode and Kilo keep MCP servers under `mcp`; the other JSON platforms under `mcpServers`. */
+const MCP_SERVER_MAP_KEYS = ["mcp", "mcpServers"] as const;
+
+/** Removes the named servers, so a resolved secret an earlier apply wrote does not stay in the file. */
+export function withoutMcpServers(document: Record<string, unknown>, serverNames: string[]): Record<string, unknown> {
+  if (serverNames.length === 0) return document;
+
+  const next = { ...document };
+  for (const key of MCP_SERVER_MAP_KEYS) {
+    const serverMap = next[key];
+    if (typeof serverMap !== "object" || serverMap === null || Array.isArray(serverMap)) continue;
+    next[key] = Object.fromEntries(Object.entries(serverMap).filter(([name]) => !serverNames.includes(name)));
+  }
+  return next;
+}
+
+function describeProjectMcpServers(
+  written: ApplyMcpServer[],
+  withheldNames: string[],
+  platformLabel: string
+): string[] {
+  const warnings: string[] = [];
+  const variableNames = collectMcpPlaceholderNames(written);
+  if (variableNames.length > 0) {
+    warnings.push(
+      `${platformLabel} reads these MCP values from the environment at run time; export them before starting ${platformLabel}: ${variableNames.join(", ")}`
+    );
+  }
+  if (withheldNames.length > 0) {
+    warnings.push(
+      `Skipped MCP servers in the project ${platformLabel} config: ${withheldNames.join(", ")}. ` +
+        `${platformLabel} cannot read their \${VAR} values from the environment there, and the resolved values are secrets that must not be committed. Apply them with --user instead.`
+    );
+  }
+  return warnings;
+}
+
+/** Undefined when a placeholder sits in a field the platform cannot resolve at run time. */
+function withEnvReferences(server: ApplyMcpServer, support: McpEnvReferenceSupport): ApplyMcpServer | undefined {
+  const unresolved = server.unresolved;
+  if (!unresolved) return server;
+
+  const fieldsWithPlaceholders = (Object.keys(unresolved) as McpReferenceField[]).filter((field) =>
+    hasPlaceholder(unresolved[field])
+  );
+  if (fieldsWithPlaceholders.length === 0) return server;
+  if (fieldsWithPlaceholders.some((field) => !support.fields.includes(field))) return undefined;
+
+  const toReferences = (value: string): string =>
+    value.replace(PLACEHOLDER_PATTERN, (_match, name: string) => support.toReference(name));
+  return {
+    ...server,
+    command: unresolved.command !== undefined ? toReferences(unresolved.command) : server.command,
+    args: unresolved.args?.map(toReferences) ?? server.args,
+    env: unresolved.env
+      ? Object.fromEntries(Object.entries(unresolved.env).map(([key, value]) => [key, toReferences(value)]))
+      : server.env,
+    url: unresolved.url !== undefined ? toReferences(unresolved.url) : server.url,
+  };
+}
+
+function hasPlaceholder(value: McpUnresolvedFields[McpReferenceField]): boolean {
+  return toFieldStrings(value).some((text) => SINGLE_PLACEHOLDER_PATTERN.test(text));
+}
+
+function toFieldStrings(value: McpUnresolvedFields[McpReferenceField]): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value;
+  return Object.values(value ?? {});
+}
+
 /** Names of the `${VAR}` placeholders the servers use, sorted and without duplicates. */
-export function collectMcpPlaceholderNames(servers: ApplyMcpServer[]): string[] {
+function collectMcpPlaceholderNames(servers: ApplyMcpServer[]): string[] {
   const names = new Set<string>();
   for (const { unresolved } of servers) {
-    const values = [
-      unresolved?.command,
-      unresolved?.url,
-      ...(unresolved?.args ?? []),
-      ...Object.values(unresolved?.env ?? {}),
-    ];
+    const values = Object.values(unresolved ?? {}).flatMap(toFieldStrings);
     for (const value of values) {
-      for (const match of value?.matchAll(PLACEHOLDER_PATTERN) ?? []) names.add(match[1]);
+      for (const match of value.matchAll(PLACEHOLDER_PATTERN)) names.add(match[1]);
     }
   }
   return [...names].sort();
@@ -512,11 +622,10 @@ export function collectMcpPlaceholderNames(servers: ApplyMcpServer[]): string[] 
 
 export function renderOpencodeMcpConfig(
   existing: Record<string, unknown>,
-  servers: ApplyMcpServer[],
-  useEnvReferences = false
+  servers: ApplyMcpServer[]
 ): Record<string, unknown> {
   const renderer = McpConfigRendererFactory.getRenderer("opencode");
-  return renderer.renderConfig(existing, useEnvReferences ? servers.map(withOpenCodeEnvReferences) : servers);
+  return renderer.renderConfig(existing, servers);
 }
 
 export function renderForgeCodeMcpConfig(
@@ -658,6 +767,27 @@ async function readTextFileOrNull(filePath: string): Promise<string | null> {
 async function writeTextFile(filePath: string, content: string): Promise<void> {
   await mkdir(dirname(filePath), { recursive: true });
   await writeFile(filePath, content, "utf-8");
+}
+
+const PRIVATE_FILE_MODE = 0o600;
+
+/**
+ * Writes a private temp file next to the target and renames it over, so a crash or a concurrent
+ * writer never sees a truncated file, and an existing file's mode is tightened too: MCP configs
+ * hold resolved secrets.
+ */
+export async function writePrivateTextFile(filePath: string, content: string): Promise<void> {
+  await mkdir(dirname(filePath), { recursive: true });
+  // Rename over the symlink target, not the link, so a dotfile-managed config stays a link.
+  const targetPath = await realpath(filePath).catch(() => filePath);
+  const temporaryPath = `${targetPath}.${process.pid}.${randomUUID()}.tmp`;
+  try {
+    await writeFile(temporaryPath, content, { encoding: "utf-8", mode: PRIVATE_FILE_MODE });
+    await rename(temporaryPath, targetPath);
+  } catch (error) {
+    await rm(temporaryPath, { force: true });
+    throw error;
+  }
 }
 
 function renderSkillMarkdown(
