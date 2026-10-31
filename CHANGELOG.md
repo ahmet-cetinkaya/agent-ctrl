@@ -7,10 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-01
+
+### Added
+
+- Apply to the Pi forks Senpi (`senpi`) and OmO Native (`omonative`), with their own config and agent directories and their builtin MCP
+- Map the shared model aliases `sonnet`, `opus` and `haiku` to a `provider/model` route for OpenCode and Kilo with `AGENT_CTRL_<PLATFORM>_MODEL_<ALIAS>` in `.agent-ctrl/.env` ([#11](https://github.com/ahmet-cetinkaya/agent-ctrl/issues/11))
+
+### Changed
+
+- Project-scope MCP configs no longer contain resolved secrets. `${VAR}` placeholders are written as the platform's run-time reference (`{env:VAR}` for OpenCode and Kilo; `${VAR}` for Gemini CLI and Qwen Code `env` values and for `pi-mcp-adapter` `env` and `url`). Export these variables before you start the tool; the apply output lists them. A server with a placeholder that the platform cannot read at run time (Forge Code, the Pi forks' builtin MCP, and fields outside the lists above) is skipped with a warning; apply it with `--user` instead ([#24](https://github.com/ahmet-cetinkaya/agent-ctrl/issues/24))
+- Claude Code: project-scope MCP servers go to the private local scope in `~/.claude.json` instead of `<project>/.claude.json`, which Claude Code does not read ([#15](https://github.com/ahmet-cetinkaya/agent-ctrl/issues/15))
+- User-scope MCP configs and `~/.claude.json` are written atomically with mode `0600`
+
 ### Fixed
 
 - Claude Code: write rules that have `paths:` frontmatter to `.claude/rules/agent-ctrl/` instead of `CLAUDE.md`, so Claude Code applies the path scope ([#18](https://github.com/ahmet-cetinkaya/agent-ctrl/issues/18))
 - Keep the rules of every profile when `profile apply` gets several profiles; before, each profile replaced the previous one's rules ([#19](https://github.com/ahmet-cetinkaya/agent-ctrl/issues/19))
+- Scan nested rule folders, and write profile commands for Claude Code
+- OpenCode: render a Claude-style `tools` allowlist as a deny-first `permission` map, including `Bash(<pattern>)` entries ([#16](https://github.com/ahmet-cetinkaya/agent-ctrl/issues/16))
+- Read model alias routes from `AGENT_CTRL_HOME` and from both the user and the project `.env`; project values win per key
+- Remove an MCP entry that an earlier apply wrote with a resolved secret when that server is now skipped in a project file
 
 ## [0.10.2] - 2026-09-29
 
@@ -252,7 +269,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct import paths in presentation layer
 - Patch path traversal and command injection vulnerabilities
 
-[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.10.0...HEAD
+[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.10.2...v1.0.0
+[0.10.2]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.10.2
+[0.10.1]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.10.1
 [0.10.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.10.0
 [0.9.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.9.0
 [0.8.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.8.0
