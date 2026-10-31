@@ -11,7 +11,7 @@ describe("OpenCodeAgentRenderer", () => {
   });
 
   describe("renderAgent", () => {
-    it("should convert a flow-sequence tools array into a lowercase boolean map", () => {
+    it("should convert a flow-sequence tools array into a deny-first permission map", () => {
       const source = `---
 name: architect
 description: Software architecture specialist
@@ -22,15 +22,12 @@ model: high-models
 Body content`;
       const result = renderer.renderAgent(source, "architect");
 
-      expect(result).toContain("tools:");
-      expect(result).toContain("read: true");
-      expect(result).toContain("grep: true");
-      expect(result).toContain("glob: true");
-      expect(result).not.toContain('tools: ["Read"');
+      expect(result).toMatch(/permission:\n {2}"\*": deny\n {2}read: allow\n {2}grep: allow\n {2}glob: allow\n/);
+      expect(result).not.toContain("tools:");
       expect(result).toContain("Body content");
     });
 
-    it("should convert a block-sequence tools array into a lowercase boolean map", () => {
+    it("should convert a block-sequence tools array into a deny-first permission map", () => {
       const source = `---
 name: architect
 description: Architecture agent
@@ -42,9 +39,46 @@ tools:
 Body content`;
       const result = renderer.renderAgent(source, "architect");
 
-      expect(result).toContain("read: true");
-      expect(result).toContain("grep: true");
-      expect(result).not.toMatch(/tools:\s*\n\s*- Read/);
+      expect(result).toContain('"*": deny');
+      expect(result).toContain("read: allow");
+      expect(result).toContain("grep: allow");
+      expect(result).not.toContain("tools:");
+    });
+
+    it("should map Claude tool names and MCP wildcards to OpenCode permission keys", () => {
+      const source = `---
+name: researcher
+description: Research agent
+tools: [Read, Edit, Write, MultiEdit, WebFetch, Task, mcp__context7__*, mcp__github__get_issue]
+---
+
+Body`;
+      const result = renderer.renderAgent(source, "researcher");
+
+      expect(result).toMatch(/"\*": deny\n/);
+      expect(result).toContain("edit: allow");
+      expect(result).toContain("webfetch: allow");
+      expect(result).toContain("task: allow");
+      expect(result).toContain("context7_*: allow");
+      expect(result).toContain("github_get_issue: allow");
+      expect(result).not.toMatch(/write:|multiedit:|mcp__/);
+    });
+
+    it("should let an explicit permission map override the generated allowlist", () => {
+      const source = `---
+name: researcher
+description: Research agent
+tools: [Read, Bash]
+permission:
+  bash: ask
+---
+
+Body`;
+      const result = renderer.renderAgent(source, "researcher");
+
+      expect(result).toContain("bash: ask");
+      expect(result).not.toContain("bash: allow");
+      expect(result).toContain("read: allow");
     });
 
     it("should leave an already-object tools field unchanged", () => {
@@ -90,7 +124,7 @@ Body content`;
       const result = renderer.renderAgent(source, "security-auditor");
 
       expect(result).toContain("id: security-auditor");
-      expect(result).toContain("read: true");
+      expect(result).toContain("read: allow");
     });
 
     it("should not treat a '---' horizontal rule in the body as a second frontmatter block", () => {
@@ -109,8 +143,8 @@ Some content
 More content after a horizontal rule.`;
       const result = renderer.renderAgent(source, "architect");
 
-      expect(result).toContain("read: true");
-      expect(result).toContain("bash: true");
+      expect(result).toContain("read: allow");
+      expect(result).toContain("bash: allow");
       expect(result).toContain("More content after a horizontal rule.");
     });
 
