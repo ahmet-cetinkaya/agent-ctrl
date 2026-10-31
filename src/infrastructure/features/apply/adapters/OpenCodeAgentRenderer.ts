@@ -8,6 +8,11 @@ const PERMISSION_KEY = "permission";
 const DENY_ALL_RULE = "*";
 const MCP_PREFIX = "mcp__";
 const MCP_SEPARATOR = "__";
+const BASH_KEY = "bash";
+const BASH_PATTERN = /^bash\((.*)\)$/i;
+// Claude's `cmd:*` prefix match is `cmd *` in OpenCode's glob syntax.
+const CLAUDE_PREFIX_WILDCARD = /:\*$/;
+const OPENCODE_PREFIX_WILDCARD = " *";
 
 // Claude tool names that OpenCode folds into a different permission key.
 // `edit` covers edit, write and patch (https://opencode.ai/docs/permissions/).
@@ -58,7 +63,7 @@ export class OpenCodeAgentRenderer implements IAgentRenderer {
     const existingPermission = doc.get(PERMISSION_KEY, true);
     const permission: Record<string, unknown> = { [DENY_ALL_RULE]: "deny" };
     for (const item of toolsNode.items) {
-      permission[this.toPermissionKey(item)] = "allow";
+      this.allowTool(permission, String(isScalar(item) ? item.value : item));
     }
     // Explicit rules written by the author come last so they win.
     if (isMap(existingPermission)) {
@@ -71,8 +76,22 @@ export class OpenCodeAgentRenderer implements IAgentRenderer {
     return `---\n${doc.toString().trimEnd()}\n---${rest}`;
   }
 
-  private toPermissionKey(item: unknown): string {
-    const name = String(isScalar(item) ? item.value : item);
+  private allowTool(permission: Record<string, unknown>, name: string): void {
+    const bashPattern = name.match(BASH_PATTERN)?.[1];
+    if (bashPattern === undefined) {
+      permission[this.toPermissionKey(name)] = "allow";
+      return;
+    }
+    // A bare `Bash` already allows every command; patterns cannot narrow it.
+    if (permission[BASH_KEY] === "allow") {
+      return;
+    }
+    const rules = (permission[BASH_KEY] as Record<string, string> | undefined) ?? { [DENY_ALL_RULE]: "deny" };
+    rules[bashPattern.replace(CLAUDE_PREFIX_WILDCARD, OPENCODE_PREFIX_WILDCARD)] = "allow";
+    permission[BASH_KEY] = rules;
+  }
+
+  private toPermissionKey(name: string): string {
     if (name.startsWith(MCP_PREFIX)) {
       // OpenCode names MCP tools `<server>_<tool>`, Claude `mcp__<server>__<tool>`.
       return name.slice(MCP_PREFIX.length).replace(MCP_SEPARATOR, "_");

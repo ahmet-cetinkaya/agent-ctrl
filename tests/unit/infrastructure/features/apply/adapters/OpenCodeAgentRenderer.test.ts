@@ -64,6 +64,33 @@ Body`;
       expect(result).not.toMatch(/write:|multiedit:|mcp__/);
     });
 
+    it("should map Bash(pattern) entries into one bash rule object", () => {
+      const source = `---
+name: runner
+description: Runner
+tools: [Read, "Bash(git status:*)", "Bash(ls)"]
+---
+
+Body`;
+      const result = renderer.renderAgent(source, "runner");
+
+      expect(result).toMatch(/bash:\n\s+"\*": deny\n\s+git status \*: allow\n\s+ls: allow/);
+      expect(result).not.toContain("bash(");
+    });
+
+    it("should let a bare Bash allow every command even beside patterns", () => {
+      const source = `---
+name: runner
+description: Runner
+tools: ["Bash(git status:*)", Bash]
+---
+
+Body`;
+      const result = renderer.renderAgent(source, "runner");
+
+      expect(result).toContain("bash: allow");
+    });
+
     it("should let an explicit permission map override the generated allowlist", () => {
       const source = `---
 name: researcher
