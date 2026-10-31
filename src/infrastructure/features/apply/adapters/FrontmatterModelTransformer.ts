@@ -1,6 +1,6 @@
 import { isMap, parseDocument } from "yaml";
 import type { ArtifactKind } from "@/core/domain/shared/modelFrontmatter";
-import { resolveModelFrontmatter } from "@/core/domain/shared/modelFrontmatter";
+import { normalizeModelAlias, resolveModelFrontmatter } from "@/core/domain/shared/modelFrontmatter";
 import type { SupportedApplyPlatform } from "@/core/domain/shared/types/SupportedApplyPlatform";
 
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(\r?\n[\s\S]*)?$/;
@@ -64,6 +64,15 @@ export function applyModelFrontmatter(
     artifactKind,
   });
   warnings.push(...resolution.warnings);
+
+  if (resolution.action === "set") {
+    const normalized = normalizeModelAlias(resolution.value as string, platform, process.env);
+    if (normalized.warning) {
+      warnings.push(normalized.warning);
+    }
+    resolution.value = normalized.value;
+    resolution.action = normalized.value === undefined ? "drop" : "set";
+  }
 
   if (resolution.action === "set") {
     doc.set(MODEL_KEY, resolution.value);

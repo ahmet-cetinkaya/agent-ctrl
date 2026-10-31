@@ -16,6 +16,7 @@ import {
 import { createRule } from "@/core/domain/shared/entities/Rule";
 import { ERROR_IDS } from "@/core/domain/shared/constants/errorIds";
 import { resolve } from "node:path";
+import { exportModelAliasRoutes } from "@/core/filestore/env-loader.js";
 
 export interface ApplyProfileCommandOptions {
   projectPath: string;
@@ -114,6 +115,7 @@ export class ApplyProfileCommand {
 
       const profileSnapshot = await this.loadProfiles(configRoot, profileNames);
 
+      await exportModelAliasRoutes(projectPath);
       const applyResult = await adapter.applyApplyIntegration({
         projectPath,
         dryRun,

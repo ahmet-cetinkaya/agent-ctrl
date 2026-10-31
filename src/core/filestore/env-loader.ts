@@ -101,3 +101,15 @@ function unquote(value: string): string {
   }
   return value;
 }
+
+const MODEL_ALIAS_ENV_PATTERN = /^AGENT_CTRL_[A-Z]+_MODEL_[A-Z]+$/;
+
+/** Model alias routes live in `.agent-ctrl/.env`; renderers read them from the process environment. */
+export async function exportModelAliasRoutes(projectPath: string): Promise<void> {
+  const envResult = await loadEnvFile(projectPath);
+  for (const [name, route] of Object.entries(envResult.variables)) {
+    if (MODEL_ALIAS_ENV_PATTERN.test(name)) {
+      process.env[name] = route;
+    }
+  }
+}

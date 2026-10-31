@@ -135,6 +135,21 @@ Platform behavior:
 
 Unsupported surfaces drop the field and report why in the apply warnings. The `models` map is agent-ctrl configuration and is never written to any target file.
 
+##### Claude tier aliases on OpenCode and Kilo
+
+`model: sonnet|opus|haiku` is valid in Claude Code only; OpenCode and Kilo need a `provider/model` route. Map each alias to a route in `.agent-ctrl/.env` with `AGENT_CTRL_<PLATFORM>_MODEL_<ALIAS>`, so shared artifacts need no per-file `models.<platform>` override:
+
+```bash
+AGENT_CTRL_OPENCODE_MODEL_SONNET=omniroute/combo/claude-sonnet
+AGENT_CTRL_OPENCODE_MODEL_OPUS=omniroute/combo/claude-opus
+AGENT_CTRL_OPENCODE_MODEL_HAIKU=my-provider/my-light-model
+```
+
+- A mapped alias is replaced by its route (case-insensitive match).
+- An unmapped alias is dropped with an apply warning that names the missing variable, so the platform default applies instead of an invalid model.
+- Explicit routes (`provider/model`, `omniroute/...`) and `models.<platform>` overrides pass through unchanged.
+- Claude output keeps the alias as written. Variables set in the process environment work too; `.env` values take precedence.
+
 #### MCP Configuration (`mcps/`)
 
 - `agent-ctrl mcp ls` - List configured MCP servers.
