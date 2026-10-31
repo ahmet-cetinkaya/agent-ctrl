@@ -51,7 +51,7 @@ describe("ApplyProfileCommand", () => {
     const nonExistent = join(tmpdir(), "nonexistent-config");
     const result = await command.execute({
       projectPath: nonExistent,
-      profileName: "test",
+      profileNames: ["test"],
       platform: "opencode",
     });
 
@@ -67,7 +67,7 @@ describe("ApplyProfileCommand", () => {
 
     const result = await command.execute({
       projectPath,
-      profileName: "nonexistent",
+      profileNames: ["nonexistent"],
       platform: "opencode",
     });
 
@@ -84,7 +84,7 @@ describe("ApplyProfileCommand", () => {
 
     const result = await command.execute({
       projectPath,
-      profileName: "test",
+      profileNames: ["test"],
       platform: "unknown",
     });
 
@@ -101,7 +101,7 @@ describe("ApplyProfileCommand", () => {
 
     const result = await command.execute({
       projectPath,
-      profileName: "test",
+      profileNames: ["test"],
       platform: "opencode",
     });
 
@@ -123,7 +123,7 @@ describe("ApplyProfileCommand", () => {
 
     const result = await command.execute({
       projectPath,
-      profileName: "empty",
+      profileNames: ["empty"],
       platform: "opencode",
     });
 
@@ -140,7 +140,7 @@ describe("ApplyProfileCommand", () => {
 
     const result = await command.execute({
       projectPath,
-      profileName: "test",
+      profileNames: ["test"],
       platform: "opencode",
       dryRun: true,
     });

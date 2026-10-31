@@ -202,10 +202,8 @@ export function createProfileCommand(): Command {
         }
       }
 
-      for (const profile of resolvedProfiles) {
-        for (const plat of resolvedPlatforms) {
-          await applyProfileToPlatform(profile, plat, options, configRoot, process.cwd());
-        }
+      for (const plat of resolvedPlatforms) {
+        await applyProfilesToPlatform(resolvedProfiles, plat, options, configRoot, process.cwd());
       }
     });
 
@@ -345,23 +343,24 @@ function displayArtifactCounts(counts: {
   }
 }
 
-async function applyProfileToPlatform(
-  profileName: string,
+async function applyProfilesToPlatform(
+  profileNames: string[],
   platform: string,
   options: any,
   configRoot: string,
   projectPath: string
 ): Promise<void> {
   const applyProfileCommand = new ApplyProfileCommand();
+  const profileLabel = profileNames.join(", ");
   const targetScope = "project";
   const usePrompt = options.prompt !== false;
 
   const platformDisplay = getPlatformDisplayName(platform);
   if (usePrompt) {
-    LogService.intro(`Applying profile '${profileName}' to ${platformDisplay}`);
+    LogService.intro(`Applying profile '${profileLabel}' to ${platformDisplay}`);
 
     const confirmed = await PromptService.confirm({
-      message: `Apply profile '${profileName}' to ${platformDisplay}?`,
+      message: `Apply profile '${profileLabel}' to ${platformDisplay}?`,
       initial: true,
     });
 
@@ -382,7 +381,7 @@ async function applyProfileToPlatform(
 
       return await applyProfileCommand.execute({
         projectPath,
-        profileName,
+        profileNames,
         platform,
         dryRun: options.dryRun,
         override: options.override,
@@ -443,11 +442,11 @@ async function applyProfileToPlatform(
     } else {
       const platformDisplay = getPlatformDisplayName(selectedPlatform);
       if (status === "unchanged") LogService.note(`${platformDisplay} configuration is already up to date`, "Status:");
-      else LogService.success(`${profileName} profile applied to ${platformDisplay}`);
+      else LogService.success(`${profileLabel} profile applied to ${platformDisplay}`);
 
       if (verbose) {
         if (isEmpty) {
-          LogService.note(`Profile '${profileName}' contained no artifacts. Base configuration applied.`, "Note:");
+          LogService.note(`Profile '${profileLabel}' contained no artifacts. Base configuration applied.`, "Note:");
         }
 
         LogService.info(`Scope: ${scope}`);
@@ -463,7 +462,7 @@ async function applyProfileToPlatform(
         LogService.note(warnings.join("\n"), "Warnings:");
       }
 
-      if (usePrompt) LogService.outro(`Profile '${profileName}' successfully applied to ${platformDisplay}`);
+      if (usePrompt) LogService.outro(`Profile '${profileLabel}' successfully applied to ${platformDisplay}`);
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

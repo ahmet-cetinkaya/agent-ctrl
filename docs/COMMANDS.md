@@ -216,6 +216,9 @@ agent-ctrl profile apply default --platform opencode
 # Apply a profile with dry run
 agent-ctrl profile apply default --platform claude --dry-run
 
+# Apply several profiles together (their rules are kept side by side under <profile>/)
+agent-ctrl profile apply claude rust typescript
+
 # Apply a profile with override
 agent-ctrl profile apply production --platform cursor --override
 ```

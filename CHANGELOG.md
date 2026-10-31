@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Claude Code: write rules that have `paths:` frontmatter to `.claude/rules/agent-ctrl/` instead of `CLAUDE.md`, so Claude Code applies the path scope ([#18](https://github.com/ahmet-cetinkaya/agent-ctrl/issues/18))
+- Keep the rules of every profile when `profile apply` gets several profiles; before, each profile replaced the previous one's rules ([#19](https://github.com/ahmet-cetinkaya/agent-ctrl/issues/19))
 
 ## [0.10.2] - 2026-09-29
 
