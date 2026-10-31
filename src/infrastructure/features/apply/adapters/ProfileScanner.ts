@@ -112,6 +112,7 @@ export class ProfileScanner {
             transport: "http" as const,
             url: server.url,
             sourceFile: server.filePath,
+            unresolved: server.unresolved,
           };
         }
         return {
@@ -122,6 +123,7 @@ export class ProfileScanner {
           cwd: server.cwd,
           env: server.env,
           sourceFile: server.filePath,
+          unresolved: server.unresolved,
         };
       });
 

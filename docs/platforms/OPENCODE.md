@@ -101,6 +101,8 @@ You are in refactoring mode. Focus on improving code quality without changing fu
 
 Project-level configurations provide context boundary control. They contain project-specific LLM parameters, context paths, MCP servers, and coding rules. They take precedence over both remote and global configurations, ensuring that organizational defaults do not interfere with local repository requirements.
 
+When `agent-ctrl` writes MCP servers to a project-level `opencode.json`, it keeps `${VAR}` placeholders as OpenCode `{env:VAR}` references instead of the values from `.agent-ctrl/.env`, because the project file is meant to be committed. OpenCode reads those variables from its environment at run time, so export them before you start `opencode`; the apply output lists them. The user-level `~/.config/opencode/opencode.json` receives the resolved values.
+
 ### Step-by-Step Project Setup
 
 **1. Initialize the Project**

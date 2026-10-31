@@ -6,6 +6,7 @@ import type {
   McpLoadedServer,
   McpLoadResult,
   McpTransportType,
+  McpUnresolvedFields,
 } from "@/core/domain/shared/interfaces/IMcpConfigLoader";
 import { McpPathResolver } from "@/infrastructure/features/mcp/loaders/McpPathResolver";
 import { McpFileDiscovery } from "@/infrastructure/features/mcp/loaders/McpFileDiscovery";
@@ -32,6 +33,7 @@ interface AggregatedCandidate {
   resolvedEnv: Record<string, string>;
   // HTTP transport fields
   url?: string;
+  unresolved: McpUnresolvedFields;
   issues: McpIssue[];
 }
 
@@ -175,6 +177,7 @@ export class McpServerAggregator implements IMcpConfigLoader {
             continue;
           }
 
+          const unresolved = this.toUnresolvedFields(validated.rawConfig);
           const resolvedRaw = this.placeholderResolver.resolve(validated.rawConfig, envResult.variables) as Record<
             string,
             unknown
@@ -190,6 +193,7 @@ export class McpServerAggregator implements IMcpConfigLoader {
               transport: "http",
               url: resolvedUrl,
               resolvedEnv: {},
+              unresolved,
               issues: candidateIssues,
             });
           } else {
@@ -215,6 +219,7 @@ export class McpServerAggregator implements IMcpConfigLoader {
               args: resolvedArgs,
               cwd: typeof resolvedRaw.cwd === "string" ? resolvedRaw.cwd : validated.cwd,
               resolvedEnv,
+              unresolved,
               issues: candidateIssues,
             });
           }
@@ -256,6 +261,7 @@ export class McpServerAggregator implements IMcpConfigLoader {
             filePath: candidate.filePath,
             transport: "http",
             url: candidate.url,
+            unresolved: candidate.unresolved,
           });
         } else {
           loadedServers.push({
@@ -266,6 +272,7 @@ export class McpServerAggregator implements IMcpConfigLoader {
             args: candidate.args,
             cwd: candidate.cwd,
             env: candidate.resolvedEnv,
+            unresolved: candidate.unresolved,
           });
         }
       }
@@ -290,6 +297,17 @@ export class McpServerAggregator implements IMcpConfigLoader {
       // Re-throw unexpected errors (programming errors like TypeError, ReferenceError)
       throw error;
     }
+  }
+
+  private toUnresolvedFields(rawConfig: Record<string, unknown>): McpUnresolvedFields {
+    return {
+      command: typeof rawConfig.command === "string" ? rawConfig.command : undefined,
+      args: Array.isArray(rawConfig.args)
+        ? rawConfig.args.filter((arg): arg is string => typeof arg === "string")
+        : undefined,
+      env: this.extractEnvObject(rawConfig.env),
+      url: typeof rawConfig.url === "string" ? rawConfig.url : undefined,
+    };
   }
 
   private extractEnvObject(value: unknown): Record<string, string> {
