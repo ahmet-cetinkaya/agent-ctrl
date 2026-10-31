@@ -104,10 +104,18 @@ function unquote(value: string): string {
 
 const MODEL_ALIAS_ENV_PATTERN = /^AGENT_CTRL_[A-Z]+_MODEL_[A-Z]+$/;
 
-/** Model alias routes live in `.agent-ctrl/.env`; renderers read them from the process environment. */
+/**
+ * Model alias routes live in `.agent-ctrl/.env`; renderers read them from the process environment.
+ * The user-level file (under `AGENT_CTRL_HOME`, like profiles and the catalog) is read first and
+ * the project-level file overrides it per key. Core cannot import the presentation config-root
+ * helper, so the environment variable is read here, as CatalogPathResolver does.
+ */
 export async function exportModelAliasRoutes(projectPath: string): Promise<void> {
-  const envResult = await loadEnvFile(projectPath);
-  for (const [name, route] of Object.entries(envResult.variables)) {
+  const userHomePath = process.env.AGENT_CTRL_HOME ?? homedir();
+  const userEnv = await loadEnvFile(userHomePath, { userHomePath });
+  const projectEnv = await loadEnvFile(projectPath, { userHomePath });
+  const variables = { ...userEnv.variables, ...projectEnv.variables };
+  for (const [name, route] of Object.entries(variables)) {
     if (MODEL_ALIAS_ENV_PATTERN.test(name)) {
       process.env[name] = route;
     }

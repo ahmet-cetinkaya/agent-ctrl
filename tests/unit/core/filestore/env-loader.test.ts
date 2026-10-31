@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import fs from "node:fs";
 import path from "node:path";
-import { loadEnvFile } from "@/core/filestore/env-loader.js";
+import { exportModelAliasRoutes, loadEnvFile } from "@/core/filestore/env-loader.js";
 
 describe("env-loader", () => {
   const testDir = "/tmp/test-env-loader";
@@ -128,5 +128,33 @@ describe("env-loader", () => {
     } finally {
       fs.chmodSync(envFilePath, 0o644);
     }
+  });
+
+  describe("exportModelAliasRoutes", () => {
+    const userKey = "AGENT_CTRL_TESTHOME_MODEL_USERONLY";
+    const sharedKey = "AGENT_CTRL_TESTHOME_MODEL_SHARED";
+    const originalHome = process.env.AGENT_CTRL_HOME;
+
+    afterEach(() => {
+      delete process.env[userKey];
+      delete process.env[sharedKey];
+      if (originalHome === undefined) delete process.env.AGENT_CTRL_HOME;
+      else process.env.AGENT_CTRL_HOME = originalHome;
+    });
+
+    it("reads user routes from AGENT_CTRL_HOME and lets project values override them per key", async () => {
+      const home = path.join(testDir, "home");
+      const project = path.join(testDir, "project");
+      fs.mkdirSync(path.join(home, ".agent-ctrl"), { recursive: true });
+      fs.mkdirSync(path.join(project, ".agent-ctrl"), { recursive: true });
+      fs.writeFileSync(path.join(home, ".agent-ctrl", ".env"), `${userKey}=user/route\n${sharedKey}=user/shared\n`);
+      fs.writeFileSync(path.join(project, ".agent-ctrl", ".env"), `${sharedKey}=project/shared\n`);
+      process.env.AGENT_CTRL_HOME = home;
+
+      await exportModelAliasRoutes(project);
+
+      expect(process.env[userKey]).toBe("user/route");
+      expect(process.env[sharedKey]).toBe("project/shared");
+    });
   });
 });
