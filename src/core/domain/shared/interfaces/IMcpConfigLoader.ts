@@ -12,6 +12,13 @@ export interface McpIssue {
   serverId?: string;
 }
 
+export interface McpUnresolvedFields {
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  url?: string;
+}
+
 export interface McpLoadedServer {
   serverId: string;
   filePath: string;
@@ -23,6 +30,8 @@ export interface McpLoadedServer {
   env?: Record<string, string>;
   // HTTP transport fields
   url?: string;
+  /** The same fields before `${VAR}` placeholders were resolved, for platforms that resolve variables at run time. */
+  unresolved?: McpUnresolvedFields;
 }
 
 export interface McpFileResult {

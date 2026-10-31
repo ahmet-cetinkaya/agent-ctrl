@@ -11,6 +11,7 @@ import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/Appl
 import {
   mergeJsonObjectFile,
   renderOpencodeMcpConfig,
+  collectMcpPlaceholderNames,
   resolveApplyScope,
   syncAgentsAsMarkdown,
   syncCommandsAsMarkdown,
@@ -149,14 +150,24 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
       modelWarnings.push(...agentsResult.warnings);
     }
 
+    const mcpWarnings: string[] = [];
     if (source.mcpServers.length > 0) {
+      // The project opencode.json is meant to be committed, so secrets stay as {env:VAR} references there.
+      const useEnvReferences = target.scope === "project";
       const mcpResult = await mergeJsonObjectFile(
         mcpConfigPath,
-        (existing) => renderOpencodeMcpConfig(existing, source.mcpServers),
+        (existing) => renderOpencodeMcpConfig(existing, source.mcpServers, useEnvReferences),
         Boolean(request.dryRun)
       );
       changed = mcpResult.changed || changed;
       fileChanges.push(...mcpResult.paths);
+
+      const placeholderNames = useEnvReferences ? collectMcpPlaceholderNames(source.mcpServers) : [];
+      if (placeholderNames.length > 0) {
+        mcpWarnings.push(
+          `OpenCode reads these MCP values from the environment at run time; export them before starting opencode: ${placeholderNames.join(", ")}`
+        );
+      }
     }
 
     return {
@@ -167,7 +178,7 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
       status: toStatus(changed),
       message: "Applied OpenCode guidance, commands, skills, agents, and MCP servers.",
       fileChanges,
-      warnings: [...source.warnings, ...modelWarnings],
+      warnings: [...source.warnings, ...modelWarnings, ...mcpWarnings],
     };
   }
 }

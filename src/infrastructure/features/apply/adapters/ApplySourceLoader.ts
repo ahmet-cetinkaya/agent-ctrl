@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
+import type { McpUnresolvedFields } from "@/core/domain/shared/interfaces/IMcpConfigLoader";
 import type { Rule } from "@/core/domain/shared/entities/Rule";
 import type { Skill } from "@/core/domain/shared/entities/Skill";
 import type { Agent } from "@/core/domain/shared/entities/Agent";
@@ -21,6 +22,8 @@ export interface ApplyMcpServer {
   // HTTP transport fields
   url?: string;
   sourceFile: string;
+  /** The same fields before `${VAR}` placeholders were resolved, for platforms that resolve variables at run time. */
+  unresolved?: McpUnresolvedFields;
 }
 
 export interface ApplySourceSnapshot {
@@ -83,6 +86,7 @@ export class ApplySourceLoader {
             transport: "http" as const,
             url: server.url,
             sourceFile: server.filePath,
+            unresolved: server.unresolved,
           };
         }
         return {
@@ -93,6 +97,7 @@ export class ApplySourceLoader {
           cwd: server.cwd,
           env: server.env,
           sourceFile: server.filePath,
+          unresolved: server.unresolved,
         };
       }),
       warnings,

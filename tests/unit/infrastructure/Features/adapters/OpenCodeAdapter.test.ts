@@ -91,6 +91,48 @@ describe("OpenCodeAdapter", () => {
     expect(content).not.toContain("tools:");
   });
 
+  describe("MCP secrets (GH #24)", () => {
+    const SECRET = "super-secret-value";
+
+    async function writeSecretServer(): Promise<void> {
+      const mcpsDir = resolve(projectPath, ".agent-ctrl", "mcps");
+      await writeFile(
+        resolve(mcpsDir, "tokened.json"),
+        JSON.stringify({
+          mcpServers: {
+            tokened: { command: "tool", args: ["--key", "${TOKEN}"], env: { API_TOKEN: "${TOKEN}" } },
+            remote: { type: "http", url: "https://example.test/mcp?key=${TOKEN}" },
+          },
+        }),
+        "utf-8"
+      );
+      await writeFile(resolve(mcpsDir, ".env"), `TOKEN=${SECRET}\n`, "utf-8");
+    }
+
+    it("keeps secrets out of the project opencode.json and writes {env:VAR} references", async () => {
+      await writeSecretServer();
+
+      const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+
+      const projectConfig = await readFile(resolve(projectPath, "opencode.json"), "utf-8");
+      expect(projectConfig).not.toContain(SECRET);
+      const mcp = JSON.parse(projectConfig).mcp;
+      expect(mcp.tokened.environment.API_TOKEN).toBe("{env:TOKEN}");
+      expect(mcp.tokened.command).toEqual(["tool", "--key", "{env:TOKEN}"]);
+      expect(mcp.remote.url).toBe("https://example.test/mcp?key={env:TOKEN}");
+      expect((result.warnings ?? []).some((warning) => warning.includes("TOKEN"))).toBe(true);
+    });
+
+    it("keeps resolved values in the private user-scope config", async () => {
+      await writeSecretServer();
+
+      await adapter.applyApplyIntegration({ projectPath, targetScope: "user", userConfigRootPath: userRootPath });
+
+      const mcp = JSON.parse(await readFile(resolve(userRootPath, "opencode.json"), "utf-8")).mcp;
+      expect(mcp.tokened.environment.API_TOKEN).toBe(SECRET);
+    });
+  });
+
   it("cleans existing managed artifacts when override is enabled", async () => {
     // First apply without override
     await adapter.applyApplyIntegration({ projectPath, targetScope: "user", userConfigRootPath: userRootPath });

@@ -468,12 +468,55 @@ export async function mergeManagedTomlSection(
   };
 }
 
+const PLACEHOLDER_PATTERN = /\$\{([^}]+)\}/g;
+
+function toOpenCodeEnvReference(value: string): string {
+  return value.replace(PLACEHOLDER_PATTERN, (_match, name: string) => `{env:${name}}`);
+}
+
+/**
+ * Builds the server from its unresolved fields, with each `${VAR}` written as OpenCode's
+ * `{env:VAR}`, so OpenCode reads the value from the environment at run time and no secret is
+ * written into a file that lives in the repository.
+ */
+function withOpenCodeEnvReferences(server: ApplyMcpServer): ApplyMcpServer {
+  const unresolved = server.unresolved;
+  if (!unresolved) return server;
+  return {
+    ...server,
+    command: unresolved.command !== undefined ? toOpenCodeEnvReference(unresolved.command) : server.command,
+    args: unresolved.args?.map(toOpenCodeEnvReference) ?? server.args,
+    env: unresolved.env
+      ? Object.fromEntries(Object.entries(unresolved.env).map(([key, value]) => [key, toOpenCodeEnvReference(value)]))
+      : server.env,
+    url: unresolved.url !== undefined ? toOpenCodeEnvReference(unresolved.url) : server.url,
+  };
+}
+
+/** Names of the `${VAR}` placeholders the servers use, sorted and without duplicates. */
+export function collectMcpPlaceholderNames(servers: ApplyMcpServer[]): string[] {
+  const names = new Set<string>();
+  for (const { unresolved } of servers) {
+    const values = [
+      unresolved?.command,
+      unresolved?.url,
+      ...(unresolved?.args ?? []),
+      ...Object.values(unresolved?.env ?? {}),
+    ];
+    for (const value of values) {
+      for (const match of value?.matchAll(PLACEHOLDER_PATTERN) ?? []) names.add(match[1]);
+    }
+  }
+  return [...names].sort();
+}
+
 export function renderOpencodeMcpConfig(
   existing: Record<string, unknown>,
-  servers: ApplyMcpServer[]
+  servers: ApplyMcpServer[],
+  useEnvReferences = false
 ): Record<string, unknown> {
   const renderer = McpConfigRendererFactory.getRenderer("opencode");
-  return renderer.renderConfig(existing, servers);
+  return renderer.renderConfig(existing, useEnvReferences ? servers.map(withOpenCodeEnvReferences) : servers);
 }
 
 export function renderForgeCodeMcpConfig(
