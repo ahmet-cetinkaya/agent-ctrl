@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, mkdir, writeFile, readFile, rm, access, stat } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  readFile,
+  rm,
+  access,
+  stat,
+  chmod,
+  readdir,
+  symlink,
+  lstat,
+} from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { ClaudeAdapter } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
@@ -380,6 +392,59 @@ describe("ClaudeAdapter", () => {
 
         expect(writeResult.success).toBe(false);
         expect(await readFile(resolve(homePath, ".claude.json"), "utf-8")).toBe("{ not json");
+      });
+
+      it("tightens an existing world-readable home .claude.json to 0600 and keeps its other keys", async () => {
+        const target = resolve(homePath, ".claude.json");
+        await writeFile(target, JSON.stringify({ theme: "dark", mcpServers: { kept: { command: "k" } } }), "utf-8");
+        await chmod(target, 0o644);
+
+        const writeResult = await createProjectScopedAdapter().writeConfig({
+          ...emptyConfig,
+          mcpServers: [{ name: "added", transport: "stdio", command: "a", args: [], sourceFile: "mcp.json" }],
+        });
+
+        expect(writeResult.success).toBe(true);
+        expect((await stat(target)).mode & 0o777).toBe(0o600);
+        const doc = await readHomeDocument();
+        expect(doc.theme).toBe("dark");
+        expect(Object.keys(doc.projects[projectPath].mcpServers)).toEqual(["added"]);
+        expect(doc.mcpServers.kept.command).toBe("k");
+        expect((await readdir(homePath)).filter((entry) => entry.endsWith(".tmp"))).toEqual([]);
+      });
+
+      it("keeps a symlinked home .claude.json a symlink and writes through to its target", async () => {
+        const linkTarget = resolve(projectPath, "dotfiles-claude.json");
+        await writeFile(linkTarget, JSON.stringify({ theme: "dark" }), "utf-8");
+        await symlink(linkTarget, resolve(homePath, ".claude.json"));
+
+        const writeResult = await createProjectScopedAdapter().writeConfig({
+          ...emptyConfig,
+          mcpServers: [{ name: "added", transport: "stdio", command: "a", args: [], sourceFile: "mcp.json" }],
+        });
+
+        expect(writeResult.success).toBe(true);
+        expect((await lstat(resolve(homePath, ".claude.json"))).isSymbolicLink()).toBe(true);
+        const linked = JSON.parse(await readFile(linkTarget, "utf-8"));
+        expect(linked.theme).toBe("dark");
+        expect(Object.keys(linked.projects[projectPath].mcpServers)).toEqual(["added"]);
+      });
+
+      it("aborts before writing anything and names .claude.json when it cannot be parsed", async () => {
+        await writeFile(resolve(homePath, ".claude.json"), "{ not json", "utf-8");
+        const rulePath = resolve(projectPath, "rule.md");
+        await writeFile(rulePath, "# Rule\n", "utf-8");
+
+        const writeResult = await createProjectScopedAdapter().writeConfig({
+          rules: [{ name: "rule", path: rulePath }],
+          skills: [],
+          agents: [],
+          mcpServers: [{ name: "added", transport: "stdio", command: "a", args: [], sourceFile: "mcp.json" }],
+        });
+
+        expect(writeResult.success).toBe(false);
+        if (!writeResult.success) expect(writeResult.error.message).toContain(resolve(homePath, ".claude.json"));
+        await expect(access(resolve(homePath, ".claude", "CLAUDE.md"))).rejects.toThrow();
       });
     });
 

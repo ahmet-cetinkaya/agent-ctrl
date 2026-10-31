@@ -1,8 +1,9 @@
 import type { CommandArtifact } from "@/infrastructure/features/command/scanners/CommandScanner";
 import { homedir } from "node:os";
+import { randomUUID } from "node:crypto";
 import { dirname, resolve, relative, extname, isAbsolute } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { readFile, writeFile, access, mkdir, cp, readdir, rm } from "node:fs/promises";
+import { readFile, writeFile, access, mkdir, cp, readdir, rm, rename, realpath } from "node:fs/promises";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import type {
   IPlatformAdapter,
@@ -163,6 +164,9 @@ export class ClaudeAdapter implements IPlatformAdapter {
         await mkdir(this.claudeRoot, { recursive: true });
       }
 
+      // Parsed before the first write so an unreadable ~/.claude.json aborts the apply with nothing changed.
+      const mcpDocumentContent = await this.buildClaudeMcpDocumentContent(config, options?.cleanExistingArtifacts);
+
       if (options?.cleanExistingArtifacts) {
         await this.cleanManagedArtifacts();
       }
@@ -174,7 +178,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
       await this.syncSkills(config);
       await this.syncAgents(config);
       await this.syncCommands(options?.commands);
-      await this.writeClaudeMcpConfig(config, options?.cleanExistingArtifacts);
+      await this.writeClaudeMcpDocument(mcpDocumentContent);
 
       return ok(undefined);
     } catch (error) {
@@ -398,9 +402,12 @@ export class ClaudeAdapter implements IPlatformAdapter {
     ]);
   }
 
-  private async writeClaudeMcpConfig(config: PlatformConfig, cleanExistingMcp?: boolean): Promise<void> {
+  private async buildClaudeMcpDocumentContent(
+    config: PlatformConfig,
+    cleanExistingMcp?: boolean
+  ): Promise<string | undefined> {
     const mcpServers = config.mcpServers ?? [];
-    if (mcpServers.length === 0 && !cleanExistingMcp) return;
+    if (mcpServers.length === 0 && !cleanExistingMcp) return undefined;
 
     // Build incoming MCP servers for both transport types
     const incomingMcpServers = Object.fromEntries(
@@ -440,12 +447,27 @@ export class ClaudeAdapter implements IPlatformAdapter {
         }
       : updatedScopeEntry;
 
+    return `${JSON.stringify(mergedDocument, null, 2)}\n`;
+  }
+
+  /**
+   * Writes a private temp file next to the target and renames it over, so a crash or a concurrent
+   * Claude Code session never sees a truncated file, and an existing file's mode is tightened too.
+   */
+  private async writeClaudeMcpDocument(content: string | undefined): Promise<void> {
+    if (content === undefined) return;
+
     await mkdir(dirname(this.claudeMcpConfigPath), { recursive: true });
-    // The mode applies only when the file is created: resolved secrets must stay private to the owner.
-    await writeFile(this.claudeMcpConfigPath, `${JSON.stringify(mergedDocument, null, 2)}\n`, {
-      encoding: "utf-8",
-      mode: ClaudeAdapter.PRIVATE_FILE_MODE,
-    });
+    // Rename over the symlink target, not the link, so a dotfile-managed ~/.claude.json stays a link.
+    const targetPath = await realpath(this.claudeMcpConfigPath).catch(() => this.claudeMcpConfigPath);
+    const temporaryPath = `${targetPath}.${process.pid}.${randomUUID()}.tmp`;
+    try {
+      await writeFile(temporaryPath, content, { encoding: "utf-8", mode: ClaudeAdapter.PRIVATE_FILE_MODE });
+      await rename(temporaryPath, targetPath);
+    } catch (error) {
+      await rm(temporaryPath, { force: true });
+      throw error;
+    }
   }
 
   /** A missing file starts empty; an unreadable one throws so the user's live config is never overwritten. */
@@ -455,9 +477,17 @@ export class ClaudeAdapter implements IPlatformAdapter {
       throw error;
     });
     if (content === undefined) return {};
-    const parsed: unknown = JSON.parse(content);
+    const parsed = this.parseClaudeMcpDocument(content);
     if (!this.isObject(parsed)) throw new Error(`${this.claudeMcpConfigPath} does not contain a JSON object`);
     return parsed;
+  }
+
+  private parseClaudeMcpDocument(content: string): unknown {
+    try {
+      return JSON.parse(content);
+    } catch (error) {
+      throw new Error(`${this.claudeMcpConfigPath} is not valid JSON (${(error as Error).message})`);
+    }
   }
 
   private asObject(value: unknown): Record<string, unknown> {
