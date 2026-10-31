@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test";
-import { mkdtemp, mkdir, writeFile, readFile, rm, access } from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, readFile, rm, access, stat } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 import { ClaudeAdapter } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
@@ -295,6 +295,92 @@ describe("ClaudeAdapter", () => {
       expect(doc.ui.theme).toBe("dark");
       expect(doc.mcpServers.Existing.command).toBe("old");
       expect(doc.mcpServers.New.command).toBe("npx");
+    });
+
+    describe("local-scope MCP servers for a project", () => {
+      const secretServer = {
+        name: "secret",
+        transport: "stdio" as const,
+        command: "npx",
+        args: ["x"],
+        env: { TOKEN: "resolved-secret" },
+        sourceFile: "mcp.json",
+      };
+      const emptyConfig = { rules: [], skills: [], agents: [], mcpServers: [secretServer] };
+
+      function createProjectScopedAdapter(): ClaudeAdapter {
+        return new ClaudeAdapter(projectPath, projectPath, resolve(projectPath, "CLAUDE.md"), projectPath);
+      }
+
+      async function readHomeDocument(): Promise<Record<string, any>> {
+        return JSON.parse(await readFile(resolve(homePath, ".claude.json"), "utf-8"));
+      }
+
+      it("writes servers under projects[<path>] in the home .claude.json and nothing into the project", async () => {
+        await writeFile(resolve(homePath, ".claude.json"), JSON.stringify({ ui: { theme: "dark" } }), "utf-8");
+
+        const writeResult = await createProjectScopedAdapter().writeConfig(emptyConfig);
+
+        expect(writeResult.success).toBe(true);
+        const doc = await readHomeDocument();
+        expect(doc.ui.theme).toBe("dark");
+        expect(doc.mcpServers).toBeUndefined();
+        expect(doc.projects[projectPath].mcpServers.secret.env.TOKEN).toBe("resolved-secret");
+        await expect(access(resolve(projectPath, ".claude.json"))).rejects.toBeDefined();
+      });
+
+      it("keeps other projects and other keys of the project entry", async () => {
+        await writeFile(
+          resolve(homePath, ".claude.json"),
+          JSON.stringify({
+            projects: {
+              "/other": { mcpServers: { keep: { command: "k" } } },
+              [projectPath]: { allowedTools: ["a"], mcpServers: { existing: { command: "old" } } },
+            },
+          }),
+          "utf-8"
+        );
+
+        await createProjectScopedAdapter().writeConfig(emptyConfig);
+
+        const doc = await readHomeDocument();
+        expect(doc.projects["/other"].mcpServers.keep.command).toBe("k");
+        expect(doc.projects[projectPath].allowedTools).toEqual(["a"]);
+        expect(doc.projects[projectPath].mcpServers.existing.command).toBe("old");
+        expect(doc.projects[projectPath].mcpServers.secret.command).toBe("npx");
+      });
+
+      it("replaces only the project servers when overriding", async () => {
+        await writeFile(
+          resolve(homePath, ".claude.json"),
+          JSON.stringify({
+            mcpServers: { userLevel: { command: "u" } },
+            projects: { [projectPath]: { mcpServers: { existing: { command: "old" } } } },
+          }),
+          "utf-8"
+        );
+
+        await createProjectScopedAdapter().writeConfig(emptyConfig, { cleanExistingArtifacts: true });
+
+        const doc = await readHomeDocument();
+        expect(doc.mcpServers.userLevel.command).toBe("u");
+        expect(Object.keys(doc.projects[projectPath].mcpServers)).toEqual(["secret"]);
+      });
+
+      it("creates a new home .claude.json readable by the owner only", async () => {
+        await createProjectScopedAdapter().writeConfig(emptyConfig);
+
+        expect((await stat(resolve(homePath, ".claude.json"))).mode & 0o777).toBe(0o600);
+      });
+
+      it("refuses to overwrite a home .claude.json it cannot parse", async () => {
+        await writeFile(resolve(homePath, ".claude.json"), "{ not json", "utf-8");
+
+        const writeResult = await createProjectScopedAdapter().writeConfig(emptyConfig);
+
+        expect(writeResult.success).toBe(false);
+        expect(await readFile(resolve(homePath, ".claude.json"), "utf-8")).toBe("{ not json");
+      });
     });
 
     it("keeps frontmatter agents unchanged and normalizes missing content fallback for rules", async () => {

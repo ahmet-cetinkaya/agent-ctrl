@@ -210,6 +210,68 @@ describe("Apply Profile Integration", () => {
     });
   });
 
+  describe("Claude project-scope MCP servers (GH #15)", () => {
+    let homePath: string;
+
+    beforeEach(async () => {
+      homePath = await mkdtemp(join(tmpdir(), "apply-profile-claude-home-"));
+      process.env.AGENT_CTRL_CLAUDE_HOME = homePath;
+    });
+
+    afterEach(async () => {
+      delete process.env.AGENT_CTRL_CLAUDE_HOME;
+      await rm(homePath, { recursive: true, force: true });
+    });
+
+    async function applyToClaudeProject() {
+      return new ApplyProfileCommand().execute({
+        projectPath,
+        profileNames: ["secrets"],
+        platform: "claude",
+        targetScope: "project",
+      });
+    }
+
+    it("stores resolved servers in the private local scope and keeps the secret out of the project", async () => {
+      await writeFile(join(homePath, ".claude.json"), JSON.stringify({ ui: { theme: "dark" } }), "utf-8");
+      await setupProfile("secrets", {
+        mcpServers: {
+          "server.json": JSON.stringify({
+            mcpServers: { api: { command: "npx", args: [], env: { TOKEN: "${TOKEN}" } } },
+          }),
+          ".env": "TOKEN=resolved-secret\n",
+        },
+      });
+
+      const result = await applyToClaudeProject();
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      const homeDocument = JSON.parse(await readFile(join(homePath, ".claude.json"), "utf-8"));
+      expect(homeDocument.ui.theme).toBe("dark");
+      expect(homeDocument.projects[projectPath].mcpServers.api.env.TOKEN).toBe("resolved-secret");
+      await expect(access(join(projectPath, ".claude.json"))).rejects.toBeDefined();
+      expect(result.data.fileChanges).toContain(join(homePath, ".claude.json"));
+      expect(result.data.fileChanges).not.toContain(join(projectPath, ".claude.json"));
+    });
+
+    it("reports a missing mcps/.env as a warning", async () => {
+      await setupProfile("secrets", {
+        mcpServers: {
+          "server.json": JSON.stringify({
+            mcpServers: { api: { command: "npx", args: [], env: { TOKEN: "${TOKEN}" } } },
+          }),
+        },
+      });
+
+      const result = await applyToClaudeProject();
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data.warnings.some((warning) => warning.includes("ENV_FILE_MISSING"))).toBe(true);
+    });
+  });
+
   describe("list command (T023)", () => {
     it("lists all available profiles", async () => {
       await mkdir(join(configRoot, "profiles", "debug"), { recursive: true });
