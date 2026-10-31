@@ -12,7 +12,7 @@ export class AgentRendererFactory {
     forgecode: new ForgeCodeAgentRenderer(),
     opencode: AgentRendererFactory.opencodeRenderer,
     // Kilo is an OpenCode fork sharing the same agent frontmatter schema
-    // (tools as a boolean map), so it reuses the OpenCode renderer.
+    // (`permission` map), so it reuses the OpenCode renderer.
     kilo: AgentRendererFactory.opencodeRenderer,
     pi: new PiAgentRenderer(),
     // The senpi / OmO Native forks keep pi's agent frontmatter schema (pi-subagents)

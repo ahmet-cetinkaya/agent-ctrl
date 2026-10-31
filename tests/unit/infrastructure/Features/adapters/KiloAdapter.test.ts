@@ -36,7 +36,7 @@ describe("KiloAdapter", () => {
     expect(result.warnings!.some((w) => w.includes("Commands are being written as skills"))).toBe(true);
   });
 
-  it("normalizes a Claude-style tools array in agent frontmatter into an object", async () => {
+  it("renders a Claude-style tools array in agent frontmatter as a deny-first permission map", async () => {
     await writeFile(
       resolve(projectPath, ".agent-ctrl", "agents", "architect.md"),
       [
@@ -55,10 +55,11 @@ describe("KiloAdapter", () => {
 
     for (const root of [".kilo", ".kilocode"]) {
       const content = await readFile(resolve(projectPath, root, "agents", "architect.md"), "utf-8");
-      expect(content).toContain("read: true");
-      expect(content).toContain("grep: true");
-      expect(content).toContain("glob: true");
-      expect(content).not.toContain('tools: ["Read"');
+      expect(content).toContain("read: allow");
+      expect(content).toContain("grep: allow");
+      expect(content).toContain("glob: allow");
+      expect(content).toContain('"*": deny');
+      expect(content).not.toContain("tools:");
     }
   });
 
