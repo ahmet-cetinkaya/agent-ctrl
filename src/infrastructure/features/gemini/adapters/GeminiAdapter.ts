@@ -10,7 +10,10 @@ import type {
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
   countUnsupportedArtifacts,
+  GEMINI_ENV_REFERENCES,
   mergeJsonObjectFile,
+  prepareMcpServersForScope,
+  withoutMcpServers,
   renderSettingsMcpConfig,
   resolveApplyScope,
   syncCommandsAsSkills,
@@ -130,10 +133,11 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
       }
     }
 
+    const mcp = prepareMcpServersForScope(target.scope, source.mcpServers, GEMINI_ENV_REFERENCES, "gemini");
     if (source.mcpServers.length > 0) {
       const settingsResult = await mergeJsonObjectFile(
         resolve(scopeRoot, "settings.json"),
-        (existing) => renderSettingsMcpConfig(existing, source.mcpServers),
+        (existing) => renderSettingsMcpConfig(withoutMcpServers(existing, mcp.withheldNames), mcp.servers),
         Boolean(request.dryRun)
       );
       changed = settingsResult.changed || changed;
@@ -151,6 +155,7 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
       warnings: [
         ...source.warnings,
         ...new Set(modelWarnings),
+        ...mcp.warnings,
         ...countUnsupportedArtifacts("Gemini", source, ["agents"]),
       ],
     };

@@ -11,6 +11,9 @@ import { AgentRendererFactory } from "@/infrastructure/features/apply/adapters/A
 import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import {
   mergeJsonObjectFile,
+  OPENCODE_ENV_REFERENCES,
+  prepareMcpServersForScope,
+  withoutMcpServers,
   renderOpencodeMcpConfig,
   resolveApplyScope,
   syncAgentsAsMarkdown,
@@ -97,6 +100,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
     fileChanges.push(...rulesResult.paths);
 
     const modelWarnings: string[] = [];
+    const mcp = prepareMcpServersForScope(scope, source.mcpServers, OPENCODE_ENV_REFERENCES, "kilo");
     for (const targetRoot of targetRoots) {
       // Kilo does not support a native commands directory — write commands as skills instead.
       if (source.commands.length > 0) {
@@ -145,7 +149,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
       if (source.mcpServers.length > 0) {
         const mcpResult = await mergeJsonObjectFile(
           resolve(targetRoot, "kilo.jsonc"),
-          (existing) => renderOpencodeMcpConfig(existing, source.mcpServers),
+          (existing) => renderOpencodeMcpConfig(withoutMcpServers(existing, mcp.withheldNames), mcp.servers),
           Boolean(request.dryRun)
         );
         changed = mcpResult.changed || changed;
@@ -162,7 +166,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
       message:
         "Applied Kilo rules, workflows, skills, agents, and MCP servers to both .kilo and .kilocode directories.",
       fileChanges,
-      warnings: [...source.warnings, ...new Set(modelWarnings)],
+      warnings: [...source.warnings, ...new Set(modelWarnings), ...mcp.warnings],
     };
   }
 }
