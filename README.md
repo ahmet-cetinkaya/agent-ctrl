@@ -137,7 +137,7 @@ Unsupported surfaces drop the field and report why in the apply warnings. The `m
 
 ##### Claude tier aliases on OpenCode and Kilo
 
-`model: sonnet|opus|haiku` is valid in Claude Code only; OpenCode and Kilo need a `provider/model` route. Map each alias to a route in `.agent-ctrl/.env` with `AGENT_CTRL_<PLATFORM>_MODEL_<ALIAS>`, so shared artifacts need no per-file `models.<platform>` override:
+`model: sonnet|opus|haiku` is valid in Claude Code only; OpenCode and Kilo need a `provider/model` route. Map each alias to a route in `.agent-ctrl/.env` (the project file and the user file under `AGENT_CTRL_HOME` are both read; project values win per key) with `AGENT_CTRL_<PLATFORM>_MODEL_<ALIAS>`, so shared artifacts need no per-file `models.<platform>` override:
 
 ```bash
 AGENT_CTRL_OPENCODE_MODEL_SONNET=omniroute/combo/claude-sonnet
