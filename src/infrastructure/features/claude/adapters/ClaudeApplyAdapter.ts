@@ -76,9 +76,11 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
     const claudeRoot = resolve(target.configPath, "..");
     const fileChanges: string[] = [];
 
-    if (source.rules.length > 0) {
+    const scopedRulePaths = await adapter.scopedRuleFilePaths(desiredConfig.data);
+    if (source.rules.length > scopedRulePaths.length) {
       fileChanges.push(target.configPath);
     }
+    fileChanges.push(...scopedRulePaths);
 
     const skillPaths = (
       await Promise.all(

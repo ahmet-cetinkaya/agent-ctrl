@@ -155,13 +155,14 @@ _Example `.mcp.json`:_
 
 When you run `agent-ctrl apply claude`, the following transformations occur:
 
-| Artifact Type   | Source (`.agent-ctrl/`)  | Target (`~/.claude/` or `.claude/`) | Transformation                         |
-| --------------- | ------------------------ | ----------------------------------- | -------------------------------------- |
-| **Rules**       | `rules/*.md`             | `CLAUDE.md` (managed section)       | Injected between HTML comment markers  |
-| **Skills**      | `skills/<name>/SKILL.md` | `skills/<name>/`                    | Full directory copy (filesystem-based) |
-| **Commands**    | `commands/*.md`          | `commands/<name>/`                  | Rendered as markdown files             |
-| **MCP Servers** | `mcps/*.json`            | `.claude.json`                      | Merged into `mcpServers` object        |
-| **Agents**      | `agents/*.md`            | `agents/<name>/`                    | Converted with YAML frontmatter        |
+| Artifact Type    | Source (`.agent-ctrl/`)                | Target (`~/.claude/` or `.claude/`) | Transformation                                                                                             |
+| ---------------- | -------------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **Rules**        | `rules/*.md`                           | `CLAUDE.md` (managed section)       | Injected between HTML comment markers                                                                      |
+| **Scoped rules** | `rules/*.md` with `paths:` frontmatter | `rules/agent-ctrl/<name>.md`        | Written as files so Claude Code applies the `paths:` scope; agent-ctrl replaces this folder on every apply |
+| **Skills**       | `skills/<name>/SKILL.md`               | `skills/<name>/`                    | Full directory copy (filesystem-based)                                                                     |
+| **Commands**     | `commands/*.md`                        | `commands/<name>/`                  | Rendered as markdown files                                                                                 |
+| **MCP Servers**  | `mcps/*.json`                          | `.claude.json`                      | Merged into `mcpServers` object                                                                            |
+| **Agents**       | `agents/*.md`                          | `agents/<name>/`                    | Converted with YAML frontmatter                                                                            |
 
 ### Shared Architecture
 
@@ -169,6 +170,7 @@ When you run `agent-ctrl apply claude`, the following transformations occur:
 
 - Skills placed in `~/.claude/skills/` are loadable via `/skill-name` in CLI and the **Code tab** of the Desktop App
 - Rules injected into `~/.claude/CLAUDE.md` apply to all sessions
+- Rules with `paths:` frontmatter go to `~/.claude/rules/agent-ctrl/` (or `.claude/rules/agent-ctrl/` in a project) and load only for matching files. Keep your own rules outside the `agent-ctrl/` folder; agent-ctrl deletes and rewrites it on every apply.
 - MCP servers configured in `~/.claude.json` are accessible to both CLI and Desktop
 
 ### Desktop App Limitations
