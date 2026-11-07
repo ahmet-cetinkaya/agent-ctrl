@@ -91,7 +91,7 @@ export function createMcpListCommand(): Command {
         return;
       }
 
-      const { servers, report, catalogState } = result.data;
+      const { servers, referenceOnlyServers, report, catalogState } = result.data;
       const issues = report.fileResults.flatMap((entry) => entry.issues);
       const { managedById, catalogById } = catalogState;
 
@@ -110,6 +110,10 @@ export function createMcpListCommand(): Command {
               configRoot: configRootPath,
               mcpDir,
               servers: safeServers,
+              referenceOnlyServers: referenceOnlyServers.map((server) => ({
+                ...server,
+                env: server.env ? redactEnvVars(server.env) : undefined,
+              })),
               report,
             },
             null,
@@ -139,6 +143,13 @@ export function createMcpListCommand(): Command {
           })
           .join("\n");
         LogService.note(list, `MCP servers (${servers.length}):`);
+      }
+
+      if (referenceOnlyServers.length > 0) {
+        LogService.note(
+          referenceOnlyServers.map((server) => `  ${server.serverId}`).join("\n"),
+          `Reference only, a variable is missing from mcps/.env (${referenceOnlyServers.length}):`
+        );
       }
 
       if (issues.length > 0) {

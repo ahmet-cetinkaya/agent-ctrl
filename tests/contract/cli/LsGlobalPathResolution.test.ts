@@ -117,6 +117,7 @@ describe("LS command path resolution", () => {
         success: true,
         data: {
           servers: [],
+          referenceOnlyServers: [],
           report: {
             startedAt: "",
             finishedAt: "",

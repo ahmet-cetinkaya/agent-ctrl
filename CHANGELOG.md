@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- MCP: a server whose `${VAR}` is missing from `mcps/.env` (or whose `mcps/.env` is missing) is no longer dropped for the project-scope configs that read variables at run time. OpenCode and Kilo (`{env:VAR}`), Gemini CLI and Qwen Code (`env` values), and `pi-mcp-adapter` (`env` and `url`) get the reference, and `agent-ctrl mcp ls` lists the server as reference only with a warning. User scope and the platforms without run-time references still skip the server with a warning
+
 ## [1.0.0] - 2026-11-01
 
 ### Added

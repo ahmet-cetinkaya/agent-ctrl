@@ -22,6 +22,9 @@ import { McpServerConflictValidator } from "@/infrastructure/features/mcp/valida
 import { McpLoadReportBuilder } from "@/infrastructure/features/mcp/reporting/McpLoadReportBuilder";
 import { McpErrorFormatter } from "@/infrastructure/features/mcp/reporting/McpErrorFormatter";
 
+/** The only errors a platform with run-time variable references can work around. */
+const MISSING_VALUE_ISSUE_CODES: ReadonlySet<string> = new Set(["ENV_VAR_UNRESOLVED", "ENV_FILE_MISSING"]);
+
 interface AggregatedCandidate {
   serverId: string;
   filePath: string;
@@ -30,6 +33,8 @@ interface AggregatedCandidate {
   command?: string;
   args?: string[];
   cwd?: string;
+  /** The `cwd` as written, before `${VAR}` placeholders were resolved. */
+  unresolvedCwd?: string;
   resolvedEnv: Record<string, string>;
   // HTTP transport fields
   url?: string;
@@ -85,6 +90,7 @@ export class McpServerAggregator implements IMcpConfigLoader {
       const fileResults = new Map<string, McpFileResult>();
       const candidates: AggregatedCandidate[] = [];
       const loadedServers: McpLoadedServer[] = [];
+      const referenceOnlyServers: McpLoadedServer[] = [];
 
       for (const filePath of files) {
         const fileResult = this.reportBuilder.createFileResult(filePath);
@@ -218,6 +224,7 @@ export class McpServerAggregator implements IMcpConfigLoader {
               command: resolvedCommand,
               args: resolvedArgs,
               cwd: typeof resolvedRaw.cwd === "string" ? resolvedRaw.cwd : validated.cwd,
+              unresolvedCwd: typeof validated.rawConfig.cwd === "string" ? validated.rawConfig.cwd : undefined,
               resolvedEnv,
               unresolved,
               issues: candidateIssues,
@@ -245,8 +252,18 @@ export class McpServerAggregator implements IMcpConfigLoader {
           continue;
         }
 
-        for (const issue of candidate.issues) {
+        const isReferenceOnly = this.isMissingValueOnly(candidate.issues);
+        const reportedIssues = isReferenceOnly
+          ? candidate.issues.map((issue) => this.toReferenceOnlyWarning(issue))
+          : candidate.issues;
+        for (const issue of reportedIssues) {
           this.addIssue(fileResult, issue);
+        }
+
+        if (isReferenceOnly) {
+          referenceOnlyServers.push(this.toReferenceOnlyServer(candidate));
+          fileResult.loadedServerCount += 1;
+          continue;
         }
 
         if (candidate.issues.some((issue) => issue.severity === "error")) {
@@ -284,6 +301,7 @@ export class McpServerAggregator implements IMcpConfigLoader {
 
       const result: McpLoadResult = {
         servers: loadedServers,
+        referenceOnlyServers,
         report,
       };
 
@@ -297,6 +315,39 @@ export class McpServerAggregator implements IMcpConfigLoader {
       // Re-throw unexpected errors (programming errors like TypeError, ReferenceError)
       throw error;
     }
+  }
+
+  private isMissingValueOnly(issues: McpIssue[]): boolean {
+    const errors = issues.filter((issue) => issue.severity === "error");
+    return errors.length > 0 && errors.every((issue) => MISSING_VALUE_ISSUE_CODES.has(issue.code));
+  }
+
+  private toReferenceOnlyWarning(issue: McpIssue): McpIssue {
+    if (!MISSING_VALUE_ISSUE_CODES.has(issue.code)) return issue;
+    return {
+      ...issue,
+      severity: "warning",
+      message: `${issue.message}; the server is written only to project configs that resolve it at run time`,
+    };
+  }
+
+  /**
+   * Keeps the raw fields only: a resolved value of another variable must not travel with the server.
+   * No platform resolves a variable in `cwd` at run time, so a `cwd` with a placeholder is dropped.
+   */
+  private toReferenceOnlyServer(candidate: AggregatedCandidate): McpLoadedServer {
+    const { command, args, env, url } = candidate.unresolved;
+    return {
+      serverId: candidate.serverId,
+      filePath: candidate.filePath,
+      transport: candidate.transport,
+      command,
+      args,
+      cwd: candidate.unresolvedCwd?.includes("${") ? undefined : candidate.cwd,
+      env,
+      url,
+      unresolved: candidate.unresolved,
+    };
   }
 
   private toUnresolvedFields(rawConfig: Record<string, unknown>): McpUnresolvedFields {

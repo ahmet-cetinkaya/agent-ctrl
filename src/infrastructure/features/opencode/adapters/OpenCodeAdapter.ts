@@ -11,6 +11,7 @@ import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/Appl
 import {
   mergeJsonObjectFile,
   OPENCODE_ENV_REFERENCES,
+  hasMcpChanges,
   prepareMcpServersForScope,
   withoutMcpServers,
   renderOpencodeMcpConfig,
@@ -66,6 +67,7 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
           agents: request.mergedSnapshot.agents,
           commands: request.mergedSnapshot.commands,
           mcpServers: request.mergedSnapshot.mcpServers,
+          referenceOnlyMcpServers: request.mergedSnapshot.referenceOnlyMcpServers,
           warnings: request.mergedSnapshot.warnings,
         }
       : await this.sourceLoader.load(request.projectPath);
@@ -152,8 +154,14 @@ export class OpenCodeAdapter implements IApplyPlatformAdapter {
       modelWarnings.push(...agentsResult.warnings);
     }
 
-    const mcp = prepareMcpServersForScope(target.scope, source.mcpServers, OPENCODE_ENV_REFERENCES, "opencode");
-    if (source.mcpServers.length > 0) {
+    const mcp = prepareMcpServersForScope(
+      target.scope,
+      source.mcpServers,
+      OPENCODE_ENV_REFERENCES,
+      "opencode",
+      source.referenceOnlyMcpServers
+    );
+    if (hasMcpChanges(source.mcpServers, mcp)) {
       const mcpResult = await mergeJsonObjectFile(
         mcpConfigPath,
         (existing) => renderOpencodeMcpConfig(withoutMcpServers(existing, mcp.withheldNames), mcp.servers),

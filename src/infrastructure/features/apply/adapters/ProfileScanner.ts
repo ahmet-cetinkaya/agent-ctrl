@@ -1,6 +1,10 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { ApplyMcpServer, ApplySourceSnapshot } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
+import {
+  toApplyMcpServer,
+  type ApplyMcpServer,
+  type ApplySourceSnapshot,
+} from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 import type { Rule } from "@/core/domain/shared/entities/Rule";
 import type { Skill } from "@/core/domain/shared/entities/Skill";
 import type { Agent } from "@/core/domain/shared/entities/Agent";
@@ -46,6 +50,7 @@ export class ProfileScanner {
       agents: agentsResult.artifacts,
       commands: commandResult.artifacts,
       mcpServers: mcpResult.servers,
+      referenceOnlyMcpServers: mcpResult.referenceOnlyServers,
       warnings,
     };
   }
@@ -93,48 +98,31 @@ export class ProfileScanner {
     return this.commandScanner.scan(path);
   }
 
-  private async loadMcpIfExists(profilePath: string): Promise<{ servers: ApplyMcpServer[]; warnings: string[] }> {
+  private async loadMcpIfExists(
+    profilePath: string
+  ): Promise<{ servers: ApplyMcpServer[]; referenceOnlyServers: ApplyMcpServer[]; warnings: string[] }> {
     const mcpsPath = resolve(profilePath, "mcps");
     if (!(await this.directoryExists(mcpsPath))) {
-      return { servers: [], warnings: [] };
+      return { servers: [], referenceOnlyServers: [], warnings: [] };
     }
 
     try {
       const result = await this.mcpLoader.load(profilePath);
       if (!result.success) {
-        return { servers: [], warnings: [`MCP load failed: ${result.error.message}`] };
+        return { servers: [], referenceOnlyServers: [], warnings: [`MCP load failed: ${result.error.message}`] };
       }
 
-      const servers: ApplyMcpServer[] = result.data.servers.map((server) => {
-        if (server.transport === "http") {
-          return {
-            name: server.serverId,
-            transport: "http" as const,
-            url: server.url,
-            sourceFile: server.filePath,
-            unresolved: server.unresolved,
-          };
-        }
-        return {
-          name: server.serverId,
-          transport: "stdio" as const,
-          command: server.command,
-          args: server.args,
-          cwd: server.cwd,
-          env: server.env,
-          sourceFile: server.filePath,
-          unresolved: server.unresolved,
-        };
-      });
+      const servers = result.data.servers.map(toApplyMcpServer);
+      const referenceOnlyServers = result.data.referenceOnlyServers.map(toApplyMcpServer);
 
       const warnings = result.data.report.fileResults.flatMap((file) =>
         file.issues.map((issue) => `${issue.code}: ${issue.message} (${issue.filePath})`)
       );
 
-      return { servers, warnings };
+      return { servers, referenceOnlyServers, warnings };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      return { servers: [], warnings: [`MCP load failed: ${message}`] };
+      return { servers: [], referenceOnlyServers: [], warnings: [`MCP load failed: ${message}`] };
     }
   }
 

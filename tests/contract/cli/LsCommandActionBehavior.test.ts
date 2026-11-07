@@ -12,12 +12,7 @@ import { ListAgentsQuery } from "@/core/application/features/agent/queries/ListA
 import { ListCommandsQuery } from "@/core/application/features/command/queries/ListCommandsQuery";
 import { ListMcpServersQuery } from "@/core/application/features/mcp/queries/ListMcpServersQuery";
 import { UserError } from "@/core/domain/shared/errors/UserError";
-import {
-  captureConsole,
-  cleanupTempDir,
-  createTempConfigRoot,
-  mockProcessExit,
-} from "../../helpers/catalogTestUtils";
+import { captureConsole, cleanupTempDir, createTempConfigRoot, mockProcessExit } from "../../helpers/catalogTestUtils";
 
 describe("LS command action behavior", () => {
   let homePath: string;
@@ -272,6 +267,25 @@ describe("LS command action behavior", () => {
     expect(allOutput.includes("MCP servers (1):")).toBe(true);
     expect(allOutput.includes("  local")).toBe(true);
     expect(allOutput.includes("Issues:")).toBe(true);
+  });
+
+  it("lists a server with a missing variable as reference only, not as failed", async () => {
+    const mcpDir = resolve(configRootPath, "mcps");
+    await mkdir(mcpDir, { recursive: true });
+    await writeFile(
+      resolve(mcpDir, "servers.json"),
+      JSON.stringify({
+        mcpServers: { needsKey: { command: "node", args: [], env: { API_TOKEN: "${MISSING_TOKEN}" } } },
+      })
+    );
+
+    await createMcpCommand().parseAsync(["node", "test", "ls"]);
+
+    const allOutput = consoleCapture.logs.join(" ");
+    expect(allOutput.includes("Reference only")).toBe(true);
+    expect(allOutput.includes("needsKey")).toBe(true);
+    expect(allOutput.includes("[warning] needsKey")).toBe(true);
+    expect(allOutput.includes("[error]")).toBe(false);
   });
 
   it("renders empty non-json mcp ls output", async () => {

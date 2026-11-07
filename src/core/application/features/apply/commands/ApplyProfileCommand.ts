@@ -128,6 +128,7 @@ export class ApplyProfileCommand {
           agents: profileSnapshot.agents,
           commands: profileSnapshot.commands,
           mcpServers: profileSnapshot.mcpServers,
+          referenceOnlyMcpServers: profileSnapshot.referenceOnlyMcpServers,
           warnings: profileSnapshot.warnings,
         },
       });
@@ -240,6 +241,11 @@ export class ApplyProfileCommand {
       mcpServers: combine(
         "MCP server",
         (snapshot) => snapshot.mcpServers,
+        (server) => server.name
+      ),
+      referenceOnlyMcpServers: combine(
+        "MCP server",
+        (snapshot) => snapshot.referenceOnlyMcpServers ?? [],
         (server) => server.name
       ),
       warnings: [...snapshots.flatMap(({ snapshot }) => snapshot.warnings), ...warnings],

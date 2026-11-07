@@ -12,6 +12,7 @@ import { ApplySourceLoader } from "@/infrastructure/features/apply/adapters/Appl
 import {
   mergeJsonObjectFile,
   OPENCODE_ENV_REFERENCES,
+  hasMcpChanges,
   prepareMcpServersForScope,
   withoutMcpServers,
   renderOpencodeMcpConfig,
@@ -62,6 +63,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
           agents: request.mergedSnapshot.agents,
           commands: request.mergedSnapshot.commands,
           mcpServers: request.mergedSnapshot.mcpServers,
+          referenceOnlyMcpServers: request.mergedSnapshot.referenceOnlyMcpServers,
           warnings: request.mergedSnapshot.warnings,
         }
       : await this.sourceLoader.load(request.projectPath);
@@ -100,7 +102,13 @@ export class KiloAdapter implements IApplyPlatformAdapter {
     fileChanges.push(...rulesResult.paths);
 
     const modelWarnings: string[] = [];
-    const mcp = prepareMcpServersForScope(scope, source.mcpServers, OPENCODE_ENV_REFERENCES, "kilo");
+    const mcp = prepareMcpServersForScope(
+      scope,
+      source.mcpServers,
+      OPENCODE_ENV_REFERENCES,
+      "kilo",
+      source.referenceOnlyMcpServers
+    );
     for (const targetRoot of targetRoots) {
       // Kilo does not support a native commands directory — write commands as skills instead.
       if (source.commands.length > 0) {
@@ -146,7 +154,7 @@ export class KiloAdapter implements IApplyPlatformAdapter {
         modelWarnings.push(...agentsResult.warnings);
       }
 
-      if (source.mcpServers.length > 0) {
+      if (hasMcpChanges(source.mcpServers, mcp)) {
         const mcpResult = await mergeJsonObjectFile(
           resolve(targetRoot, "kilo.jsonc"),
           (existing) => renderOpencodeMcpConfig(withoutMcpServers(existing, mcp.withheldNames), mcp.servers),

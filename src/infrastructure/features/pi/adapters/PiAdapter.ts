@@ -175,6 +175,7 @@ export class PiAdapter implements IApplyPlatformAdapter {
           agents: request.mergedSnapshot.agents,
           commands: request.mergedSnapshot.commands,
           mcpServers: request.mergedSnapshot.mcpServers,
+          referenceOnlyMcpServers: request.mergedSnapshot.referenceOnlyMcpServers,
           warnings: request.mergedSnapshot.warnings,
         }
       : await this.sourceLoader.load(request.projectPath);
@@ -301,7 +302,7 @@ export class PiAdapter implements IApplyPlatformAdapter {
     // otherwise MCP is dropped with an actionable warning.
     let mcpAppliedViaPlugin = false;
     let mcpAppliedNatively = false;
-    if (source.mcpServers.length > 0) {
+    if (source.mcpServers.length > 0 || (source.referenceOnlyMcpServers ?? []).length > 0) {
       const pluginInstalled = this.brand.builtinMcp
         ? true
         : await this.isPackageInstalled(PiAdapter.MCP_ADAPTER_PACKAGE, request.projectPath, userRoot, target.scope);
@@ -321,7 +322,8 @@ export class PiAdapter implements IApplyPlatformAdapter {
           target.scope,
           source.mcpServers,
           this.brand.builtinMcp ? NO_MCP_ENV_REFERENCES : PI_MCP_ADAPTER_ENV_REFERENCES,
-          this.platformName
+          this.platformName,
+          source.referenceOnlyMcpServers
         );
         source.warnings.push(...mcp.warnings);
         const mcpResult = await mergeJsonObjectFile(

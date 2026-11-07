@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import { resolve } from "node:path";
-import type { McpUnresolvedFields } from "@/core/domain/shared/interfaces/IMcpConfigLoader";
+import type { McpLoadedServer, McpUnresolvedFields } from "@/core/domain/shared/interfaces/IMcpConfigLoader";
 import type { Rule } from "@/core/domain/shared/entities/Rule";
 import type { Skill } from "@/core/domain/shared/entities/Skill";
 import type { Agent } from "@/core/domain/shared/entities/Agent";
@@ -26,12 +26,36 @@ export interface ApplyMcpServer {
   unresolved?: McpUnresolvedFields;
 }
 
+export function toApplyMcpServer(server: McpLoadedServer): ApplyMcpServer {
+  if (server.transport === "http") {
+    return {
+      name: server.serverId,
+      transport: "http",
+      url: server.url,
+      sourceFile: server.filePath,
+      unresolved: server.unresolved,
+    };
+  }
+  return {
+    name: server.serverId,
+    transport: "stdio",
+    command: server.command,
+    args: server.args,
+    cwd: server.cwd,
+    env: server.env,
+    sourceFile: server.filePath,
+    unresolved: server.unresolved,
+  };
+}
+
 export interface ApplySourceSnapshot {
   rules: Rule[];
   skills: Skill[];
   agents: Agent[];
   commands: CommandArtifact[];
   mcpServers: ApplyMcpServer[];
+  /** Servers missing a value in mcps/.env; only a project file that writes run-time references may use them. */
+  referenceOnlyMcpServers?: ApplyMcpServer[];
   warnings: string[];
 }
 
@@ -79,27 +103,8 @@ export class ApplySourceLoader {
       skills: skillResult.artifacts,
       agents: agentResult.artifacts,
       commands: commandResult.artifacts,
-      mcpServers: mcpResult.data.servers.map((server) => {
-        if (server.transport === "http") {
-          return {
-            name: server.serverId,
-            transport: "http" as const,
-            url: server.url,
-            sourceFile: server.filePath,
-            unresolved: server.unresolved,
-          };
-        }
-        return {
-          name: server.serverId,
-          transport: "stdio" as const,
-          command: server.command,
-          args: server.args,
-          cwd: server.cwd,
-          env: server.env,
-          sourceFile: server.filePath,
-          unresolved: server.unresolved,
-        };
-      }),
+      mcpServers: mcpResult.data.servers.map(toApplyMcpServer),
+      referenceOnlyMcpServers: mcpResult.data.referenceOnlyServers.map(toApplyMcpServer),
       warnings,
     };
   }
