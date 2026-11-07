@@ -54,6 +54,11 @@ export interface McpLoadReport {
 
 export interface McpLoadResult {
   servers: McpLoadedServer[];
+  /**
+   * Servers that only lack a value in mcps/.env. They carry the raw `${VAR}` fields and no resolved
+   * value, so only a platform that writes run-time references into a project file may use them.
+   */
+  referenceOnlyServers: McpLoadedServer[];
   report: McpLoadReport;
 }
 

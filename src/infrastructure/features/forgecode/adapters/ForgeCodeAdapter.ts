@@ -12,6 +12,7 @@ import { AgentRendererFactory } from "@/infrastructure/features/apply/adapters/A
 import {
   mergeJsonObjectFile,
   NO_MCP_ENV_REFERENCES,
+  hasMcpChanges,
   prepareMcpServersForScope,
   withoutMcpServers,
   renderForgeCodeMcpConfig,
@@ -63,6 +64,7 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
           agents: request.mergedSnapshot.agents,
           commands: request.mergedSnapshot.commands,
           mcpServers: request.mergedSnapshot.mcpServers,
+          referenceOnlyMcpServers: request.mergedSnapshot.referenceOnlyMcpServers,
           warnings: request.mergedSnapshot.warnings,
         }
       : await this.sourceLoader.load(request.projectPath);
@@ -148,8 +150,14 @@ export class ForgeCodeAdapter implements IApplyPlatformAdapter {
     }
 
     // Sync MCP servers to .mcp.json
-    const mcp = prepareMcpServersForScope(target.scope, source.mcpServers, NO_MCP_ENV_REFERENCES, "forge");
-    if (source.mcpServers.length > 0) {
+    const mcp = prepareMcpServersForScope(
+      target.scope,
+      source.mcpServers,
+      NO_MCP_ENV_REFERENCES,
+      "forge",
+      source.referenceOnlyMcpServers
+    );
+    if (hasMcpChanges(source.mcpServers, mcp)) {
       const mcpResult = await mergeJsonObjectFile(
         mcpConfigPath,
         (existing) => renderForgeCodeMcpConfig(withoutMcpServers(existing, mcp.withheldNames), mcp.servers),

@@ -12,6 +12,7 @@ import {
   countUnsupportedArtifacts,
   GEMINI_ENV_REFERENCES,
   mergeJsonObjectFile,
+  hasMcpChanges,
   prepareMcpServersForScope,
   withoutMcpServers,
   renderSettingsMcpConfig,
@@ -56,6 +57,7 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
           agents: request.mergedSnapshot.agents,
           commands: request.mergedSnapshot.commands,
           mcpServers: request.mergedSnapshot.mcpServers,
+          referenceOnlyMcpServers: request.mergedSnapshot.referenceOnlyMcpServers,
           warnings: request.mergedSnapshot.warnings,
         }
       : await this.sourceLoader.load(request.projectPath);
@@ -133,8 +135,14 @@ export class GeminiAdapter implements IApplyPlatformAdapter {
       }
     }
 
-    const mcp = prepareMcpServersForScope(target.scope, source.mcpServers, GEMINI_ENV_REFERENCES, "gemini");
-    if (source.mcpServers.length > 0) {
+    const mcp = prepareMcpServersForScope(
+      target.scope,
+      source.mcpServers,
+      GEMINI_ENV_REFERENCES,
+      "gemini",
+      source.referenceOnlyMcpServers
+    );
+    if (hasMcpChanges(source.mcpServers, mcp)) {
       const settingsResult = await mergeJsonObjectFile(
         resolve(scopeRoot, "settings.json"),
         (existing) => renderSettingsMcpConfig(withoutMcpServers(existing, mcp.withheldNames), mcp.servers),

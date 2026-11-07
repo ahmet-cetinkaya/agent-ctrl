@@ -514,14 +514,22 @@ export interface ScopedMcpServers {
  * Prepares the servers for the config file of the given scope. A project file is meant to be
  * committed, so there each `${VAR}` becomes the platform's run-time reference, and a server with a
  * placeholder in a field the platform cannot resolve is left out: its resolved value is a secret.
+ * A reference-only server, whose value is missing from mcps/.env, is written the same way at project
+ * scope. At user scope it is left out, because that file stores resolved values.
  */
 export function prepareMcpServersForScope(
   scope: ApplyPlatformScope,
   servers: ApplyMcpServer[],
   support: McpEnvReferenceSupport,
-  platformLabel: string
+  platformLabel: string,
+  referenceOnlyServers: ApplyMcpServer[] = []
 ): ScopedMcpServers {
-  if (scope !== "project") return { servers, withheldNames: [], warnings: [] };
+  const pendingReferenceOnly = referenceOnlyServers.filter(
+    (candidate) => !servers.some((server) => server.name === candidate.name)
+  );
+  if (scope !== "project") {
+    return { servers, withheldNames: [], warnings: describeLeftOutReferenceOnly(pendingReferenceOnly, "user") };
+  }
 
   const written: ApplyMcpServer[] = [];
   const withheldNames: string[] = [];
@@ -530,11 +538,38 @@ export function prepareMcpServersForScope(
     if (referenced) written.push(referenced);
     else withheldNames.push(server.name);
   }
+
+  const leftOutReferenceOnly: ApplyMcpServer[] = [];
+  for (const server of pendingReferenceOnly) {
+    const referenced = withEnvReferences(server, support);
+    if (referenced) written.push(referenced);
+    else leftOutReferenceOnly.push(server);
+  }
   return {
     servers: written,
-    withheldNames,
-    warnings: describeProjectMcpServers(written, withheldNames, platformLabel),
+    withheldNames: [...withheldNames, ...leftOutReferenceOnly.map((server) => server.name)],
+    warnings: [
+      ...describeProjectMcpServers(written, withheldNames, platformLabel),
+      ...describeLeftOutReferenceOnly(leftOutReferenceOnly, "project"),
+    ],
   };
+}
+
+/** True when the MCP config file has something to write or a stale entry to remove. */
+export function hasMcpChanges(servers: ApplyMcpServer[], prepared: ScopedMcpServers): boolean {
+  return servers.length > 0 || prepared.servers.length > 0 || prepared.withheldNames.length > 0;
+}
+
+function describeLeftOutReferenceOnly(servers: ApplyMcpServer[], scope: ApplyPlatformScope): string[] {
+  if (servers.length === 0) return [];
+  const names = servers.map((server) => server.name).join(", ");
+  const reason =
+    scope === "project"
+      ? "this platform cannot read their ${VAR} values from the environment in a project file"
+      : "a user config stores resolved values";
+  return [
+    `Skipped MCP servers with a variable missing from mcps/.env: ${names}. Define the variable in mcps/.env; ${reason}.`,
+  ];
 }
 
 /** OpenCode and Kilo keep MCP servers under `mcp`; the other JSON platforms under `mcpServers`. */

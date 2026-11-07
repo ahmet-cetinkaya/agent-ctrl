@@ -20,6 +20,7 @@ export class ProfileMerger {
     const agents = this.mergeAgents(base.agents, profile.agents);
     const commands = this.mergeCommands(base.commands, profile.commands);
     const mcpServers = this.mergeMcpServers(base.mcpServers, profile.mcpServers);
+    const referenceOnlyMcpServers = this.mergeReferenceOnlyMcpServers(base, profile, mcpServers);
     const warnings = [...base.warnings, ...profile.warnings];
 
     const isEmpty =
@@ -27,7 +28,8 @@ export class ProfileMerger {
       profile.skills.length === 0 &&
       profile.agents.length === 0 &&
       profile.commands.length === 0 &&
-      profile.mcpServers.length === 0;
+      profile.mcpServers.length === 0 &&
+      (profile.referenceOnlyMcpServers ?? []).length === 0;
 
     return {
       snapshot: {
@@ -36,6 +38,7 @@ export class ProfileMerger {
         agents,
         commands,
         mcpServers,
+        referenceOnlyMcpServers,
         warnings,
       },
       isEmpty,
@@ -94,6 +97,20 @@ export class ProfileMerger {
     }
 
     return [...baseByName.values()];
+  }
+
+  /** A server with a resolved value wins over a reference-only one of the same name. */
+  private mergeReferenceOnlyMcpServers(
+    base: ApplySourceSnapshot,
+    profile: ApplySourceSnapshot,
+    resolved: ApplyMcpServer[]
+  ): ApplyMcpServer[] {
+    const resolvedNames = new Set(resolved.map((server) => server.name));
+    const byName = new Map<string, ApplyMcpServer>();
+    for (const server of [...(base.referenceOnlyMcpServers ?? []), ...(profile.referenceOnlyMcpServers ?? [])]) {
+      if (!resolvedNames.has(server.name)) byName.set(server.name, server);
+    }
+    return [...byName.values()];
   }
 
   private mergeMcpServerFields(base: ApplyMcpServer, profile: ApplyMcpServer): ApplyMcpServer {

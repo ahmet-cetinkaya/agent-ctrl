@@ -102,6 +102,7 @@ export interface ApplyIntegrationRequest {
     readonly agents: Agent[];
     readonly commands: CommandArtifact[];
     readonly mcpServers: ApplyMcpServer[];
+    readonly referenceOnlyMcpServers?: ApplyMcpServer[];
     readonly warnings: string[];
   };
 }

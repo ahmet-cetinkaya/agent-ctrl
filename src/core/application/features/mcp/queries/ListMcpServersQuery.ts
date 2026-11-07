@@ -12,6 +12,8 @@ export interface ListMcpServersQueryOptions {
 
 export interface ListMcpServersQueryResult {
   servers: McpLoadedServer[];
+  /** Servers that lack a value in mcps/.env and are written only as run-time references. */
+  referenceOnlyServers: McpLoadedServer[];
   report: McpLoadReport;
   catalogState: {
     managedById: Map<string, ManagedIntegration>;
@@ -64,6 +66,7 @@ export class ListMcpServersQuery {
 
     return ok({
       servers: loaded.data.servers,
+      referenceOnlyServers: loaded.data.referenceOnlyServers,
       report: loaded.data.report,
       catalogState: {
         managedById,

@@ -249,6 +249,32 @@ describe("ProfileMerger", () => {
     });
   });
 
+  describe("reference-only MCP servers", () => {
+    it("drops a reference-only server when a resolved server has the same name", () => {
+      const base: ApplySourceSnapshot = {
+        ...emptySnapshot(),
+        referenceOnlyMcpServers: [makeMcpServer("shared", "node", []), makeMcpServer("only-ref", "node", [])],
+      };
+      const profile: ApplySourceSnapshot = {
+        ...emptySnapshot(),
+        mcpServers: [makeMcpServer("shared", "node", [])],
+      };
+
+      const result = merger.merge(base, profile);
+
+      expect(result.snapshot.referenceOnlyMcpServers?.map((server) => server.name)).toEqual(["only-ref"]);
+    });
+
+    it("keeps a profile that only adds reference-only servers non-empty", () => {
+      const profile: ApplySourceSnapshot = {
+        ...emptySnapshot(),
+        referenceOnlyMcpServers: [makeMcpServer("only-ref", "node", [])],
+      };
+
+      expect(merger.merge(emptySnapshot(), profile).isEmpty).toBe(false);
+    });
+  });
+
   describe("empty profile detection", () => {
     it("returns isEmpty true when profile has no artifacts", () => {
       const base: ApplySourceSnapshot = {
