@@ -53,6 +53,10 @@ describe("ClaudeApplyAdapter", () => {
     expect(result.status).toBe("success");
     expect(result.configPath).toBe(resolve(projectPath, "CLAUDE.md"));
     await expect(access(resolve(projectPath, ".claude", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
+    const projectMcp = JSON.parse(await readFile(resolve(projectPath, ".mcp.json"), "utf-8"));
+    expect(projectMcp.mcpServers.context7.command).toBe("npx");
+    await expect(access(resolve(claudeHomePath, ".claude.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(result.fileChanges).toContain(resolve(projectPath, ".mcp.json"));
   });
 
   it("reports concrete file changes instead of directory placeholders", async () => {

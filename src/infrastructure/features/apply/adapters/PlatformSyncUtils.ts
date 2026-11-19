@@ -497,6 +497,12 @@ export const OPENCODE_ENV_REFERENCES: McpEnvReferenceSupport = {
 /** Gemini CLI and its fork Qwen Code document `${VAR}` for MCP server `env` values only. */
 export const GEMINI_ENV_REFERENCES: McpEnvReferenceSupport = { toReference: (name) => `\${${name}}`, fields: ["env"] };
 
+/** Claude Code expands `${VAR}` in `command`, `args`, `env` and `url` of a project `.mcp.json`. */
+export const CLAUDE_ENV_REFERENCES: McpEnvReferenceSupport = {
+  toReference: (name) => `\${${name}}`,
+  fields: ALL_MCP_REFERENCE_FIELDS,
+};
+
 /** The pi-mcp-adapter extension documents `${VAR}` in `env` and `url`. */
 export const PI_MCP_ADAPTER_ENV_REFERENCES: McpEnvReferenceSupport = {
   toReference: (name) => `\${${name}}`,
@@ -644,7 +650,7 @@ function toFieldStrings(value: McpUnresolvedFields[McpReferenceField]): string[]
 }
 
 /** Names of the `${VAR}` placeholders the servers use, sorted and without duplicates. */
-function collectMcpPlaceholderNames(servers: ApplyMcpServer[]): string[] {
+export function collectMcpPlaceholderNames(servers: ApplyMcpServer[]): string[] {
   const names = new Set<string>();
   for (const { unresolved } of servers) {
     const values = Object.values(unresolved ?? {}).flatMap(toFieldStrings);

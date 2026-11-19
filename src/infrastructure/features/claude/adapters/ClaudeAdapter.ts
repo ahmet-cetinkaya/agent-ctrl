@@ -41,13 +41,29 @@ function isPathScopedRule(content: string): boolean {
   }
 }
 
+type ClaudeMcpServerInput = Pick<
+  NonNullable<PlatformConfig["mcpServers"]>[number],
+  "transport" | "url" | "command" | "args" | "cwd" | "env"
+>;
+
+/** One server as Claude Code stores it, in `~/.claude.json` and in a project `.mcp.json` alike. */
+export function toClaudeMcpEntry(server: ClaudeMcpServerInput): Record<string, unknown> {
+  if (server.transport === "http") return { type: "http", url: server.url };
+  return {
+    command: server.command,
+    args: server.args,
+    ...(server.cwd ? { cwd: server.cwd } : {}),
+    ...(server.env && Object.keys(server.env).length > 0 ? { env: server.env } : {}),
+  };
+}
+
 export class ClaudeAdapter implements IPlatformAdapter {
   readonly platformName = "claude";
   readonly configPath: string;
   readonly claudeMcpConfigPath: string;
   private readonly projectPath: string;
-  /** Set when MCP servers belong to one project's local scope inside the home `.claude.json`. */
-  private readonly localScopeProjectPath?: string;
+  /** Set for a project-scope apply; MCP servers then go to `<project>/.mcp.json`, not the home `.claude.json`. */
+  private readonly projectScopePath?: string;
   private readonly claudeRoot: string;
   private readonly placeholderResolver = new McpPlaceholderResolver();
   private readonly modelWarnings: string[] = [];
@@ -60,16 +76,15 @@ export class ClaudeAdapter implements IPlatformAdapter {
     projectPath: string,
     claudeHomeOverride?: string,
     configPathOverride?: string,
-    localScopeProjectPath?: string
+    projectScopePath?: string
   ) {
     const claudeHome = claudeHomeOverride ?? process.env.AGENT_CTRL_CLAUDE_HOME ?? homedir();
     this.projectPath = projectPath;
-    this.localScopeProjectPath = localScopeProjectPath;
+    this.projectScopePath = projectScopePath;
     this.claudeRoot = resolve(claudeHome, ".claude");
     this.configPath = configPathOverride ?? resolve(this.claudeRoot, "CLAUDE.md");
-    // MCP local-scoped servers are stored in ~/.claude.json (home directory)
-    // For a project, Claude Code reads them only from there, never from <project>/.claude.json.
-    const mcpHome = localScopeProjectPath ? (process.env.AGENT_CTRL_CLAUDE_HOME ?? homedir()) : claudeHome;
+    // User-scope MCP servers and the legacy local-scope entries live in ~/.claude.json.
+    const mcpHome = projectScopePath ? (process.env.AGENT_CTRL_CLAUDE_HOME ?? homedir()) : claudeHome;
     this.claudeMcpConfigPath = resolve(mcpHome, ".claude.json");
   }
 
@@ -404,48 +419,42 @@ export class ClaudeAdapter implements IPlatformAdapter {
     config: PlatformConfig,
     cleanExistingMcp?: boolean
   ): Promise<string | undefined> {
+    // A project-scope apply writes `<project>/.mcp.json` through ClaudeApplyAdapter, never this file.
+    if (this.projectScopePath) return undefined;
     const mcpServers = config.mcpServers ?? [];
     if (mcpServers.length === 0 && !cleanExistingMcp) return undefined;
 
-    // Build incoming MCP servers for both transport types
-    const incomingMcpServers = Object.fromEntries(
-      mcpServers.map((server) => {
-        if (server.transport === "http") {
-          return [
-            server.name,
-            {
-              type: "http",
-              url: server.url,
-            },
-          ];
-        }
-        return [
-          server.name,
-          {
-            command: server.command,
-            args: server.args,
-            ...(server.cwd ? { cwd: server.cwd } : {}),
-            ...(server.env && Object.keys(server.env).length > 0 ? { env: server.env } : {}),
-          },
-        ];
-      })
-    );
-
+    const incomingMcpServers = Object.fromEntries(mcpServers.map((server) => [server.name, toClaudeMcpEntry(server)]));
     const document = await this.readClaudeMcpDocument();
-    const scopeEntry = this.localScopeProjectPath
-      ? this.asObject(this.asObject(document.projects)[this.localScopeProjectPath])
-      : document;
-    const existingMcpServers = cleanExistingMcp ? {} : this.asObject(scopeEntry.mcpServers);
-    const updatedScopeEntry = { ...scopeEntry, mcpServers: { ...existingMcpServers, ...incomingMcpServers } };
-
-    const mergedDocument = this.localScopeProjectPath
-      ? {
-          ...document,
-          projects: { ...this.asObject(document.projects), [this.localScopeProjectPath]: updatedScopeEntry },
-        }
-      : updatedScopeEntry;
+    const existingMcpServers = cleanExistingMcp ? {} : this.asObject(document.mcpServers);
+    const mergedDocument = { ...document, mcpServers: { ...existingMcpServers, ...incomingMcpServers } };
 
     return `${JSON.stringify(mergedDocument, null, 2)}\n`;
+  }
+
+  /**
+   * Removes the named servers from this project's local-scope entry in `~/.claude.json`, where an
+   * earlier apply stored them. Returns the names that were present. Other servers and keys stay.
+   */
+  async removeLocalScopeMcpServers(serverNames: string[], dryRun: boolean): Promise<string[]> {
+    if (!this.projectScopePath || serverNames.length === 0) return [];
+
+    const document = await this.readClaudeMcpDocument();
+    const projects = this.asObject(document.projects);
+    const projectEntry = this.asObject(projects[this.projectScopePath]);
+    const localServers = this.asObject(projectEntry.mcpServers);
+    const removed = serverNames.filter((name) => name in localServers);
+    if (removed.length === 0) return [];
+
+    if (!dryRun) {
+      const remaining = Object.fromEntries(Object.entries(localServers).filter(([name]) => !removed.includes(name)));
+      const updated = {
+        ...document,
+        projects: { ...projects, [this.projectScopePath]: { ...projectEntry, mcpServers: remaining } },
+      };
+      await writePrivateTextFile(this.claudeMcpConfigPath, `${JSON.stringify(updated, null, 2)}\n`);
+    }
+    return removed;
   }
 
   private async writeClaudeMcpDocument(content: string | undefined): Promise<void> {
