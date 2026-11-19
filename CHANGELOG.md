@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-19
+
 ### Fixed
 
 - A `/*` or `//` inside a string of a JSONC config file, such as the glob `src/**/*.ts` in an MCP server argument, is no longer taken for a comment. The merge used to cut it out and write the file back changed (OpenCode, Kilo, Gemini CLI, Qwen Code, Pi, Forge Code and Claude Code `.mcp.json`)
@@ -283,7 +285,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Correct import paths in presentation layer
 - Patch path traversal and command injection vulnerabilities
 
-[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v1.0.1...HEAD
+[unreleased]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/ahmet-cetinkaya/agent-ctrl/compare/v0.10.2...v1.0.0
 [0.10.2]: https://github.com/ahmet-cetinkaya/agent-ctrl/releases/tag/v0.10.2
