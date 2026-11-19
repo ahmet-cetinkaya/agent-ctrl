@@ -138,6 +138,7 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
     );
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
+    modelWarnings.push(...rulesResult.warnings);
 
     // Windsurf supports workflows via .windsurf/workflows/.
     if (source.commands.length > 0) {

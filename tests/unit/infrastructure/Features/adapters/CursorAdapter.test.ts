@@ -3,6 +3,7 @@ import { access, mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { CursorAdapter } from "@/infrastructure/features/cursor/adapters/CursorAdapter";
+import { withManagedMarker } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 import { writeApplyFixtures } from "@tests/helpers/writeApplyFixtures";
 
 describe("CursorAdapter", () => {
@@ -120,10 +121,7 @@ describe("CursorAdapter stale rule pruning", () => {
   it("keeps user-authored files with unknown extensions while pruning rule files", async () => {
     const rulesDir = resolve(projectPath, ".cursor", "rules");
     await mkdir(rulesDir, { recursive: true });
-    await writeFile(
-      resolve(rulesDir, "old-rule.mdc"),
-      "---\nalwaysApply: true\n---\n<!-- agent-ctrl:managed -->\n# Old\n"
-    );
+    await writeFile(resolve(rulesDir, "old-rule.mdc"), withManagedMarker("---\nalwaysApply: true\n---\n# Old\n"));
     await writeFile(resolve(rulesDir, "notes.txt"), "user notes");
 
     const { syncRulesAsFiles } = await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
@@ -138,10 +136,7 @@ describe("CursorAdapter stale rule pruning", () => {
     await mkdir(rulesDir, { recursive: true });
     await writeFile(resolve(rulesDir, "mine.mdc"), "---\nalwaysApply: true\n---\n# Mine\n");
     await writeFile(resolve(rulesDir, "plain.md"), "# Plain note\n");
-    await writeFile(
-      resolve(rulesDir, "old-rule.mdc"),
-      "---\nalwaysApply: true\n---\n<!-- agent-ctrl:managed -->\n# Old\n"
-    );
+    await writeFile(resolve(rulesDir, "old-rule.mdc"), withManagedMarker("---\nalwaysApply: true\n---\n# Old\n"));
 
     const { syncRulesAsFiles } = await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
     const result = await syncRulesAsFiles(
@@ -154,9 +149,9 @@ describe("CursorAdapter stale rule pruning", () => {
     await expect(access(resolve(rulesDir, "mine.mdc"))).resolves.toBeNull();
     await expect(access(resolve(rulesDir, "plain.md"))).resolves.toBeNull();
     await expect(access(resolve(rulesDir, "old-rule.mdc"))).rejects.toThrow();
-    expect(result.warnings.join("\n")).toContain("Unmanaged rule files kept");
+    expect(result.warnings.join("\n")).toContain("Kept rule files");
     expect(result.warnings.join("\n")).toContain("mine.mdc");
-    expect(result.warnings.join("\n")).not.toContain("old-rule.mdc");
+    expect(result.warnings.join("\n")).toContain("Removed stale rule files agent-ctrl wrote: old-rule.mdc");
   });
 
   it("marks the rule files it renders, after the frontmatter, so a later apply may prune them", async () => {
@@ -167,13 +162,13 @@ describe("CursorAdapter stale rule pruning", () => {
     const [first] = (await readdir(rulesDir)).filter((name) => name.endsWith(".mdc"));
     const content = await readFile(resolve(rulesDir, first), "utf-8");
 
-    expect(content.startsWith("---\nalwaysApply: true\n---\n<!-- agent-ctrl:managed -->\n")).toBe(true);
+    expect(content.startsWith("---\nalwaysApply: true\n---\n<!-- agent-ctrl:managed sha256=")).toBe(true);
   });
 
   it("does not delete a stale file on a dry run", async () => {
     const rulesDir = resolve(projectPath, ".cursor", "rules");
     await mkdir(rulesDir, { recursive: true });
-    await writeFile(resolve(rulesDir, "old-rule.mdc"), "<!-- agent-ctrl:managed -->\n# Old\n");
+    await writeFile(resolve(rulesDir, "old-rule.mdc"), withManagedMarker("# Old\n"));
 
     const { syncRulesAsFiles } = await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
     const result = await syncRulesAsFiles(
@@ -185,5 +180,46 @@ describe("CursorAdapter stale rule pruning", () => {
 
     expect(result.paths).toEqual([resolve(rulesDir, "old-rule.mdc")]);
     await expect(access(resolve(rulesDir, "old-rule.mdc"))).resolves.toBeNull();
+  });
+
+  it("keeps files that only mention the marker, carry it in the wrong place, or were edited after the write", async () => {
+    const rulesDir = resolve(projectPath, ".cursor", "rules");
+    await mkdir(rulesDir, { recursive: true });
+    const marker = withManagedMarker("# Body\n").split("\n")[0];
+    await writeFile(resolve(rulesDir, "about.md"), `A note that quotes ${marker} in its text.\n`);
+    await writeFile(resolve(rulesDir, "late.mdc"), `# Title\n${marker}\n`);
+    await writeFile(resolve(rulesDir, "edited.mdc"), withManagedMarker("# Body\n").replace("# Body", "# My body"));
+    await writeFile(resolve(rulesDir, "stale.mdc"), withManagedMarker("# Body\n"));
+
+    const { syncRulesAsFiles } = await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
+    const result = await syncRulesAsFiles(
+      [],
+      rulesDir,
+      (rule, content) => ({ relativePath: `${rule.id}.mdc`, content }),
+      false
+    );
+
+    for (const kept of ["about.md", "late.mdc", "edited.mdc"]) {
+      await expect(access(resolve(rulesDir, kept))).resolves.toBeNull();
+      expect(result.warnings.join("\n")).toContain(kept);
+    }
+    await expect(access(resolve(rulesDir, "stale.mdc"))).rejects.toThrow();
+  });
+
+  it("reports what an apply removes and keeps, and what a dry run would remove", async () => {
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+    const rulesDir = resolve(projectPath, ".cursor", "rules");
+    await writeFile(resolve(rulesDir, "stale.mdc"), withManagedMarker("# Old\n"));
+    await writeFile(resolve(rulesDir, "mine.mdc"), "# Mine\n");
+
+    const dry = await adapter.applyApplyIntegration({ projectPath, targetScope: "project", dryRun: true });
+    expect(dry.warnings!.join("\n")).toContain("Would remove stale rule files agent-ctrl wrote: stale.mdc");
+    expect(dry.warnings!.join("\n")).toContain("mine.mdc");
+    await expect(access(resolve(rulesDir, "stale.mdc"))).resolves.toBeNull();
+
+    const real = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+    expect(real.warnings!.join("\n")).toContain("Removed stale rule files agent-ctrl wrote: stale.mdc");
+    expect(real.warnings!.join("\n")).toContain("mine.mdc");
+    await expect(access(resolve(rulesDir, "stale.mdc"))).rejects.toThrow();
   });
 });

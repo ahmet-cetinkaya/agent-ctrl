@@ -139,6 +139,7 @@ export class CursorAdapter implements IApplyPlatformAdapter {
     );
     changed = rulesResult.changed || changed;
     fileChanges.push(...rulesResult.paths);
+    modelWarnings.push(...rulesResult.warnings);
 
     return {
       platform: this.platformName,
