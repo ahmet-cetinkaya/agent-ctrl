@@ -53,6 +53,32 @@ describe("ClaudeApplyAdapter", () => {
     expect(result.status).toBe("success");
     expect(result.configPath).toBe(resolve(projectPath, "CLAUDE.md"));
     await expect(access(resolve(projectPath, ".claude", "skills", "git-workflow", "SKILL.md"))).resolves.toBeNull();
+    const projectMcp = JSON.parse(await readFile(resolve(projectPath, ".mcp.json"), "utf-8"));
+    expect(projectMcp.mcpServers.context7.command).toBe("npx");
+    await expect(access(resolve(claudeHomePath, ".claude.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(result.fileChanges).toContain(resolve(projectPath, ".mcp.json"));
+  });
+
+  it("warns that --claude-mcp-scope is ignored at user scope", async () => {
+    const result = await adapter.applyApplyIntegration({ projectPath, targetScope: "user", claudeMcpScope: "local" });
+
+    expect((result.warnings ?? []).some((warning) => warning.includes("--claude-mcp-scope"))).toBe(true);
+    const mcpConfig = JSON.parse(await readFile(resolve(claudeHomePath, ".claude.json"), "utf-8"));
+    expect(mcpConfig.mcpServers.context7.command).toBe("npx");
+  });
+
+  it("writes the local scope of ~/.claude.json when claudeMcpScope is local", async () => {
+    const result = await adapter.applyApplyIntegration({
+      projectPath,
+      targetScope: "project",
+      claudeMcpScope: "local",
+    });
+
+    expect(result.fileChanges).toContain(resolve(claudeHomePath, ".claude.json"));
+    expect(result.fileChanges).not.toContain(resolve(projectPath, ".mcp.json"));
+    await expect(access(resolve(projectPath, ".mcp.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    const mcpConfig = JSON.parse(await readFile(resolve(claudeHomePath, ".claude.json"), "utf-8"));
+    expect(mcpConfig.projects[projectPath].mcpServers.context7.command).toBe("npx");
   });
 
   it("reports concrete file changes instead of directory placeholders", async () => {

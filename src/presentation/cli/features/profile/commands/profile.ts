@@ -1,4 +1,5 @@
-import { Command } from "commander";
+import { Command, Option } from "commander";
+import { CLAUDE_MCP_SCOPES } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { resolve } from "node:path";
 import color from "picocolors";
 import { ApplyProfileCommand } from "@/core/application/features/apply/commands/ApplyProfileCommand";
@@ -132,6 +133,12 @@ export function createProfileCommand(): Command {
     .option("-d, --dry-run", "Show selected-platform changes without writing files", false)
     .option("-o, --override", "Replace conflicting managed configuration with agent-ctrl state", false)
     .option("-v, --verbose", "Show detailed output including warnings", false)
+    .addOption(
+      new Option(
+        "--claude-mcp-scope <scope>",
+        "Where a project-scope Claude apply stores MCP servers: <project>/.mcp.json or ~/.claude.json local scope"
+      ).choices(CLAUDE_MCP_SCOPES)
+    )
     .option("--no-prompt", "Skip confirmation prompt", false)
     .action(async (platform: string | undefined, profileNames: string[], options: any) => {
       if (options.verbose) {
@@ -386,6 +393,7 @@ async function applyProfilesToPlatform(
         dryRun: options.dryRun,
         override: options.override,
         targetScope,
+        claudeMcpScope: options.claudeMcpScope,
         configRoot,
       });
     });

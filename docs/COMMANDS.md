@@ -88,6 +88,9 @@ agent-ctrl apply codex
 
 # Use a custom platform user configuration root
 agent-ctrl apply opencode --path /custom/opencode
+
+# Claude Code project scope: keep MCP servers in ~/.claude.json (local scope) instead of <project>/.mcp.json
+agent-ctrl apply claude --project --claude-mcp-scope local
 ```
 
 ---

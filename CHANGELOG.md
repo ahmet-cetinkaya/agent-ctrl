@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- A `/*` or `//` inside a string of a JSONC config file, such as the glob `src/**/*.ts` in an MCP server argument, is no longer taken for a comment. The merge used to cut it out and write the file back changed (OpenCode, Kilo, Gemini CLI, Qwen Code, Pi, Forge Code and Claude Code `.mcp.json`)
+
+### Changed
+
+- Claude Code: a project-scope apply writes MCP servers to `<project>/.mcp.json` instead of the local scope in `~/.claude.json`. The file merges with servers you added yourself, keeps `${VAR}` as a placeholder that Claude Code expands at start, and the apply output lists variables that are not set. Servers an earlier apply stored in `~/.claude.json` for the project are removed from it, and the output says so. User scope is unchanged. `--claude-mcp-scope local` on `apply` and `profile apply` keeps the earlier placement in `~/.claude.json` ([#31](https://github.com/ahmet-cetinkaya/agent-ctrl/issues/31))
+
 ## [1.0.1] - 2026-11-08
 
 ### Fixed

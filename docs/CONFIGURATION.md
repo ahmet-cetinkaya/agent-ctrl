@@ -204,15 +204,23 @@ Add your own MCP server configurations by creating JSON files in `.agent-ctrl/mc
 
 `agent-ctrl` resolves `${VAR}` placeholders from `mcps/.env`. A project-scope MCP config is meant to be committed, so `agent-ctrl` never writes a resolved value there. Where the platform reads environment variables from its config at run time, the placeholder is written as the platform's own reference; export those variables before you start the tool (the apply output lists them). A server with a placeholder in a field the platform cannot resolve is skipped with a warning; apply it with `--user` instead.
 
-| Platform                           | Project MCP file                               | Reference written                   | Fields                  |
-| ---------------------------------- | ---------------------------------------------- | ----------------------------------- | ----------------------- |
-| Claude Code                        | none (`~/.claude.json` local scope)            | resolved value, outside the project | all                     |
-| OpenCode, Kilo                     | `opencode.json`, `.kilo/kilo.jsonc`            | `{env:VAR}`                         | command, args, env, url |
-| Gemini CLI, Qwen Code              | `.gemini/settings.json`, `.qwen/settings.json` | `${VAR}`                            | env                     |
-| Pi (`pi-mcp-adapter`)              | `.mcp.json`                                    | `${VAR}`                            | env, url                |
-| Pi forks (builtin MCP), Forge Code | `.<configDir>/mcp.json`, `.mcp.json`           | none: the server is skipped         | none                    |
+| Platform                           | Project MCP file                               | Reference written           | Fields                  |
+| ---------------------------------- | ---------------------------------------------- | --------------------------- | ----------------------- |
+| Claude Code                        | `.mcp.json`                                    | `${VAR}`                    | command, args, env, url |
+| OpenCode, Kilo                     | `opencode.json`, `.kilo/kilo.jsonc`            | `{env:VAR}`                 | command, args, env, url |
+| Gemini CLI, Qwen Code              | `.gemini/settings.json`, `.qwen/settings.json` | `${VAR}`                    | env                     |
+| Pi (`pi-mcp-adapter`)              | `.mcp.json`                                    | `${VAR}`                    | env, url                |
+| Pi forks (builtin MCP), Forge Code | `.<configDir>/mcp.json`, `.mcp.json`           | none: the server is skipped | none                    |
 
 User-scope configs receive the resolved values and are written with mode `0600`.
+
+**Claude Code project scope:**
+
+A project-scope apply for Claude Code merges the MCP servers into `<project>/.mcp.json` under `mcpServers`. Servers you added yourself stay as they are. Commit the file to share the servers with your team; a fresh clone needs no second apply. Claude Code expands `${VAR}` from the environment when it starts, and the apply output lists the variables that are not set in the current shell.
+
+Earlier versions stored these servers in `~/.claude.json` (`projects["<path>"].mcpServers`). A project-scope apply now removes the servers it manages from that entry, so they do not load twice, and reports the move in the apply output. Other servers and keys in `~/.claude.json` stay untouched. Apply at user scope to write servers to `~/.claude.json` for every project.
+
+Claude Code still supports the earlier placement, the local scope in `~/.claude.json` under `projects["<path>"].mcpServers` ([Claude Code MCP scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes)). Pass `--claude-mcp-scope local` to `apply` or `profile apply` to keep using it. The values are `project` (the default) and `local`. With `local`, agent-ctrl writes resolved values to `~/.claude.json` as before, does not touch `<project>/.mcp.json`, and does not remove anything from `~/.claude.json`. The flag applies to a project-scope apply only; at user scope it is ignored with a warning.
 
 ### Profiles (`profiles/`)
 

@@ -5,10 +5,35 @@ import {
   renderOpencodeMcpConfig,
   renderSettingsMcpConfig,
   renderCodexMcpServers,
+  stripJsonComments,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 import type { ApplyMcpServer } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 
 describe("PlatformSyncUtils", () => {
+  describe("stripJsonComments", () => {
+    it("keeps comment markers inside strings, such as a glob or a URL", () => {
+      const text = '{ "args": ["src/**/*.ts", "http://host/a//b", "a /* b */ c"] }';
+
+      expect(stripJsonComments(text)).toBe(text);
+    });
+
+    it("removes block and line comments outside strings", () => {
+      const text = '{\n  // note\n  "a": 1, /* inline */ "b": 2 // tail\n}';
+
+      expect(JSON.parse(stripJsonComments(text))).toEqual({ a: 1, b: 2 });
+    });
+
+    it("handles an escaped quote before a comment marker inside a string", () => {
+      const text = '{ "a": "x\\" /* keep */ y", /* drop */ "b": 1 }';
+
+      expect(JSON.parse(stripJsonComments(text))).toEqual({ a: 'x" /* keep */ y', b: 1 });
+    });
+
+    it("stops at the end of an unterminated block comment", () => {
+      expect(stripJsonComments('{ "a": 1 } /* open')).toBe('{ "a": 1 } ');
+    });
+  });
+
   describe("resolveApplyScope", () => {
     it("returns user scope when explicitly requested and supported", () => {
       const result = resolveApplyScope("user" as const, "project", true);

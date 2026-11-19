@@ -210,7 +210,7 @@ describe("Apply Profile Integration", () => {
     });
   });
 
-  describe("Claude project-scope MCP servers (GH #15)", () => {
+  describe("Claude project-scope MCP servers (GH #31)", () => {
     let homePath: string;
 
     beforeEach(async () => {
@@ -232,16 +232,61 @@ describe("Apply Profile Integration", () => {
       });
     }
 
-    it("stores resolved servers in the private local scope and keeps the secret out of the project", async () => {
-      await writeFile(join(homePath, ".claude.json"), JSON.stringify({ ui: { theme: "dark" } }), "utf-8");
-      await setupProfile("secrets", {
-        mcpServers: {
-          "server.json": JSON.stringify({
-            mcpServers: { api: { command: "npx", args: [], env: { TOKEN: "${TOKEN}" } } },
-          }),
-          ".env": "TOKEN=resolved-secret\n",
-        },
-      });
+    const apiServerFiles = {
+      "server.json": JSON.stringify({
+        mcpServers: { api: { command: "npx", args: [], env: { TOKEN: "${TOKEN}" } } },
+      }),
+      ".env": "TOKEN=resolved-secret\n",
+    };
+
+    it("writes <project>/.mcp.json with the placeholder, never the secret, and leaves ~/.claude.json alone", async () => {
+      const homeText = JSON.stringify({ ui: { theme: "dark" } });
+      await writeFile(join(homePath, ".claude.json"), homeText, "utf-8");
+      await setupProfile("secrets", { mcpServers: apiServerFiles });
+
+      const result = await applyToClaudeProject();
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      const projectText = await readFile(join(projectPath, ".mcp.json"), "utf-8");
+      expect(JSON.parse(projectText).mcpServers.api.env.TOKEN).toBe("${TOKEN}");
+      expect(projectText).not.toContain("resolved-secret");
+      expect(await readFile(join(homePath, ".claude.json"), "utf-8")).toBe(homeText);
+      expect(result.data.fileChanges).toContain(join(projectPath, ".mcp.json"));
+      expect(result.data.fileChanges).not.toContain(join(homePath, ".claude.json"));
+    });
+
+    it("merges into an existing .mcp.json and keeps servers agent-ctrl does not own", async () => {
+      await writeFile(
+        join(projectPath, ".mcp.json"),
+        JSON.stringify({ mcpServers: { handmade: { command: "mine" } }, extra: 1 }),
+        "utf-8"
+      );
+      await setupProfile("secrets", { mcpServers: apiServerFiles });
+
+      const result = await applyToClaudeProject();
+
+      expect(result.success).toBe(true);
+      const document = JSON.parse(await readFile(join(projectPath, ".mcp.json"), "utf-8"));
+      expect(document.extra).toBe(1);
+      expect(document.mcpServers.handmade.command).toBe("mine");
+      expect(document.mcpServers.api.command).toBe("npx");
+    });
+
+    it("moves servers an earlier apply stored in ~/.claude.json and says so", async () => {
+      await writeFile(
+        join(homePath, ".claude.json"),
+        JSON.stringify({
+          ui: { theme: "dark" },
+          projects: {
+            [projectPath]: {
+              mcpServers: { api: { command: "npx", env: { TOKEN: "resolved-secret" } }, mine: { command: "m" } },
+            },
+          },
+        }),
+        "utf-8"
+      );
+      await setupProfile("secrets", { mcpServers: apiServerFiles });
 
       const result = await applyToClaudeProject();
 
@@ -249,10 +294,115 @@ describe("Apply Profile Integration", () => {
       if (!result.success) return;
       const homeDocument = JSON.parse(await readFile(join(homePath, ".claude.json"), "utf-8"));
       expect(homeDocument.ui.theme).toBe("dark");
-      expect(homeDocument.projects[projectPath].mcpServers.api.env.TOKEN).toBe("resolved-secret");
-      await expect(access(join(projectPath, ".claude.json"))).rejects.toBeDefined();
+      expect(Object.keys(homeDocument.projects[projectPath].mcpServers)).toEqual(["mine"]);
       expect(result.data.fileChanges).toContain(join(homePath, ".claude.json"));
-      expect(result.data.fileChanges).not.toContain(join(projectPath, ".claude.json"));
+      expect(
+        result.data.warnings.some((warning) => warning.includes("Moved MCP servers") && warning.includes("api"))
+      ).toBe(true);
+    });
+
+    it("keeps the old local scope when asked: writes ~/.claude.json, leaves .mcp.json and the migration out", async () => {
+      await writeFile(
+        join(projectPath, ".mcp.json"),
+        JSON.stringify({ mcpServers: { handmade: { command: "mine" } } }),
+        "utf-8"
+      );
+      await writeFile(
+        join(homePath, ".claude.json"),
+        JSON.stringify({
+          projects: { [projectPath]: { mcpServers: { api: { command: "old" }, mine: { command: "m" } } } },
+        }),
+        "utf-8"
+      );
+      const projectFileBefore = await readFile(join(projectPath, ".mcp.json"), "utf-8");
+      await setupProfile("secrets", { mcpServers: apiServerFiles });
+
+      const result = await new ApplyProfileCommand().execute({
+        projectPath,
+        profileNames: ["secrets"],
+        platform: "claude",
+        targetScope: "project",
+        claudeMcpScope: "local",
+      });
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      const homeDocument = JSON.parse(await readFile(join(homePath, ".claude.json"), "utf-8"));
+      expect(homeDocument.projects[projectPath].mcpServers.api.env.TOKEN).toBe("resolved-secret");
+      expect(homeDocument.projects[projectPath].mcpServers.mine.command).toBe("m");
+      expect(await readFile(join(projectPath, ".mcp.json"), "utf-8")).toBe(projectFileBefore);
+      expect(result.data.fileChanges).toContain(join(homePath, ".claude.json"));
+      expect(result.data.fileChanges).not.toContain(join(projectPath, ".mcp.json"));
+      expect(result.data.warnings.some((warning) => warning.includes("Moved MCP servers"))).toBe(false);
+    });
+
+    it("defaults to the project file when claudeMcpScope is project", async () => {
+      await setupProfile("secrets", { mcpServers: apiServerFiles });
+
+      const result = await new ApplyProfileCommand().execute({
+        projectPath,
+        profileNames: ["secrets"],
+        platform: "claude",
+        targetScope: "project",
+        claudeMcpScope: "project",
+      });
+
+      expect(result.success).toBe(true);
+      const projectText = await readFile(join(projectPath, ".mcp.json"), "utf-8");
+      expect(JSON.parse(projectText).mcpServers.api.env.TOKEN).toBe("${TOKEN}");
+    });
+
+    it("keeps a glob argument of a hand-written server in .mcp.json byte for byte", async () => {
+      await writeFile(
+        join(projectPath, ".mcp.json"),
+        '{\n  // mine\n  "mcpServers": { "lint": { "command": "lint", "args": ["src/**/*.ts", "http://x//y"] } }\n}\n',
+        "utf-8"
+      );
+      await setupProfile("secrets", { mcpServers: apiServerFiles });
+
+      const result = await applyToClaudeProject();
+
+      expect(result.success).toBe(true);
+      const document = JSON.parse(await readFile(join(projectPath, ".mcp.json"), "utf-8"));
+      expect(document.mcpServers.lint.args).toEqual(["src/**/*.ts", "http://x//y"]);
+      expect(document.mcpServers.api.command).toBe("npx");
+    });
+
+    it("lists variables that are not set in the environment in the summary", async () => {
+      delete process.env.AC_UNSET_PROBE;
+      await setupProfile("secrets", {
+        mcpServers: {
+          "server.json": JSON.stringify({
+            mcpServers: { api: { command: "npx", args: [], env: { TOKEN: "${AC_UNSET_PROBE}" } } },
+          }),
+        },
+      });
+
+      const result = await applyToClaudeProject();
+
+      expect(result.success).toBe(true);
+      if (!result.success) return;
+      expect(result.data.warnings.some((warning) => warning.includes("AC_UNSET_PROBE"))).toBe(true);
+      const projectText = await readFile(join(projectPath, ".mcp.json"), "utf-8");
+      expect(JSON.parse(projectText).mcpServers.api.env.TOKEN).toBe("${AC_UNSET_PROBE}");
+    });
+
+    it("does not touch the home file on a dry run", async () => {
+      const homeText = JSON.stringify({ projects: { [projectPath]: { mcpServers: { api: { command: "old" } } } } });
+      await writeFile(join(homePath, ".claude.json"), homeText, "utf-8");
+      await setupProfile("secrets", { mcpServers: apiServerFiles });
+
+      const result = await new ApplyProfileCommand().execute({
+        projectPath,
+        profileNames: ["secrets"],
+        platform: "claude",
+        targetScope: "project",
+        dryRun: true,
+      });
+
+      expect(result.success).toBe(true);
+      expect(await readFile(join(homePath, ".claude.json"), "utf-8")).toBe(homeText);
+      await expect(access(join(projectPath, ".mcp.json"))).rejects.toBeDefined();
     });
 
     it("reports a missing mcps/.env as a warning", async () => {

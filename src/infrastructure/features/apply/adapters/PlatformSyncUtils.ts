@@ -497,6 +497,12 @@ export const OPENCODE_ENV_REFERENCES: McpEnvReferenceSupport = {
 /** Gemini CLI and its fork Qwen Code document `${VAR}` for MCP server `env` values only. */
 export const GEMINI_ENV_REFERENCES: McpEnvReferenceSupport = { toReference: (name) => `\${${name}}`, fields: ["env"] };
 
+/** Claude Code expands `${VAR}` in `command`, `args`, `env` and `url` of a project `.mcp.json`. */
+export const CLAUDE_ENV_REFERENCES: McpEnvReferenceSupport = {
+  toReference: (name) => `\${${name}}`,
+  fields: ALL_MCP_REFERENCE_FIELDS,
+};
+
 /** The pi-mcp-adapter extension documents `${VAR}` in `env` and `url`. */
 export const PI_MCP_ADAPTER_ENV_REFERENCES: McpEnvReferenceSupport = {
   toReference: (name) => `\${${name}}`,
@@ -644,7 +650,7 @@ function toFieldStrings(value: McpUnresolvedFields[McpReferenceField]): string[]
 }
 
 /** Names of the `${VAR}` placeholders the servers use, sorted and without duplicates. */
-function collectMcpPlaceholderNames(servers: ApplyMcpServer[]): string[] {
+export function collectMcpPlaceholderNames(servers: ApplyMcpServer[]): string[] {
   const names = new Set<string>();
   for (const { unresolved } of servers) {
     const values = Object.values(unresolved ?? {}).flatMap(toFieldStrings);
@@ -925,10 +931,52 @@ function humanizeSegment(value: string): string {
     .join(" / ");
 }
 
+/**
+ * Removes `/* ... *\/` and `// ...` comments from JSONC text. A quote opens a string, so comment
+ * markers inside one (a glob such as `src/**\/*.ts`, a URL) stay untouched.
+ */
+export function stripJsonComments(content: string): string {
+  let result = "";
+  let inString = false;
+  let index = 0;
+
+  while (index < content.length) {
+    const char = content[index];
+    const next = content[index + 1];
+
+    if (inString) {
+      result += char;
+      if (char === "\\" && next !== undefined) {
+        result += next;
+        index += 2;
+        continue;
+      }
+      if (char === '"') inString = false;
+      index += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      result += char;
+      index += 1;
+    } else if (char === "/" && next === "*") {
+      const end = content.indexOf("*/", index + 2);
+      index = end === -1 ? content.length : end + 2;
+    } else if (char === "/" && next === "/") {
+      const end = content.indexOf("\n", index);
+      index = end === -1 ? content.length : end;
+    } else {
+      result += char;
+      index += 1;
+    }
+  }
+
+  return result;
+}
+
 function parseJsonWithComments(content: string): Record<string, unknown> {
-  const withoutBlockComments = content.replace(/\/\*[\s\S]*?\*\//g, "");
-  const withoutLineComments = withoutBlockComments.replace(/^\s*\/\/.*$/gm, "");
-  const parsed = JSON.parse(withoutLineComments) as unknown;
+  const parsed = JSON.parse(stripJsonComments(content)) as unknown;
   if (!isObject(parsed)) {
     throw new Error("Configuration file must contain a top-level JSON object.");
   }

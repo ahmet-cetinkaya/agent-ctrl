@@ -309,7 +309,7 @@ describe("ClaudeAdapter", () => {
       expect(doc.mcpServers.New.command).toBe("npx");
     });
 
-    describe("local-scope MCP servers for a project", () => {
+    describe("local scope chosen with claudeMcpScope", () => {
       const secretServer = {
         name: "secret",
         transport: "stdio" as const,
@@ -318,10 +318,10 @@ describe("ClaudeAdapter", () => {
         env: { TOKEN: "resolved-secret" },
         sourceFile: "mcp.json",
       };
-      const emptyConfig = { rules: [], skills: [], agents: [], mcpServers: [secretServer] };
+      const config = { rules: [], skills: [], agents: [], mcpServers: [secretServer] };
 
-      function createProjectScopedAdapter(): ClaudeAdapter {
-        return new ClaudeAdapter(projectPath, projectPath, resolve(projectPath, "CLAUDE.md"), projectPath);
+      function createLocalScopeAdapter(): ClaudeAdapter {
+        return new ClaudeAdapter(projectPath, projectPath, resolve(projectPath, "CLAUDE.md"), projectPath, "local");
       }
 
       async function readHomeDocument(): Promise<Record<string, any>> {
@@ -331,20 +331,21 @@ describe("ClaudeAdapter", () => {
       it("writes servers under projects[<path>] in the home .claude.json and nothing into the project", async () => {
         await writeFile(resolve(homePath, ".claude.json"), JSON.stringify({ ui: { theme: "dark" } }), "utf-8");
 
-        const writeResult = await createProjectScopedAdapter().writeConfig(emptyConfig);
+        const writeResult = await createLocalScopeAdapter().writeConfig(config);
 
         expect(writeResult.success).toBe(true);
         const doc = await readHomeDocument();
         expect(doc.ui.theme).toBe("dark");
         expect(doc.mcpServers).toBeUndefined();
         expect(doc.projects[projectPath].mcpServers.secret.env.TOKEN).toBe("resolved-secret");
-        await expect(access(resolve(projectPath, ".claude.json"))).rejects.toBeDefined();
+        await expect(access(resolve(projectPath, ".mcp.json"))).rejects.toBeDefined();
       });
 
-      it("keeps other projects and other keys of the project entry", async () => {
+      it("keeps other projects and keys, and replaces only the project servers when overriding", async () => {
         await writeFile(
           resolve(homePath, ".claude.json"),
           JSON.stringify({
+            mcpServers: { userLevel: { command: "u" } },
             projects: {
               "/other": { mcpServers: { keep: { command: "k" } } },
               [projectPath]: { allowedTools: ["a"], mcpServers: { existing: { command: "old" } } },
@@ -353,98 +354,130 @@ describe("ClaudeAdapter", () => {
           "utf-8"
         );
 
-        await createProjectScopedAdapter().writeConfig(emptyConfig);
-
-        const doc = await readHomeDocument();
-        expect(doc.projects["/other"].mcpServers.keep.command).toBe("k");
-        expect(doc.projects[projectPath].allowedTools).toEqual(["a"]);
-        expect(doc.projects[projectPath].mcpServers.existing.command).toBe("old");
-        expect(doc.projects[projectPath].mcpServers.secret.command).toBe("npx");
-      });
-
-      it("replaces only the project servers when overriding", async () => {
-        await writeFile(
-          resolve(homePath, ".claude.json"),
-          JSON.stringify({
-            mcpServers: { userLevel: { command: "u" } },
-            projects: { [projectPath]: { mcpServers: { existing: { command: "old" } } } },
-          }),
-          "utf-8"
-        );
-
-        await createProjectScopedAdapter().writeConfig(emptyConfig, { cleanExistingArtifacts: true });
+        await createLocalScopeAdapter().writeConfig(config, { cleanExistingArtifacts: true });
 
         const doc = await readHomeDocument();
         expect(doc.mcpServers.userLevel.command).toBe("u");
+        expect(doc.projects["/other"].mcpServers.keep.command).toBe("k");
+        expect(doc.projects[projectPath].allowedTools).toEqual(["a"]);
         expect(Object.keys(doc.projects[projectPath].mcpServers)).toEqual(["secret"]);
-      });
-
-      it("creates a new home .claude.json readable by the owner only", async () => {
-        await createProjectScopedAdapter().writeConfig(emptyConfig);
-
         expect((await stat(resolve(homePath, ".claude.json"))).mode & 0o777).toBe(0o600);
       });
 
       it("refuses to overwrite a home .claude.json it cannot parse", async () => {
         await writeFile(resolve(homePath, ".claude.json"), "{ not json", "utf-8");
 
-        const writeResult = await createProjectScopedAdapter().writeConfig(emptyConfig);
-
-        expect(writeResult.success).toBe(false);
-        expect(await readFile(resolve(homePath, ".claude.json"), "utf-8")).toBe("{ not json");
-      });
-
-      it("tightens an existing world-readable home .claude.json to 0600 and keeps its other keys", async () => {
-        const target = resolve(homePath, ".claude.json");
-        await writeFile(target, JSON.stringify({ theme: "dark", mcpServers: { kept: { command: "k" } } }), "utf-8");
-        await chmod(target, 0o644);
-
-        const writeResult = await createProjectScopedAdapter().writeConfig({
-          ...emptyConfig,
-          mcpServers: [{ name: "added", transport: "stdio", command: "a", args: [], sourceFile: "mcp.json" }],
-        });
-
-        expect(writeResult.success).toBe(true);
-        expect((await stat(target)).mode & 0o777).toBe(0o600);
-        const doc = await readHomeDocument();
-        expect(doc.theme).toBe("dark");
-        expect(Object.keys(doc.projects[projectPath].mcpServers)).toEqual(["added"]);
-        expect(doc.mcpServers.kept.command).toBe("k");
-        expect((await readdir(homePath)).filter((entry) => entry.endsWith(".tmp"))).toEqual([]);
-      });
-
-      it("keeps a symlinked home .claude.json a symlink and writes through to its target", async () => {
-        const linkTarget = resolve(projectPath, "dotfiles-claude.json");
-        await writeFile(linkTarget, JSON.stringify({ theme: "dark" }), "utf-8");
-        await symlink(linkTarget, resolve(homePath, ".claude.json"));
-
-        const writeResult = await createProjectScopedAdapter().writeConfig({
-          ...emptyConfig,
-          mcpServers: [{ name: "added", transport: "stdio", command: "a", args: [], sourceFile: "mcp.json" }],
-        });
-
-        expect(writeResult.success).toBe(true);
-        expect((await lstat(resolve(homePath, ".claude.json"))).isSymbolicLink()).toBe(true);
-        const linked = JSON.parse(await readFile(linkTarget, "utf-8"));
-        expect(linked.theme).toBe("dark");
-        expect(Object.keys(linked.projects[projectPath].mcpServers)).toEqual(["added"]);
-      });
-
-      it("aborts before writing anything and names .claude.json when it cannot be parsed", async () => {
-        await writeFile(resolve(homePath, ".claude.json"), "{ not json", "utf-8");
-        const rulePath = resolve(projectPath, "rule.md");
-        await writeFile(rulePath, "# Rule\n", "utf-8");
-
-        const writeResult = await createProjectScopedAdapter().writeConfig({
-          rules: [{ name: "rule", path: rulePath }],
-          skills: [],
-          agents: [],
-          mcpServers: [{ name: "added", transport: "stdio", command: "a", args: [], sourceFile: "mcp.json" }],
-        });
+        const writeResult = await createLocalScopeAdapter().writeConfig(config);
 
         expect(writeResult.success).toBe(false);
         if (!writeResult.success) expect(writeResult.error.message).toContain(resolve(homePath, ".claude.json"));
-        await expect(access(resolve(homePath, ".claude", "CLAUDE.md"))).rejects.toThrow();
+        expect(await readFile(resolve(homePath, ".claude.json"), "utf-8")).toBe("{ not json");
+      });
+    });
+
+    describe("project-scope apply and the legacy local-scope entry", () => {
+      const secretServer = {
+        name: "secret",
+        transport: "stdio" as const,
+        command: "npx",
+        args: ["x"],
+        env: { TOKEN: "resolved-secret" },
+        sourceFile: "mcp.json",
+      };
+      const emptyConfig = { rules: [], skills: [], agents: [], mcpServers: [secretServer] };
+      const homeFile = () => resolve(homePath, ".claude.json");
+
+      function createProjectScopedAdapter(): ClaudeAdapter {
+        return new ClaudeAdapter(projectPath, projectPath, resolve(projectPath, "CLAUDE.md"), projectPath);
+      }
+
+      async function readHomeDocument(): Promise<Record<string, any>> {
+        return JSON.parse(await readFile(homeFile(), "utf-8"));
+      }
+
+      it("does not write MCP servers into the home .claude.json", async () => {
+        await writeFile(homeFile(), JSON.stringify({ ui: { theme: "dark" } }), "utf-8");
+
+        const writeResult = await createProjectScopedAdapter().writeConfig(emptyConfig);
+
+        expect(writeResult.success).toBe(true);
+        expect(await readHomeDocument()).toEqual({ ui: { theme: "dark" } });
+      });
+
+      it("removes only the named servers from this project\x27s local-scope entry", async () => {
+        await writeFile(
+          homeFile(),
+          JSON.stringify({
+            mcpServers: { userLevel: { command: "u" } },
+            projects: {
+              "/other": { mcpServers: { secret: { command: "o" } } },
+              [projectPath]: {
+                allowedTools: ["a"],
+                mcpServers: { secret: { command: "old" }, handmade: { command: "h" } },
+              },
+            },
+          }),
+          "utf-8"
+        );
+
+        const removed = await createProjectScopedAdapter().removeLocalScopeMcpServers(["secret", "absent"], false);
+
+        expect(removed).toEqual(["secret"]);
+        const doc = await readHomeDocument();
+        expect(doc.mcpServers.userLevel.command).toBe("u");
+        expect(doc.projects["/other"].mcpServers.secret.command).toBe("o");
+        expect(doc.projects[projectPath].allowedTools).toEqual(["a"]);
+        expect(Object.keys(doc.projects[projectPath].mcpServers)).toEqual(["handmade"]);
+      });
+
+      it("leaves the home file alone on a dry run and when nothing matches", async () => {
+        const original = JSON.stringify({
+          projects: { [projectPath]: { mcpServers: { secret: { command: "old" } } } },
+        });
+        await writeFile(homeFile(), original, "utf-8");
+
+        expect(await createProjectScopedAdapter().removeLocalScopeMcpServers(["secret"], true)).toEqual(["secret"]);
+        expect(await createProjectScopedAdapter().removeLocalScopeMcpServers(["other"], false)).toEqual([]);
+
+        expect(await readFile(homeFile(), "utf-8")).toBe(original);
+      });
+
+      it("does nothing when the home .claude.json does not exist", async () => {
+        expect(await createProjectScopedAdapter().removeLocalScopeMcpServers(["secret"], false)).toEqual([]);
+
+        await expect(access(homeFile())).rejects.toBeDefined();
+      });
+
+      it("refuses to rewrite a home .claude.json it cannot parse", async () => {
+        await writeFile(homeFile(), "{ not json", "utf-8");
+
+        await expect(createProjectScopedAdapter().removeLocalScopeMcpServers(["secret"], false)).rejects.toThrow(
+          homeFile()
+        );
+        expect(await readFile(homeFile(), "utf-8")).toBe("{ not json");
+      });
+
+      it("tightens a world-readable home file to 0600 and keeps a symlink a symlink", async () => {
+        const linkTarget = resolve(projectPath, "dotfiles-claude.json");
+        await writeFile(
+          linkTarget,
+          JSON.stringify({
+            theme: "dark",
+            projects: { [projectPath]: { mcpServers: { secret: { command: "old" } } } },
+          }),
+          "utf-8"
+        );
+        await chmod(linkTarget, 0o644);
+        await symlink(linkTarget, homeFile());
+
+        await createProjectScopedAdapter().removeLocalScopeMcpServers(["secret"], false);
+
+        expect((await lstat(homeFile())).isSymbolicLink()).toBe(true);
+        expect((await stat(linkTarget)).mode & 0o777).toBe(0o600);
+        const linked = JSON.parse(await readFile(linkTarget, "utf-8"));
+        expect(linked.theme).toBe("dark");
+        expect(linked.projects[projectPath].mcpServers).toEqual({});
+        expect((await readdir(homePath)).filter((entry) => entry.endsWith(".tmp"))).toEqual([]);
       });
     });
 
