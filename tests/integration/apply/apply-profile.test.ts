@@ -352,6 +352,22 @@ describe("Apply Profile Integration", () => {
       expect(JSON.parse(projectText).mcpServers.api.env.TOKEN).toBe("${TOKEN}");
     });
 
+    it("keeps a glob argument of a hand-written server in .mcp.json byte for byte", async () => {
+      await writeFile(
+        join(projectPath, ".mcp.json"),
+        '{\n  // mine\n  "mcpServers": { "lint": { "command": "lint", "args": ["src/**/*.ts", "http://x//y"] } }\n}\n',
+        "utf-8"
+      );
+      await setupProfile("secrets", { mcpServers: apiServerFiles });
+
+      const result = await applyToClaudeProject();
+
+      expect(result.success).toBe(true);
+      const document = JSON.parse(await readFile(join(projectPath, ".mcp.json"), "utf-8"));
+      expect(document.mcpServers.lint.args).toEqual(["src/**/*.ts", "http://x//y"]);
+      expect(document.mcpServers.api.command).toBe("npx");
+    });
+
     it("lists variables that are not set in the environment in the summary", async () => {
       delete process.env.AC_UNSET_PROBE;
       await setupProfile("secrets", {

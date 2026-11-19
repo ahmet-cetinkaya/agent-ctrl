@@ -931,10 +931,52 @@ function humanizeSegment(value: string): string {
     .join(" / ");
 }
 
+/**
+ * Removes `/* ... *\/` and `// ...` comments from JSONC text. A quote opens a string, so comment
+ * markers inside one (a glob such as `src/**\/*.ts`, a URL) stay untouched.
+ */
+export function stripJsonComments(content: string): string {
+  let result = "";
+  let inString = false;
+  let index = 0;
+
+  while (index < content.length) {
+    const char = content[index];
+    const next = content[index + 1];
+
+    if (inString) {
+      result += char;
+      if (char === "\\" && next !== undefined) {
+        result += next;
+        index += 2;
+        continue;
+      }
+      if (char === '"') inString = false;
+      index += 1;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      result += char;
+      index += 1;
+    } else if (char === "/" && next === "*") {
+      const end = content.indexOf("*/", index + 2);
+      index = end === -1 ? content.length : end + 2;
+    } else if (char === "/" && next === "/") {
+      const end = content.indexOf("\n", index);
+      index = end === -1 ? content.length : end;
+    } else {
+      result += char;
+      index += 1;
+    }
+  }
+
+  return result;
+}
+
 function parseJsonWithComments(content: string): Record<string, unknown> {
-  const withoutBlockComments = content.replace(/\/\*[\s\S]*?\*\//g, "");
-  const withoutLineComments = withoutBlockComments.replace(/^\s*\/\/.*$/gm, "");
-  const parsed = JSON.parse(withoutLineComments) as unknown;
+  const parsed = JSON.parse(stripJsonComments(content)) as unknown;
   if (!isObject(parsed)) {
     throw new Error("Configuration file must contain a top-level JSON object.");
   }
