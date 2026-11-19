@@ -6,10 +6,30 @@ import {
   renderSettingsMcpConfig,
   renderCodexMcpServers,
   stripJsonComments,
+  prepareMcpServersForScope,
+  PI_MCP_ADAPTER_ENV_REFERENCES,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 import type { ApplyMcpServer } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 
 describe("PlatformSyncUtils", () => {
+  describe("prepareMcpServersForScope warnings", () => {
+    it("warns that an unexported variable is not filled in when a project server reads variables at run time", () => {
+      const server: ApplyMcpServer = {
+        name: "api",
+        transport: "stdio",
+        command: "npx",
+        args: [],
+        env: { TOKEN: "resolved" },
+        sourceFile: "api.json",
+        unresolved: { env: { TOKEN: "${TOKEN}" } },
+      };
+
+      const prepared = prepareMcpServersForScope("project", [server], PI_MCP_ADAPTER_ENV_REFERENCES, "Pi");
+
+      expect(prepared.warnings.some((warning) => warning.includes("not exported"))).toBe(true);
+    });
+  });
+
   describe("stripJsonComments", () => {
     it("keeps comment markers inside strings, such as a glob or a URL", () => {
       const text = '{ "args": ["src/**/*.ts", "http://host/a//b", "a /* b */ c"] }';

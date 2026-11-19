@@ -81,3 +81,52 @@ describe("CursorAdapter", () => {
     await expect(access(resolve(projectPath, ".cursor", "rules"))).resolves.toBeNull();
   });
 });
+
+describe("CursorAdapter stale rule pruning", () => {
+  let projectPath: string;
+  let adapter: CursorAdapter;
+
+  beforeEach(async () => {
+    projectPath = await mkdtemp(join(tmpdir(), "cursor-prune-"));
+    await writeApplyFixtures(projectPath);
+    adapter = new CursorAdapter();
+  });
+
+  afterEach(async () => {
+    await rm(projectPath, { recursive: true, force: true });
+  });
+
+  it("removes a rule file a previous apply wrote when this apply renders no rules", async () => {
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+    const rulesDir = resolve(projectPath, ".cursor", "rules");
+    await access(rulesDir);
+
+    // Simulate a profile change: rules directory exists but this apply has no rules to render.
+    const { readdir } = await import("node:fs/promises");
+    const stale = (await readdir(rulesDir)).filter((name) => name.endsWith(".mdc"));
+    expect(stale.length).toBeGreaterThan(0);
+
+    const { syncRulesAsFiles } = await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
+    const result = await syncRulesAsFiles(
+      [],
+      rulesDir,
+      (rule, content) => ({ relativePath: `${rule.id}.mdc`, content }),
+      false
+    );
+    expect(result.paths.length).toBe(stale.length);
+    await expect(access(resolve(rulesDir, stale[0]))).rejects.toThrow();
+  });
+
+  it("keeps user-authored files with unknown extensions while pruning rule files", async () => {
+    const rulesDir = resolve(projectPath, ".cursor", "rules");
+    await mkdir(rulesDir, { recursive: true });
+    await writeFile(resolve(rulesDir, "old-rule.mdc"), "---\nalwaysApply: true\n---\n# Old\n");
+    await writeFile(resolve(rulesDir, "notes.txt"), "user notes");
+
+    const { syncRulesAsFiles } = await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
+    await syncRulesAsFiles([], rulesDir, (rule, content) => ({ relativePath: `${rule.id}.mdc`, content }), false);
+
+    await expect(access(resolve(rulesDir, "old-rule.mdc"))).rejects.toThrow();
+    await expect(access(resolve(rulesDir, "notes.txt"))).resolves.toBeNull();
+  });
+});

@@ -189,14 +189,18 @@ export class ClaudeAdapter implements IPlatformAdapter {
         await this.cleanManagedArtifacts();
       }
 
-      if (config.rules.length > 0) {
-        await this.writeRules(config);
-      }
+      // Runs even with zero rules: an existing managed section must be rewritten empty, not left stale.
+      await this.writeRules(config);
 
       await this.syncSkills(config);
       await this.syncAgents(config);
       await this.syncCommands(options?.commands);
-      await this.writeClaudeMcpDocument(mcpDocumentContent);
+      // Rebuilt right before the write: a Claude Code session may have rewritten ~/.claude.json
+      // while rules, skills and agents were syncing; the pre-write parse above only proves it is readable.
+      const finalMcpDocumentContent = mcpDocumentContent
+        ? await this.buildClaudeMcpDocumentContent(config, options?.cleanExistingArtifacts)
+        : undefined;
+      await this.writeClaudeMcpDocument(finalMcpDocumentContent);
 
       return ok(undefined);
     } catch (error) {
@@ -204,7 +208,7 @@ export class ClaudeAdapter implements IPlatformAdapter {
       let message = "Failed to write Claude configuration";
 
       if (nodeErr.code === "EACCES") {
-        message += ": Permission denied. Check file/directory permissions.";
+        message += `: Permission denied on ${nodeErr.path ?? this.claudeMcpConfigPath}. Check file/directory permissions.`;
       } else if (nodeErr.code === "ENOSPC") {
         message += ": No space left on device.";
       } else if (nodeErr.code === "EROFS") {
@@ -253,7 +257,8 @@ export class ClaudeAdapter implements IPlatformAdapter {
       }
     }
     if (mergedRules.length === 0) {
-      lines.push("- No rules found.");
+      // An empty managed section keeps CLAUDE.md clean; a "- No rules found." bullet reads as a status report.
+      return [ClaudeAdapter.MANAGED_START_MARKER, ClaudeAdapter.MANAGED_END_MARKER, ""].join("\n");
     }
     lines.push(ClaudeAdapter.MANAGED_END_MARKER);
     lines.push("");

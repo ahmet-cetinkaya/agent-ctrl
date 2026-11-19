@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A project-scope MCP apply that writes run-time variable references now warns that a variable that is not exported is not filled in, so the server may start with an empty or unexpanded value
+
+### Fixed
+
+- Cursor and Windsurf: applying with no rules removes the rule files an earlier apply wrote, instead of leaving the previous profile's rules loaded. Files with other extensions in the same folder stay
+- Claude Code: an apply with no rules rewrites the managed section of `CLAUDE.md` empty, without a `- No rules found.` line, and no longer leaves a stale section
+- Claude Code: `~/.claude.json` is read again right before it is written, so an edit a running Claude Code session made during the apply is kept
+- Claude Code: a permission error on write names the file that was denied
+
 ## [1.1.0] - 2026-11-19
 
 ### Fixed

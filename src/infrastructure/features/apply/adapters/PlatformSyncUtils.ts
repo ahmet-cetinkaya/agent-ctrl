@@ -90,7 +90,45 @@ export async function syncRulesAsFiles(
       return renderer(rule, source);
     })
   );
-  return syncRenderedFiles(targetRoot, rendered, dryRun);
+  const result = await syncRenderedFiles(targetRoot, rendered, dryRun);
+  const removed = await pruneFilesNotIn(
+    targetRoot,
+    rendered.map((file) => file.relativePath),
+    [".mdc", ".md"],
+    dryRun
+  );
+  if (removed.length > 0) {
+    // A profile change must not leave the previous profile's rule files loading twice.
+    result.changed = true;
+    result.paths.push(...removed);
+  }
+  return result;
+}
+
+/**
+ * Deletes files under `targetRoot` that an earlier apply wrote and this one no longer renders.
+ * Only known rule extensions are considered, so user-authored files in the same directory survive.
+ */
+async function pruneFilesNotIn(
+  targetRoot: string,
+  keep: string[],
+  extensions: string[],
+  dryRun: boolean
+): Promise<string[]> {
+  const keepSet = new Set(keep);
+  const removed: string[] = [];
+  const entries = await readdir(targetRoot, { recursive: true, withFileTypes: true }).catch(() => []);
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    if (!extensions.some((extension) => entry.name.endsWith(extension))) continue;
+    const relativePath = relative(targetRoot, resolve(entry.parentPath ?? targetRoot, entry.name));
+    if (keepSet.has(relativePath)) continue;
+    if (!dryRun) {
+      await rm(resolve(targetRoot, relativePath), { force: true });
+    }
+    removed.push(resolve(targetRoot, relativePath));
+  }
+  return removed;
 }
 
 export async function syncCommandsAsMarkdown(
@@ -604,6 +642,9 @@ function describeProjectMcpServers(
   if (variableNames.length > 0) {
     warnings.push(
       `${platformLabel} reads these MCP values from the environment at run time; export them before starting ${platformLabel}: ${variableNames.join(", ")}`
+    );
+    warnings.push(
+      `A variable that is not exported is not filled in at run time; the server may start with an empty or unexpanded value instead of failing.`
     );
   }
   if (withheldNames.length > 0) {
