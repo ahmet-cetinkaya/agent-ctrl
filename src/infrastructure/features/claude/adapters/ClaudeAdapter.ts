@@ -7,6 +7,7 @@ import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import type {
   IPlatformAdapter,
   PlatformConfig,
+  ClaudeMcpScope,
   WriteConfigOptions,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import type { Artifact } from "@/core/domain/shared/types/Artifact";
@@ -62,8 +63,10 @@ export class ClaudeAdapter implements IPlatformAdapter {
   readonly configPath: string;
   readonly claudeMcpConfigPath: string;
   private readonly projectPath: string;
-  /** Set for a project-scope apply; MCP servers then go to `<project>/.mcp.json`, not the home `.claude.json`. */
+  /** Set for a project-scope apply. */
   private readonly projectScopePath?: string;
+  /** `local` stores the project's MCP servers in the home `.claude.json`; `project` leaves them to `<project>/.mcp.json`. */
+  private readonly claudeMcpScope: ClaudeMcpScope;
   private readonly claudeRoot: string;
   private readonly placeholderResolver = new McpPlaceholderResolver();
   private readonly modelWarnings: string[] = [];
@@ -76,14 +79,16 @@ export class ClaudeAdapter implements IPlatformAdapter {
     projectPath: string,
     claudeHomeOverride?: string,
     configPathOverride?: string,
-    projectScopePath?: string
+    projectScopePath?: string,
+    claudeMcpScope: ClaudeMcpScope = "project"
   ) {
     const claudeHome = claudeHomeOverride ?? process.env.AGENT_CTRL_CLAUDE_HOME ?? homedir();
     this.projectPath = projectPath;
     this.projectScopePath = projectScopePath;
+    this.claudeMcpScope = claudeMcpScope;
     this.claudeRoot = resolve(claudeHome, ".claude");
     this.configPath = configPathOverride ?? resolve(this.claudeRoot, "CLAUDE.md");
-    // User-scope MCP servers and the legacy local-scope entries live in ~/.claude.json.
+    // User-scope MCP servers and local-scope entries live in ~/.claude.json.
     const mcpHome = projectScopePath ? (process.env.AGENT_CTRL_CLAUDE_HOME ?? homedir()) : claudeHome;
     this.claudeMcpConfigPath = resolve(mcpHome, ".claude.json");
   }
@@ -419,15 +424,20 @@ export class ClaudeAdapter implements IPlatformAdapter {
     config: PlatformConfig,
     cleanExistingMcp?: boolean
   ): Promise<string | undefined> {
-    // A project-scope apply writes `<project>/.mcp.json` through ClaudeApplyAdapter, never this file.
-    if (this.projectScopePath) return undefined;
+    // A project-scope apply writes `<project>/.mcp.json` through ClaudeApplyAdapter, unless local scope is chosen.
+    if (this.projectScopePath && this.claudeMcpScope === "project") return undefined;
     const mcpServers = config.mcpServers ?? [];
     if (mcpServers.length === 0 && !cleanExistingMcp) return undefined;
 
     const incomingMcpServers = Object.fromEntries(mcpServers.map((server) => [server.name, toClaudeMcpEntry(server)]));
     const document = await this.readClaudeMcpDocument();
-    const existingMcpServers = cleanExistingMcp ? {} : this.asObject(document.mcpServers);
-    const mergedDocument = { ...document, mcpServers: { ...existingMcpServers, ...incomingMcpServers } };
+    const projects = this.asObject(document.projects);
+    const scopeEntry = this.projectScopePath ? this.asObject(projects[this.projectScopePath]) : document;
+    const existingMcpServers = cleanExistingMcp ? {} : this.asObject(scopeEntry.mcpServers);
+    const updatedScopeEntry = { ...scopeEntry, mcpServers: { ...existingMcpServers, ...incomingMcpServers } };
+    const mergedDocument = this.projectScopePath
+      ? { ...document, projects: { ...projects, [this.projectScopePath]: updatedScopeEntry } }
+      : updatedScopeEntry;
 
     return `${JSON.stringify(mergedDocument, null, 2)}\n`;
   }

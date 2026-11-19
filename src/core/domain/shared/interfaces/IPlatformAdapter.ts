@@ -70,6 +70,9 @@ export interface WriteConfigOptions {
 }
 
 export type ApplyPlatformScope = "project" | "user";
+/** Where a project-scope Claude apply stores MCP servers: `<project>/.mcp.json` or `~/.claude.json` local scope. */
+export const CLAUDE_MCP_SCOPES = ["project", "local"] as const;
+export type ClaudeMcpScope = (typeof CLAUDE_MCP_SCOPES)[number];
 export type ApplyPlatformStatus = "success" | "unchanged";
 
 /**
@@ -96,6 +99,7 @@ export interface ApplyIntegrationRequest {
   readonly override?: boolean;
   readonly targetScope?: ApplyPlatformScope;
   readonly userConfigRootPath?: string;
+  readonly claudeMcpScope?: ClaudeMcpScope;
   readonly mergedSnapshot?: {
     readonly rules: Rule[];
     readonly skills: Skill[];

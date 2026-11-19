@@ -2,7 +2,11 @@ import { dirname } from "node:path";
 import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
-import type { ApplyPlatformScope, ApplyPlatformStatus } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import type {
+  ApplyPlatformScope,
+  ApplyPlatformStatus,
+  ClaudeMcpScope,
+} from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import {
   getSupportedApplyPlatformsDisplay,
   parseSupportedApplyPlatform,
@@ -20,6 +24,7 @@ export interface ApplyCommandOptions {
   override?: boolean;
   targetScope?: ApplyPlatformScope;
   userConfigRootPath?: string;
+  claudeMcpScope?: ClaudeMcpScope;
 }
 
 export interface ApplyCommandResult {
@@ -54,7 +59,7 @@ export class ApplyCommand {
   }
 
   async execute(options: ApplyCommandOptions): Promise<Result<ApplyCommandResult, Error>> {
-    const { projectPath, platform, dryRun, override, targetScope, userConfigRootPath } = options;
+    const { projectPath, platform, dryRun, override, targetScope, userConfigRootPath, claudeMcpScope } = options;
 
     const selectedPlatform = parseSupportedApplyPlatform(platform);
     if (!selectedPlatform) {
@@ -92,6 +97,7 @@ export class ApplyCommand {
         override,
         targetScope,
         userConfigRootPath,
+        claudeMcpScope,
       });
 
       const durationMs = Date.now() - startedAt;

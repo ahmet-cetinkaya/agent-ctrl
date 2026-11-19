@@ -1,4 +1,5 @@
 import { Command, Option } from "commander";
+import { CLAUDE_MCP_SCOPES } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { resolve } from "node:path";
 import { resolveConfigRoot } from "@/presentation/cli/shared/utils/configRoot";
 import { ApplyCommand } from "@/core/application/features/apply/commands/ApplyCommand";
@@ -69,6 +70,12 @@ export function createApplyCommand(): Command {
       false
     )
     .option("--path <path>", "Custom platform user configuration root path")
+    .addOption(
+      new Option(
+        "--claude-mcp-scope <scope>",
+        "Where a project-scope Claude apply stores MCP servers: <project>/.mcp.json or ~/.claude.json local scope"
+      ).choices(CLAUDE_MCP_SCOPES)
+    )
     .option("--no-prompt", "Skip confirmation prompt", false)
     .action(async (platform: string | undefined, options: any) => {
       if (options.verbose) {
@@ -183,6 +190,7 @@ async function applyToPlatform(platform: string, options: any): Promise<void> {
         override: options.override,
         targetScope,
         userConfigRootPath,
+        claudeMcpScope: options.claudeMcpScope,
       });
     });
 

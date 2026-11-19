@@ -5,6 +5,7 @@ import type {
   ApplyConfigTarget,
   ApplyIntegrationRequest,
   ApplyIntegrationResult,
+  ClaudeMcpScope,
   IApplyPlatformAdapter,
 } from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import { ClaudeAdapter, toClaudeMcpEntry } from "@/infrastructure/features/claude/adapters/ClaudeAdapter";
@@ -21,6 +22,7 @@ import {
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 
 const CLAUDE_PROJECT_MCP_FILE = ".mcp.json";
+const DEFAULT_CLAUDE_MCP_SCOPE: ClaudeMcpScope = "project";
 
 export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
   readonly platformName = "claude" as const;
@@ -40,6 +42,7 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
 
   async applyApplyIntegration(request: ApplyIntegrationRequest): Promise<ApplyIntegrationResult> {
     const target = await this.resolveTarget(request.projectPath, request);
+    const claudeMcpScope = request.claudeMcpScope ?? DEFAULT_CLAUDE_MCP_SCOPE;
     const claudeHome =
       target.scope === "project" ? request.projectPath : process.env.AGENT_CTRL_CLAUDE_HOME || homedir();
     const configPath =
@@ -50,7 +53,8 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
       request.projectPath,
       claudeHome,
       configPath,
-      target.scope === "project" ? request.projectPath : undefined
+      target.scope === "project" ? request.projectPath : undefined,
+      claudeMcpScope
     );
 
     const source = request.mergedSnapshot
@@ -89,7 +93,8 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
     }
 
     const modelWarnings = [...new Set(adapter.collectedWarnings)];
-    const projectMcp = target.scope === "project" ? await this.applyProjectMcp(adapter, request, source) : undefined;
+    const writesProjectMcpFile = target.scope === "project" && claudeMcpScope === "project";
+    const projectMcp = writesProjectMcpFile ? await this.applyProjectMcp(adapter, request, source) : undefined;
 
     const claudeRoot = resolve(target.configPath, "..");
     const fileChanges: string[] = [];
@@ -123,6 +128,9 @@ export class ClaudeApplyAdapter implements IApplyPlatformAdapter {
       ...source.warnings,
       ...modelWarnings,
       ...(projectMcp?.warnings ?? []),
+      ...(request.claudeMcpScope && target.scope === "user"
+        ? [`--claude-mcp-scope applies to a project-scope apply only; it is ignored at user scope.`]
+        : []),
       ...(source.skills.length > 0 && target.scope !== "project"
         ? [
             "Skills were applied to ~/.claude/skills/. Claude Desktop's filesystem-skill support is known to be unstable: skills may not appear in Customize > Skills, may silently fail to invoke via \"/name\" in the Code tab even when listed in autocomplete, or may not load at all in some versions. They are never available in Chat/Cowork tabs. If a skill doesn't seem to fire, try removing `disable-model-invocation: true` from its SKILL.md frontmatter, or upload it through Customize > Skills for Chat/Cowork use.",

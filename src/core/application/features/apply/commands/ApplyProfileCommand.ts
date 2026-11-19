@@ -3,7 +3,11 @@ import { Result, ok, err } from "@/core/domain/shared/value-objects/Result";
 import { UserError } from "@/core/domain/shared/errors/UserError";
 import { SystemError } from "@/core/domain/shared/errors/SystemError";
 import { ProfileError } from "@/core/domain/shared/errors/ProfileError";
-import type { ApplyPlatformScope, ApplyPlatformStatus } from "@/core/domain/shared/interfaces/IPlatformAdapter";
+import type {
+  ApplyPlatformScope,
+  ApplyPlatformStatus,
+  ClaudeMcpScope,
+} from "@/core/domain/shared/interfaces/IPlatformAdapter";
 import {
   getSupportedApplyPlatformsDisplay,
   parseSupportedApplyPlatform,
@@ -27,6 +31,7 @@ export interface ApplyProfileCommandOptions {
   override?: boolean;
   targetScope?: ApplyPlatformScope;
   userConfigRootPath?: string;
+  claudeMcpScope?: ClaudeMcpScope;
   configRoot?: string;
 }
 
@@ -68,6 +73,7 @@ export class ApplyProfileCommand {
       override,
       targetScope,
       userConfigRootPath,
+      claudeMcpScope,
       configRoot: providedConfigRoot,
     } = options;
 
@@ -122,6 +128,7 @@ export class ApplyProfileCommand {
         override,
         targetScope,
         userConfigRootPath,
+        claudeMcpScope,
         mergedSnapshot: {
           rules: profileSnapshot.rules,
           skills: profileSnapshot.skills,

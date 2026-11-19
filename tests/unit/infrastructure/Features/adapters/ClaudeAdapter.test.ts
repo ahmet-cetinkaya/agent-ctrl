@@ -309,6 +309,72 @@ describe("ClaudeAdapter", () => {
       expect(doc.mcpServers.New.command).toBe("npx");
     });
 
+    describe("local scope chosen with claudeMcpScope", () => {
+      const secretServer = {
+        name: "secret",
+        transport: "stdio" as const,
+        command: "npx",
+        args: ["x"],
+        env: { TOKEN: "resolved-secret" },
+        sourceFile: "mcp.json",
+      };
+      const config = { rules: [], skills: [], agents: [], mcpServers: [secretServer] };
+
+      function createLocalScopeAdapter(): ClaudeAdapter {
+        return new ClaudeAdapter(projectPath, projectPath, resolve(projectPath, "CLAUDE.md"), projectPath, "local");
+      }
+
+      async function readHomeDocument(): Promise<Record<string, any>> {
+        return JSON.parse(await readFile(resolve(homePath, ".claude.json"), "utf-8"));
+      }
+
+      it("writes servers under projects[<path>] in the home .claude.json and nothing into the project", async () => {
+        await writeFile(resolve(homePath, ".claude.json"), JSON.stringify({ ui: { theme: "dark" } }), "utf-8");
+
+        const writeResult = await createLocalScopeAdapter().writeConfig(config);
+
+        expect(writeResult.success).toBe(true);
+        const doc = await readHomeDocument();
+        expect(doc.ui.theme).toBe("dark");
+        expect(doc.mcpServers).toBeUndefined();
+        expect(doc.projects[projectPath].mcpServers.secret.env.TOKEN).toBe("resolved-secret");
+        await expect(access(resolve(projectPath, ".mcp.json"))).rejects.toBeDefined();
+      });
+
+      it("keeps other projects and keys, and replaces only the project servers when overriding", async () => {
+        await writeFile(
+          resolve(homePath, ".claude.json"),
+          JSON.stringify({
+            mcpServers: { userLevel: { command: "u" } },
+            projects: {
+              "/other": { mcpServers: { keep: { command: "k" } } },
+              [projectPath]: { allowedTools: ["a"], mcpServers: { existing: { command: "old" } } },
+            },
+          }),
+          "utf-8"
+        );
+
+        await createLocalScopeAdapter().writeConfig(config, { cleanExistingArtifacts: true });
+
+        const doc = await readHomeDocument();
+        expect(doc.mcpServers.userLevel.command).toBe("u");
+        expect(doc.projects["/other"].mcpServers.keep.command).toBe("k");
+        expect(doc.projects[projectPath].allowedTools).toEqual(["a"]);
+        expect(Object.keys(doc.projects[projectPath].mcpServers)).toEqual(["secret"]);
+        expect((await stat(resolve(homePath, ".claude.json"))).mode & 0o777).toBe(0o600);
+      });
+
+      it("refuses to overwrite a home .claude.json it cannot parse", async () => {
+        await writeFile(resolve(homePath, ".claude.json"), "{ not json", "utf-8");
+
+        const writeResult = await createLocalScopeAdapter().writeConfig(config);
+
+        expect(writeResult.success).toBe(false);
+        if (!writeResult.success) expect(writeResult.error.message).toContain(resolve(homePath, ".claude.json"));
+        expect(await readFile(resolve(homePath, ".claude.json"), "utf-8")).toBe("{ not json");
+      });
+    });
+
     describe("project-scope apply and the legacy local-scope entry", () => {
       const secretServer = {
         name: "secret",

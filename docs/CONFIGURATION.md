@@ -220,6 +220,8 @@ A project-scope apply for Claude Code merges the MCP servers into `<project>/.mc
 
 Earlier versions stored these servers in `~/.claude.json` (`projects["<path>"].mcpServers`). A project-scope apply now removes the servers it manages from that entry, so they do not load twice, and reports the move in the apply output. Other servers and keys in `~/.claude.json` stay untouched. Apply at user scope to write servers to `~/.claude.json` for every project.
 
+Claude Code still supports the earlier placement, the local scope in `~/.claude.json` under `projects["<path>"].mcpServers` ([Claude Code MCP scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes)). Pass `--claude-mcp-scope local` to `apply` or `profile apply` to keep using it. The values are `project` (the default) and `local`. With `local`, agent-ctrl writes resolved values to `~/.claude.json` as before, does not touch `<project>/.mcp.json`, and does not remove anything from `~/.claude.json`. The flag applies to a project-scope apply only; at user scope it is ignored with a warning.
+
 ### Profiles (`profiles/`)
 
 Profiles allow you to define named configurations that bundle specific artifacts for targeted platform application.
