@@ -120,7 +120,10 @@ describe("CursorAdapter stale rule pruning", () => {
   it("keeps user-authored files with unknown extensions while pruning rule files", async () => {
     const rulesDir = resolve(projectPath, ".cursor", "rules");
     await mkdir(rulesDir, { recursive: true });
-    await writeFile(resolve(rulesDir, "old-rule.mdc"), "---\nalwaysApply: true\n---\n# Old\n");
+    await writeFile(
+      resolve(rulesDir, "old-rule.mdc"),
+      "---\nalwaysApply: true\n---\n<!-- agent-ctrl:managed -->\n# Old\n"
+    );
     await writeFile(resolve(rulesDir, "notes.txt"), "user notes");
 
     const { syncRulesAsFiles } = await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
@@ -128,5 +131,59 @@ describe("CursorAdapter stale rule pruning", () => {
 
     await expect(access(resolve(rulesDir, "old-rule.mdc"))).rejects.toThrow();
     await expect(access(resolve(rulesDir, "notes.txt"))).resolves.toBeNull();
+  });
+
+  it("keeps a hand-written rule file, with or without frontmatter, and lists it as unmanaged", async () => {
+    const rulesDir = resolve(projectPath, ".cursor", "rules");
+    await mkdir(rulesDir, { recursive: true });
+    await writeFile(resolve(rulesDir, "mine.mdc"), "---\nalwaysApply: true\n---\n# Mine\n");
+    await writeFile(resolve(rulesDir, "plain.md"), "# Plain note\n");
+    await writeFile(
+      resolve(rulesDir, "old-rule.mdc"),
+      "---\nalwaysApply: true\n---\n<!-- agent-ctrl:managed -->\n# Old\n"
+    );
+
+    const { syncRulesAsFiles } = await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
+    const result = await syncRulesAsFiles(
+      [],
+      rulesDir,
+      (rule, content) => ({ relativePath: `${rule.id}.mdc`, content }),
+      false
+    );
+
+    await expect(access(resolve(rulesDir, "mine.mdc"))).resolves.toBeNull();
+    await expect(access(resolve(rulesDir, "plain.md"))).resolves.toBeNull();
+    await expect(access(resolve(rulesDir, "old-rule.mdc"))).rejects.toThrow();
+    expect(result.warnings.join("\n")).toContain("Unmanaged rule files kept");
+    expect(result.warnings.join("\n")).toContain("mine.mdc");
+    expect(result.warnings.join("\n")).not.toContain("old-rule.mdc");
+  });
+
+  it("marks the rule files it renders, after the frontmatter, so a later apply may prune them", async () => {
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+    const rulesDir = resolve(projectPath, ".cursor", "rules");
+
+    const { readdir, readFile } = await import("node:fs/promises");
+    const [first] = (await readdir(rulesDir)).filter((name) => name.endsWith(".mdc"));
+    const content = await readFile(resolve(rulesDir, first), "utf-8");
+
+    expect(content.startsWith("---\nalwaysApply: true\n---\n<!-- agent-ctrl:managed -->\n")).toBe(true);
+  });
+
+  it("does not delete a stale file on a dry run", async () => {
+    const rulesDir = resolve(projectPath, ".cursor", "rules");
+    await mkdir(rulesDir, { recursive: true });
+    await writeFile(resolve(rulesDir, "old-rule.mdc"), "<!-- agent-ctrl:managed -->\n# Old\n");
+
+    const { syncRulesAsFiles } = await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
+    const result = await syncRulesAsFiles(
+      [],
+      rulesDir,
+      (rule, content) => ({ relativePath: `${rule.id}.mdc`, content }),
+      true
+    );
+
+    expect(result.paths).toEqual([resolve(rulesDir, "old-rule.mdc")]);
+    await expect(access(resolve(rulesDir, "old-rule.mdc"))).resolves.toBeNull();
   });
 });

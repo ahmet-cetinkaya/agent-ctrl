@@ -78,6 +78,11 @@ export async function upsertManagedRuleDocument(
   };
 }
 
+/** Written into every rule file agent-ctrl renders, so a later apply can tell its files from the user's. */
+export const MANAGED_RULE_MARKER = "<!-- agent-ctrl:managed -->";
+
+const RULE_FILE_EXTENSIONS = [".mdc", ".md"];
+
 export async function syncRulesAsFiles(
   rules: Rule[],
   targetRoot: string,
@@ -87,48 +92,67 @@ export async function syncRulesAsFiles(
   const rendered = await Promise.all(
     rules.map(async (rule) => {
       const source = await readFile(rule.path, "utf-8");
-      return renderer(rule, source);
+      const file = renderer(rule, source);
+      return { ...file, content: withManagedMarker(file.content) };
     })
   );
   const result = await syncRenderedFiles(targetRoot, rendered, dryRun);
-  const removed = await pruneFilesNotIn(
+  const pruned = await pruneStaleManagedRuleFiles(
     targetRoot,
     rendered.map((file) => file.relativePath),
-    [".mdc", ".md"],
     dryRun
   );
-  if (removed.length > 0) {
+  if (pruned.removed.length > 0) {
     // A profile change must not leave the previous profile's rule files loading twice.
     result.changed = true;
-    result.paths.push(...removed);
+    result.paths.push(...pruned.removed);
+  }
+  if (pruned.unmanaged.length > 0) {
+    result.warnings.push(
+      `Unmanaged rule files kept in ${targetRoot}: ${pruned.unmanaged.map((file) => relative(targetRoot, file)).join(", ")}. agent-ctrl did not write them, so it leaves them alone.`
+    );
   }
   return result;
 }
 
+/** Puts the marker after a leading YAML frontmatter block, or at the top when there is none. */
+function withManagedMarker(content: string): string {
+  const frontmatterEnd = content.startsWith("---\n") ? content.indexOf("\n---\n", 4) : -1;
+  if (frontmatterEnd === -1) return `${MANAGED_RULE_MARKER}\n${content}`;
+
+  const insertAt = frontmatterEnd + "\n---\n".length;
+  return `${content.slice(0, insertAt)}${MANAGED_RULE_MARKER}\n${content.slice(insertAt)}`;
+}
+
 /**
- * Deletes files under `targetRoot` that an earlier apply wrote and this one no longer renders.
- * Only known rule extensions are considered, so user-authored files in the same directory survive.
+ * Deletes rule files under `targetRoot` that an earlier apply wrote and this one no longer renders.
+ * Only a file that carries the marker counts as written by agent-ctrl; every other rule file, such
+ * as one the user wrote by hand, is kept and reported.
  */
-async function pruneFilesNotIn(
+async function pruneStaleManagedRuleFiles(
   targetRoot: string,
   keep: string[],
-  extensions: string[],
   dryRun: boolean
-): Promise<string[]> {
+): Promise<{ removed: string[]; unmanaged: string[] }> {
   const keepSet = new Set(keep);
   const removed: string[] = [];
+  const unmanaged: string[] = [];
   const entries = await readdir(targetRoot, { recursive: true, withFileTypes: true }).catch(() => []);
   for (const entry of entries) {
     if (!entry.isFile()) continue;
-    if (!extensions.some((extension) => entry.name.endsWith(extension))) continue;
-    const relativePath = relative(targetRoot, resolve(entry.parentPath ?? targetRoot, entry.name));
-    if (keepSet.has(relativePath)) continue;
-    if (!dryRun) {
-      await rm(resolve(targetRoot, relativePath), { force: true });
+    if (!RULE_FILE_EXTENSIONS.some((extension) => entry.name.endsWith(extension))) continue;
+    const filePath = resolve(entry.parentPath ?? targetRoot, entry.name);
+    if (keepSet.has(relative(targetRoot, filePath))) continue;
+
+    const content = await readFile(filePath, "utf-8");
+    if (!content.includes(MANAGED_RULE_MARKER)) {
+      unmanaged.push(filePath);
+      continue;
     }
-    removed.push(resolve(targetRoot, relativePath));
+    if (!dryRun) await rm(filePath, { force: true });
+    removed.push(filePath);
   }
-  return removed;
+  return { removed, unmanaged };
 }
 
 export async function syncCommandsAsMarkdown(
