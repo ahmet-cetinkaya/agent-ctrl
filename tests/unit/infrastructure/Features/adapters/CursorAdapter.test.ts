@@ -222,4 +222,47 @@ describe("CursorAdapter stale rule pruning", () => {
     expect(real.warnings!.join("\n")).toContain("mine.mdc");
     await expect(access(resolve(rulesDir, "stale.mdc"))).rejects.toThrow();
   });
+
+  it("prunes a stale rule file whose source had no trailing newline, trailing blank lines or CRLF", async () => {
+    const rulesDir = resolve(projectPath, ".cursor", "rules");
+    const sources = {
+      nonl: "# Rule\nbody",
+      blank: "# Rule\nbody\n\n\n",
+      crlf: "---\r\nalwaysApply: true\r\n---\r\n# Rule\r\nbody\r\n",
+    };
+    const { syncRulesAsFiles } = await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
+    const { writeFile: write } = await import("node:fs/promises");
+    const rules: never[] = [];
+    for (const [id, source] of Object.entries(sources)) {
+      const path = join(projectPath, `${id}.src`);
+      await write(path, source);
+      rules.push({ id, path } as never);
+    }
+    const render = (rule: { id: string }, content: string) => ({ relativePath: `${rule.id}.mdc`, content });
+
+    await syncRulesAsFiles(rules, rulesDir, render as never, false);
+    const result = await syncRulesAsFiles([], rulesDir, render as never, false);
+
+    for (const id of Object.keys(sources)) {
+      await expect(access(resolve(rulesDir, `${id}.mdc`))).rejects.toThrow();
+    }
+    expect(result.warnings.join("\n")).not.toContain("Kept rule files");
+  });
+
+  it("keeps a nested rule that is still rendered, and reads Windows separators as slashes", async () => {
+    const { syncRulesAsFiles, toPosixPath } =
+      await import("@/infrastructure/features/apply/adapters/PlatformSyncUtils");
+    const rulesDir = resolve(projectPath, ".cursor", "rules");
+    const sourcePath = join(projectPath, "nested.src");
+    await writeFile(sourcePath, "# Nested\n");
+    const rules = [{ id: "ts/nested", path: sourcePath } as never];
+    const render = (rule: { id: string }, content: string) => ({ relativePath: `${rule.id}.mdc`, content });
+
+    await syncRulesAsFiles(rules, rulesDir, render as never, false);
+    const second = await syncRulesAsFiles(rules, rulesDir, render as never, false);
+
+    expect(second.changed).toBe(false);
+    await expect(access(resolve(rulesDir, "ts", "nested.mdc"))).resolves.toBeNull();
+    expect(toPosixPath("ts\\nested.mdc")).toBe("ts/nested.mdc");
+  });
 });

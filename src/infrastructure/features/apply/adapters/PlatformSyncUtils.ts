@@ -94,7 +94,8 @@ export async function syncRulesAsFiles(
     rules.map(async (rule) => {
       const source = await readFile(rule.path, "utf-8");
       const file = renderer(rule, source);
-      return { ...file, content: withManagedMarker(file.content) };
+      // syncRenderedFiles writes the content trimmed plus one LF; hash exactly that text.
+      return { ...file, content: withManagedMarker(`${file.content.trimEnd()}\n`) };
     })
   );
   const result = await syncRenderedFiles(targetRoot, rendered, dryRun);
@@ -117,6 +118,11 @@ export async function syncRulesAsFiles(
     );
   }
   return result;
+}
+
+/** Recursive readdir returns backslash separators on Windows; rule ids use `/`. */
+export function toPosixPath(path: string): string {
+  return path.replaceAll("\\", "/");
 }
 
 function formatRelativePaths(root: string, paths: string[]): string {
@@ -163,13 +169,13 @@ async function pruneStaleManagedRuleFiles(
   keep: string[],
   dryRun: boolean
 ): Promise<{ removed: string[]; unmanaged: string[] }> {
-  const keepSet = new Set(keep);
+  const keepSet = new Set(keep.map(toPosixPath));
   const removed: string[] = [];
   const unmanaged: string[] = [];
   const entries = await readdir(targetRoot, { recursive: true }).catch(() => []);
   for (const entry of entries) {
     if (!RULE_FILE_EXTENSIONS.some((extension) => entry.endsWith(extension))) continue;
-    if (keepSet.has(entry)) continue;
+    if (keepSet.has(toPosixPath(entry))) continue;
 
     const filePath = resolve(targetRoot, entry);
     if (!(await lstat(filePath)).isFile()) continue;
