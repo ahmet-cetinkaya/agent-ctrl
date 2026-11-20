@@ -125,6 +125,16 @@ export function toPosixPath(path: string): string {
   return path.replaceAll("\\", "/");
 }
 
+/** The rendered rule paths, with `/` separators, for {@link isStillRendered}. */
+export function toRenderedPathSet(relativePaths: string[]): ReadonlySet<string> {
+  return new Set(relativePaths.map(toPosixPath));
+}
+
+/** True when a path from the rules folder scan is one this apply renders, whatever separator the OS used. */
+export function isStillRendered(scannedRelativePath: string, renderedPaths: ReadonlySet<string>): boolean {
+  return renderedPaths.has(toPosixPath(scannedRelativePath));
+}
+
 function formatRelativePaths(root: string, paths: string[]): string {
   return paths.map((path) => relative(root, path)).join(", ");
 }
@@ -169,13 +179,13 @@ async function pruneStaleManagedRuleFiles(
   keep: string[],
   dryRun: boolean
 ): Promise<{ removed: string[]; unmanaged: string[] }> {
-  const keepSet = new Set(keep.map(toPosixPath));
+  const renderedPaths = toRenderedPathSet(keep);
   const removed: string[] = [];
   const unmanaged: string[] = [];
   const entries = await readdir(targetRoot, { recursive: true }).catch(() => []);
   for (const entry of entries) {
     if (!RULE_FILE_EXTENSIONS.some((extension) => entry.endsWith(extension))) continue;
-    if (keepSet.has(toPosixPath(entry))) continue;
+    if (isStillRendered(entry, renderedPaths)) continue;
 
     const filePath = resolve(targetRoot, entry);
     if (!(await lstat(filePath)).isFile()) continue;
