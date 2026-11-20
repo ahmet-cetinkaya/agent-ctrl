@@ -6,12 +6,36 @@ import {
   renderSettingsMcpConfig,
   renderCodexMcpServers,
   stripJsonComments,
+  isStillRendered,
+  toRenderedPathSet,
   prepareMcpServersForScope,
   PI_MCP_ADAPTER_ENV_REFERENCES,
 } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 import type { ApplyMcpServer } from "@/infrastructure/features/apply/adapters/ApplySourceLoader";
 
 describe("PlatformSyncUtils", () => {
+  describe("isStillRendered", () => {
+    const renderedPaths = toRenderedPathSet(["alpha.mdc", "ts/gamma.mdc"]);
+
+    it("matches a nested path that the Windows folder scan returns with backslashes", () => {
+      expect(isStillRendered("ts\\gamma.mdc", renderedPaths)).toBe(true);
+    });
+
+    it("matches a path with slashes and a top-level file", () => {
+      expect(isStillRendered("ts/gamma.mdc", renderedPaths)).toBe(true);
+      expect(isStillRendered("alpha.mdc", renderedPaths)).toBe(true);
+    });
+
+    it("matches a rendered path that was given with backslashes", () => {
+      expect(isStillRendered("ts/delta.mdc", toRenderedPathSet(["ts\\delta.mdc"]))).toBe(true);
+    });
+
+    it("does not match a file this apply no longer renders", () => {
+      expect(isStillRendered("ts\\beta.mdc", renderedPaths)).toBe(false);
+      expect(isStillRendered("gamma.mdc", renderedPaths)).toBe(false);
+    });
+  });
+
   describe("prepareMcpServersForScope warnings", () => {
     it("warns that an unexported variable is not filled in when a project server reads variables at run time", () => {
       const server: ApplyMcpServer = {
