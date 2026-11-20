@@ -121,25 +121,25 @@ export class CursorAdapter implements IApplyPlatformAdapter {
     }
 
     // Cursor uses .cursor/rules/*.mdc with YAML frontmatter for conditional activation.
-    if (source.rules.length > 0) {
-      const rulesRoot =
-        target.scope === "project" ? resolve(request.projectPath, ".cursor", "rules") : resolve(userRoot, "rules");
+    // Runs even with zero rules so a profile change prunes the previous profile's rule files.
+    const rulesRoot =
+      target.scope === "project" ? resolve(request.projectPath, ".cursor", "rules") : resolve(userRoot, "rules");
 
-      if (target.scope === "user") {
-        source.warnings.push(
-          "Cursor global rules should be configured via the Cursor Settings UI. Writing to ~/.cursor/rules/ as a fallback."
-        );
-      }
-
-      const rulesResult = await syncRulesAsFiles(
-        source.rules,
-        rulesRoot,
-        (rule, content) => renderCursorMdc(rule, content),
-        Boolean(request.dryRun)
+    if (target.scope === "user" && source.rules.length > 0) {
+      source.warnings.push(
+        "Cursor global rules should be configured via the Cursor Settings UI. Writing to ~/.cursor/rules/ as a fallback."
       );
-      changed = rulesResult.changed || changed;
-      fileChanges.push(...rulesResult.paths);
     }
+
+    const rulesResult = await syncRulesAsFiles(
+      source.rules,
+      rulesRoot,
+      (rule, content) => renderCursorMdc(rule, content),
+      Boolean(request.dryRun)
+    );
+    changed = rulesResult.changed || changed;
+    fileChanges.push(...rulesResult.paths);
+    modelWarnings.push(...rulesResult.warnings);
 
     return {
       platform: this.platformName,

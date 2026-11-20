@@ -123,22 +123,22 @@ export class WindsurfAdapter implements IApplyPlatformAdapter {
     }
 
     // Windsurf uses .windsurf/rules/ with YAML frontmatter for conditional activation.
-    if (source.rules.length > 0) {
-      if (target.scope === "user") {
-        source.warnings.push(
-          "Windsurf global rules should be configured via the Cascade Customizations UI. Writing to ~/.codeium/windsurf/rules/ as a fallback."
-        );
-      }
-
-      const rulesResult = await syncRulesAsFiles(
-        source.rules,
-        rulesRoot,
-        (rule, content) => renderWindsurfRule(rule, content),
-        Boolean(request.dryRun)
+    // Runs even with zero rules so a profile change prunes the previous profile's rule files.
+    if (target.scope === "user" && source.rules.length > 0) {
+      source.warnings.push(
+        "Windsurf global rules should be configured via the Cascade Customizations UI. Writing to ~/.codeium/windsurf/rules/ as a fallback."
       );
-      changed = rulesResult.changed || changed;
-      fileChanges.push(...rulesResult.paths);
     }
+
+    const rulesResult = await syncRulesAsFiles(
+      source.rules,
+      rulesRoot,
+      (rule, content) => renderWindsurfRule(rule, content),
+      Boolean(request.dryRun)
+    );
+    changed = rulesResult.changed || changed;
+    fileChanges.push(...rulesResult.paths);
+    modelWarnings.push(...rulesResult.warnings);
 
     // Windsurf supports workflows via .windsurf/workflows/.
     if (source.commands.length > 0) {

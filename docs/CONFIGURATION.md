@@ -66,6 +66,8 @@ Coding standards, guidelines, and rules that agents should follow. Add markdown 
 agent-ctrl rule ls
 ```
 
+**Cursor and Windsurf rule files:** each rule file agent-ctrl writes starts, after any frontmatter, with a line `<!-- agent-ctrl:managed sha256=... -->`. The hash covers the rest of the file. On the next apply, a marked file the profile no longer renders is removed only if the hash still matches. Hand-written files, edited copies and files from older versions are kept. The apply output lists removed files (`Would remove` on a dry run) and kept files. To read the marker, an apply scans all `.md` and `.mdc` files under the rules folder.
+
 ### Skills (`skills/`)
 
 Discoverable capabilities. Add markdown files directly to this directory, or install from SkillsMP registry.

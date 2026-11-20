@@ -503,3 +503,97 @@ describe("ClaudeAdapter", () => {
     });
   });
 });
+
+describe("ClaudeAdapter minor fixes", () => {
+  let projectPath: string;
+  let homePath: string;
+  let adapter: ClaudeAdapter;
+
+  beforeEach(async () => {
+    projectPath = await mkdtemp(join(tmpdir(), "claude-minor-"));
+    homePath = await mkdtemp(join(tmpdir(), "claude-minor-home-"));
+    process.env.AGENT_CTRL_CLAUDE_HOME = homePath;
+    adapter = new ClaudeAdapter(projectPath);
+  });
+
+  afterEach(async () => {
+    delete process.env.AGENT_CTRL_CLAUDE_HOME;
+    await rm(projectPath, { recursive: true, force: true });
+    await rm(homePath, { recursive: true, force: true });
+  });
+
+  it("writes an empty managed section instead of '- No rules found.' when no rules apply", async () => {
+    const claudePath = resolve(homePath, ".claude", "CLAUDE.md");
+    await mkdir(resolve(homePath, ".claude"), { recursive: true });
+    await writeFile(
+      claudePath,
+      "User Intro\n\n<!-- agent-ctrl:start -->\n- No rules found.\n<!-- agent-ctrl:end -->\n\nUser Footer\n",
+      "utf-8"
+    );
+
+    const writeResult = await adapter.writeConfig({ rules: [], skills: [], agents: [], mcpServers: [] });
+    expect(writeResult.success).toBe(true);
+
+    const content = await readFile(claudePath, "utf-8");
+    expect(content).not.toContain("No rules found");
+    expect(content).toContain("User Intro");
+    expect(content).toContain("User Footer");
+    expect(content).toContain("<!-- agent-ctrl:start -->\n<!-- agent-ctrl:end -->");
+  });
+
+  it("names the file in an EACCES write failure message", async () => {
+    if (process.getuid?.() === 0) return; // root ignores file modes
+    const { chmod } = await import("node:fs/promises");
+    const claudeDir = resolve(homePath, ".claude");
+    const claudeFile = resolve(claudeDir, "CLAUDE.md");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(claudeFile, "x", "utf-8");
+    const rulePath = resolve(projectPath, "rule.md");
+    await mkdir(projectPath, { recursive: true });
+    await writeFile(rulePath, "# Rule\n", "utf-8");
+    await chmod(claudeFile, 0o444);
+
+    try {
+      const writeResult = await adapter.writeConfig({
+        rules: [{ name: "rule", path: rulePath }],
+        skills: [],
+        agents: [],
+        mcpServers: [],
+      });
+      expect(writeResult.success).toBe(false);
+      if (!writeResult.success) expect(writeResult.error.message).toContain(claudeFile);
+    } finally {
+      await chmod(claudeFile, 0o644);
+    }
+  });
+
+  it("re-reads ~/.claude.json before the final write so concurrent edits survive", async () => {
+    const claudeJsonPath = resolve(homePath, ".claude.json");
+    await mkdir(projectPath, { recursive: true });
+    await writeFile(claudeJsonPath, JSON.stringify({ userKey: "before" }), "utf-8");
+
+    const originalRead = adapter["buildClaudeMcpDocumentContent"].bind(adapter);
+    let reads = 0;
+    adapter["buildClaudeMcpDocumentContent"] = async (...args: Parameters<typeof originalRead>) => {
+      reads += 1;
+      if (reads === 1) {
+        // A Claude Code session writes between the pre-write parse and the final write.
+        await writeFile(claudeJsonPath, JSON.stringify({ userKey: "concurrent-edit" }), "utf-8");
+      }
+      return originalRead(...args);
+    };
+
+    const writeResult = await adapter.writeConfig({
+      rules: [],
+      skills: [],
+      agents: [],
+      mcpServers: [{ name: "srv", transport: "stdio", command: "c", args: [], sourceFile: "m.json" }],
+    });
+    expect(writeResult.success).toBe(true);
+    expect(reads).toBeGreaterThanOrEqual(2);
+
+    const final = JSON.parse(await readFile(claudeJsonPath, "utf-8"));
+    expect(final.userKey).toBe("concurrent-edit");
+    expect(final.mcpServers.srv).toBeDefined();
+  });
+});

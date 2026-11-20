@@ -3,6 +3,7 @@ import { access, mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { WindsurfAdapter } from "@/infrastructure/features/windsurf/adapters/WindsurfAdapter";
+import { withManagedMarker } from "@/infrastructure/features/apply/adapters/PlatformSyncUtils";
 import { writeApplyFixtures } from "@tests/helpers/writeApplyFixtures";
 
 describe("WindsurfAdapter", () => {
@@ -93,5 +94,21 @@ describe("WindsurfAdapter", () => {
     // Verify rules and workflows directories exist
     await expect(access(resolve(projectPath, ".windsurf", "rules"))).resolves.toBeNull();
     await expect(access(resolve(projectPath, ".windsurf", "workflows"))).resolves.toBeNull();
+  });
+
+  it("reports what an apply removes and keeps, and what a dry run would remove", async () => {
+    await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+    const rulesDir = resolve(projectPath, ".windsurf", "rules");
+    await writeFile(resolve(rulesDir, "stale.md"), withManagedMarker("# Old\n"));
+    await writeFile(resolve(rulesDir, "mine.md"), "# Mine\n");
+
+    const dry = await adapter.applyApplyIntegration({ projectPath, targetScope: "project", dryRun: true });
+    expect(dry.warnings!.join("\n")).toContain("Would remove stale rule files agent-ctrl wrote: stale.md");
+    expect(dry.warnings!.join("\n")).toContain("mine.md");
+    await expect(access(resolve(rulesDir, "stale.md"))).resolves.toBeNull();
+
+    const real = await adapter.applyApplyIntegration({ projectPath, targetScope: "project" });
+    expect(real.warnings!.join("\n")).toContain("Removed stale rule files agent-ctrl wrote: stale.md");
+    await expect(access(resolve(rulesDir, "stale.md"))).rejects.toThrow();
   });
 });
